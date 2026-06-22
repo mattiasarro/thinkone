@@ -217,7 +217,7 @@ The clause tree is edited in the operator UI by a **structure-owns-the-tree, Tip
 - **Minimal per-clause schema**: paragraph, bold/italic, inline bullet lists (the non-addressable enumerations from §2), plus one custom inline extension — `clauseRef`, carrying `targetClauseId` and rendered through a NodeView to the _live_ derived number. That extension is what makes in-text cross-references store ids and resolve to numbers at render time. Bodies persist as TipTap/ProseMirror **JSON** in `clause.text` (JSON, not HTML, so `clauseRef` ids survive round-trips).
 - **Promotion** (inline bullet → addressable clause, per §2) is "extract the selected range from this clause's JSON → create a new clause row with a fresh id" — a model operation, not a ProseMirror split.
 
-**Two renderers, one numbering function.** The editing view (React tree + per-clause TipTap) and the signed-PDF view (server-side WeasyPrint, step 2 above) both consume the _same_ clause tree and the _same_ numbering derivation. That derivation lives in shared logic — computed server-side and handed to both — so the operator's editor and the legal PDF can never disagree on "§5.1.2".
+**Three renderers, one numbering function.** The editing view (React tree + per-clause TipTap), the signed-PDF view (server-side WeasyPrint, step 2 above), and the LLM-context view (`render_contract_context`, §6 Contract Q&A) all consume the _same_ clause tree and the _same_ numbering derivation. That derivation lives in shared logic — computed server-side and handed to all three — so the operator's editor, the legal PDF, and any `§` the agent cites can never disagree on "§5.1.2".
 
 ---
 
@@ -265,7 +265,7 @@ The loop itself is hand-rolled (~small): the agent here is ~15 domain tools + en
 
 Per the spec's human-in-the-loop rule, the agent **has no tool that sends, signs, or transitions to a client-visible state**. Tool classes:
 
-- **Read/Q&A** — `search_clients`, `get_property`, `list_spaces`, `get_quote`, `get_lease`, `list_key_dates`, `get_audit_trail`, `summarize_negotiation` (Decision Memory = audit events + clause comments + threads).
+- **Read/Q&A** — `search_clients`, `get_property`, `list_spaces`, `get_quote`, `get_lease`, `load_contract` (full rendered contract text for grounded Q&A — see Contract Q&A below), `list_key_dates`, `get_audit_trail`, `summarize_negotiation` (Decision Memory = audit events + clause comments + threads).
 - **Draft/prepare** — `create_quote_draft`, `create_lease_draft`, `draft_special_term`, `start_amendment_draft`, `order_risk_report`, `create_client_from_registry`.
 - **Clarify** — ambiguous orders ("pind 12" matches two spaces) end the turn with a question, as the spec requires.
 
@@ -273,9 +273,21 @@ Per the spec's human-in-the-loop rule, the agent **has no tool that sends, signs
 
 Authorization: agent runs inside the operator's request context — tools see exactly what the operator's role and `account_id` allow. Every tool call writes an `audit_event` with `actor = agent`, `on_behalf_of = <operator>`.
 
+### Contract Q&A
+
+Operators ask natural-language questions about a contract — "when can the tenant terminate?", "what's the rent after the next indexation?", "which clause covers roof repairs?". Each contract fits in the model's context, so this needs **no retrieval layer** (no embeddings, no vector store, no chunking): the whole contract is rendered once and placed in the prompt. The feature is operator-only — it sits inside the existing Read/Q&A tool class with no new endpoint, tenancy scope, or audit path.
+
+- **Third renderer.** `documents/render.py` gains `render_contract_context(lease, version)` — a third consumer of the §4 numbering derivation, alongside the React editor and the WeasyPrint PDF. It walks the committed clause tree into flat markdown carrying stable `§X.Y` numbers **and** a `clause.id` anchor per node, plus lease metadata (rent, utility, VAT, indexation, key dates) and the structured special terms. Because it reuses the one numbering function, any `§` the model cites already matches the editor and the signed PDF.
+- **One read tool.** `load_contract(lease_id, version="signed"|"draft")` joins the Read/Q&A class; the existing tool loop pulls the rendered text into context and the agent answers from it. `version` reuses §2's signing-freezes-numbering rule: a _signed_ contract cites the frozen numbers pinned by `sha256` ("the contract you signed on 2026-03-11 says…"); a _draft_ cites the live derived tree.
+- **Citations are machine-checked.** The model answers with the §4 `clauseRef` token; every citation is post-validated to resolve to a real node — the same "a reference whose target is gone is a loud validation error" rule from §2. A hallucinated `§9.9` fails validation instead of reaching the operator, and valid citations render in chat as clickable live numbers.
+- **The contract is the cached prefix.** A contract is immutable once signed and slow-changing as a draft — ideal cache content. The §6 `cache_control` breakpoint extends to cover system + tools + contract; Q&A turns append after it, so multi-turn follow-ups on one contract are cheap. vLLM gets the same via automatic prefix caching.
+- **Per-contract vs. portfolio.** `load_contract` answers questions about one identified contract. Cross-contract questions ("which leases index next year?") route to the structured tools (`list_key_dates`, `get_lease`) aggregating across leases — never load N full contracts into one context.
+
 ### Model sizing (on-prem)
 
 Spec's example Qwen3.5-35B-A3B (MoE) fits a single 48 GB GPU (RTX 6000 Ada / L40S class) quantized FP8/AWQ with headroom for ~32k context; a 24 GB card works with tighter quantization and context. The GPU is the main hardware sizing driver of the on-prem box; everything else runs comfortably in 8 vCPU / 32 GB.
+
+**Contract Q&A context budget.** A full lease loaded by `load_contract` — general-terms snapshot + special terms + conversation history — can crowd 32k on a long contract; raise `--max-model-len` (and size GPU memory accordingly) if your contracts run long. Because Q&A is operator-only, the consumer sanity-checks the cited `§` links rather than taking answers as gospel, so the bar is operator-assist quality, not client-facing legal advice.
 
 ---
 
