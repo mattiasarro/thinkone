@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ThinkOne · Lepingutöövoo platvorm</title>
+  <meta name="description" content="ThinkOne — lepingutöövoo platvormi demokeskkond (spets v2): esemeregister + lepingumootor, üürilepingud ja töölepingud samal mootoril. Taevavärava OÜ · Hoone T6B." />
+
+  <!-- Fondid: üks neutraalne grotesk (Inter Tight pealkirjad · Inter UI), fallback Segoe UI-le kui võrk puudub -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Inter+Tight:wght@500..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=292" />
+  <!-- favicon: must ThinkOne logomärk -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 116 116'><rect width='116' height='116' rx='24' fill='white'/><g transform='translate(20.8,11.6) scale(0.8)' fill='%23000000'><path d='M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z'/><path d='M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z'/></g></svg>">
+</head>
+<body>
+  <div class="app">
+    <!-- ============ HEADER: omnibox + „+" keskel (nav-kaart katab vasaku otsa) ============ -->
+    <header class="topbar">
+      <div class="top-left">
+        <div class="crumb" id="crumb">ThinkOne</div>
+      </div>
+      <!-- Omnibox (tulemused · küsi AI-lt, ⌘K) + „+" selle kõrval -->
+      <div class="omni-center">
+        <div class="omni-wrap" id="omni-wrap">
+          <!-- kompaktne komposer: sama keel kui avalehe suurel (logomärk · saatmisnupp) -->
+          <div class="omni" id="omni-box">
+            <span class="omni-mark" title="ThinkOne agent"><svg viewBox="0 0 93 116" aria-hidden="true">
+              <path d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/>
+              <path d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/>
+            </svg></span>
+            <input id="omni-in" placeholder="Otsi või küsi… lepingud · kliendid · pinnad" autocomplete="off"/>
+            <kbd>⌘K</kbd>
+            <button class="omni-send" id="omni-send" title="Küsi AI-lt (Enter)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+          <div class="drop omni-pop" id="omni-pop"></div>
+        </div>
+        <div class="pop-wrap" id="loo-wrap">
+          <!-- ainult „+" — rippmenüü ütleb ise, mida luua saab -->
+          <button class="btn-loo" id="loo-btn" title="Loo uus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg><span>Uus</span></button>
+          <div class="drop loo-pop" id="loo-pop"></div>
+        </div>
+      </div>
+      <div></div>
+    </header>
+
+    <!-- ============ SIDEBAR (bränd + navigatsioon), hõljub päise peal ============ -->
+    <aside class="sidebar">
+      <div class="sb-top">
+        <!-- ThinkOne logomärk (ainult kokkutõmmatud menüüs) -->
+        <svg class="logo-mark" viewBox="0 0 93 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
+          <path d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/>
+          <path d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/>
+        </svg>
+        <!-- ThinkOne platvormi logo (vektor) -->
+        <svg class="logo" viewBox="0 0 501 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
+          <path d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/>
+          <path d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/>
+          <path d="M130.73,80.64v-31.4h-14.2v-10.1h40.61v10.1h-14.64v31.4h-11.76Z"/>
+          <path d="M168.56,80.64v-41.49h11.76v41.49h-11.76ZM173,65.21l.11-10.32h30.4v10.32h-30.51ZM197.08,80.64v-41.49h11.76v41.49h-11.76Z"/>
+          <path d="M250,80.64v-41.49h10.76l23.52,27.62-2.22-.55c-.22-1.55-.44-3-.55-4.22-.11-1.22-.22-2.44-.33-3.55s-.22-2.22-.22-3.22c0-1.11-.11-2.22-.11-3.33v-12.76h11.32v41.49h-10.87l-25.07-29.62,3.88,1c.11,1.22.22,2.22.33,3.22s.22,1.89.33,2.77.22,1.89.22,2.77c.11,1,.11,2.11.11,3.33s.11,2.66.11,4.1v12.31h-11.21s0,.11,0,.11Z"/>
+          <path d="M307.13,80.64v-41.49h11.76v41.49h-11.76ZM315.01,69.65l-3.55-9.21,23.63-21.3h13.98l-34.06,30.51ZM336.42,80.64l-16.09-20.41,7.43-7.1,22.41,27.51h-13.76Z"/>
+          <path d="M380.47,81.19c-3.33,0-6.32-.55-8.99-1.55-2.66-1-4.99-2.55-7.1-4.44-2-1.89-3.55-4.1-4.66-6.77-1.11-2.55-1.55-5.44-1.55-8.43s.55-5.88,1.55-8.43c1.11-2.55,2.66-4.88,4.66-6.77s4.33-3.44,7.1-4.44c2.66-1,5.66-1.55,8.99-1.55s6.21.55,8.99,1.55c2.77,1,5.1,2.55,7.1,4.44,2,1.89,3.55,4.22,4.66,6.77s1.66,5.44,1.66,8.43-.55,5.88-1.66,8.43-2.66,4.88-4.66,6.77-4.33,3.33-7.1,4.44-5.77,1.55-8.99,1.55ZM380.47,78.31c2.77,0,5.33-.44,7.66-1.33,2.33-.89,4.44-2.11,6.1-3.77,1.78-1.66,3-3.55,3.99-5.77.89-2.22,1.44-4.66,1.44-7.32s-.44-5.1-1.44-7.32c-.89-2.22-2.22-4.22-3.99-5.77-1.78-1.66-3.77-2.88-6.1-3.77s-4.88-1.33-7.66-1.33-5.33.44-7.66,1.33c-2.33.89-4.33,2.22-6.1,3.77-1.66,1.66-3,3.55-3.99,5.77-.89,2.22-1.44,4.66-1.44,7.32s.44,5.1,1.44,7.32c.89,2.22,2.22,4.1,3.99,5.77,1.66,1.66,3.77,2.88,6.1,3.77,2.33.89,4.88,1.33,7.66,1.33Z"/>
+          <path d="M417.19,80.64v-41.49h2.88l32.4,37.94-.67,1.55c-.11-.44-.11-1.44-.11-2.88,0-1.55,0-3.22-.11-5.21,0-2-.11-3.99-.11-5.99v-25.41h3v41.49h-3.11l-32.28-38.05.55-1.66v2.88c0,1.33.11,2.77.11,4.44.11,1.66.11,3.33.22,4.88.11,1.66.11,3.11.11,4.44v23.08s-2.88,0-2.88,0Z"/>
+          <path d="M472.33,80.64v-41.49h27.51v3h-24.52v35.5h24.3v3h-27.29ZM473.88,60.67v-3h22.63v3h-22.63Z"/>
+          <polygon points="235.24 70.87 235.24 48.91 235.24 39.14 223.48 39.14 223.48 80.64 235.24 80.64 235.24 70.87"/>
+        </svg>
+        <!-- menüü kokku/lahti (ainult ikoonid ↔ täisvaade) -->
+        <button class="sb-collapse" id="sb-collapse" title="Tõmba menüü kokku">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9.5 4v16"/></svg>
+        </button>
+      </div>
+
+      <nav class="nav" id="nav"><!-- renderitakse JS-iga --></nav>
+
+      <!-- ettevõttevahetus: jaluse joone PEAL -->
+      <div class="sb-context" id="sb-context">
+        <div class="lbl">Ettevõte</div>
+        <div class="org">Taevavärava OÜ</div>
+      </div>
+
+      <div class="sb-foot">
+        <button class="sb-item" id="sb-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="ic"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34c.63-.26 1.03-.88 1.03-1.56V3a2 2 0 1 1 4 0v.09c0 .68.4 1.3 1.03 1.56a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87c.26.63.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.3.4-1.56 1.03Z"/></svg>
+          <span>Seaded</span>
+        </button>
+        <button class="sb-switch" id="role-switch">Vaata üürnikuna →</button>
+        <div class="pop-wrap" style="width:100%">
+          <button class="sb-user" id="sb-user">
+            <div class="av">TS</div>
+            <div><div class="nm">Tarmo Sepp</div><div class="rl">Operaator · Admin</div></div>
+          </button>
+          <div class="drop user-pop" id="user-pop"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <div class="main">
+      <main id="app-view"><!-- vaade renderitakse JS-iga --></main>
+    </div>
+  </div>
+
+  <!-- ============ AI-PANEEL: libiseb paremalt igal lehel (⌘J) ============ -->
+  <aside class="agent-pop" id="agent-pop" aria-label="AI-agent">
+    <button class="ag-x" onclick="closeAgentPop()" title="Sulge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="ag-ctx" id="ag-ctx"></div>
+    <div class="ag-head" id="ag-head"></div>
+    <div class="ag-body" id="ag-body"></div>
+    <div class="ag-foot" id="ag-foot"></div>
+  </aside>
+
+  <!-- ============ KÜLGPANEEL (kommentaarid) ============ -->
+  <div class="scrim" id="scrim" onclick="closeSide()"></div>
+  <aside class="side" id="side">
+    <div class="side-head" id="side-head"></div>
+    <div class="side-body" id="side-body"></div>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+
+  <!-- ============ PDF-VAATUR (lisad: pinnaplaan, parkimisskeem) ============ -->
+  <div class="pdfmodal" id="pdfmodal">
+    <div class="pdfbox">
+      <div class="pdfbar">
+        <div>
+          <div class="overline">Lisa · dokument</div>
+          <div class="pdftitle" id="pdftitle">—</div>
+        </div>
+        <div class="flex" style="gap:8px">
+          <a class="btn btn-ghost btn-sm" id="pdfopen" target="_blank" rel="noopener">Ava uues vahekaardis</a>
+          <button class="btn btn-primary btn-sm" onclick="closePdf()">Sulge</button>
+        </div>
+      </div>
+      <iframe id="pdfframe" title="PDF eelvaade"></iframe>
+      <!-- genereeritud dokumendi (nt Lisa 3) HTML-eelvaade — iframe'i asemel -->
+      <div class="pdfhtml" id="pdfhtml" style="display:none"></div>
+    </div>
+  </div>
+
+  <script src="uldtingimused.js?v=292"></script>
+  <script src="data.js?v=292"></script>
+  <script src="app.js?v=292"></script>
+</body>
+</html>
