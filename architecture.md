@@ -2,7 +2,7 @@
 
 Implements the **v2 functional spec** ([ThinkOne - Funktsionaalne spetsifikatsioon v2.md](<ThinkOne - Funktsionaalne spetsifikatsioon v2.md>)), which generalizes the v1 lease workflow into a contract platform: an asset registry (esemeregister) and a contract engine (lepingumootor) joined by allocations (hõive), with employment contracts as the second vertical and import of existing contracts. (v1 spec: [spec.md](spec.md), historical.)
 
-Single deployment target: **Railway** — app containers with managed Postgres/Redis, Cloudflare R2 object storage, and a frontier model via the Anthropic API (DPA; API data not used for training). The v1 on-prem target (Proxmox + vLLM, "data never leaves the machine") is retired with spec v2; the provider interfaces that enabled it (LLM, storage, email, signing) remain as seams so a self-hosted variant stays possible later, but it is not designed or estimated here.
+Single deployment target: **Railway** — app containers with managed Postgres, Cloudflare R2 object storage, and a frontier model via the Anthropic API (DPA; API data not used for training). The v1 on-prem target (Proxmox + vLLM, "data never leaves the machine") is retired with spec v2; the provider interfaces that enabled it (LLM, storage, email, signing) remain as seams so a self-hosted variant stays possible later, but it is not designed or estimated here.
 
 All environment-specific behavior stays behind configuration and provider interfaces (12-factor: env vars only, no code branches per environment).
 
@@ -25,6 +25,8 @@ Added with spec v2: **Deployment = Railway only** (v1 on-prem/vLLM target retire
 
 Added with the MVP review (2026-08): the persistence invariants and party/access model above, plus — **key-date kinds as configuration records** (not enums; the calendar scales to new date types without development), **citations stored as data** (every AI answer's clause references persist as rows), **AI-draft feedback captured from day 1** (used / edited / discarded), **every sent draft frozen** (not only signed versions), **N signers per party** (joint representation is first-class), **.asice/.bdoc import** (containers are unpacked, signature metadata kept), **optimistic concurrency + idempotent sends**, **deliverability-grade email** (own sending domain, SPF/DKIM/DMARC, bounce visibility), **i18n-ready strings, full account export, product metrics from day 1**, and **soft delete everywhere** with GDPR erasure as an explicit procedure.
 
+Decided 2026-08: **no Redis** — Postgres is the single stateful service (plus R2 for blobs): domain state, job queue, event log, search projection, and SSE pub/sub via `LISTEN/NOTIFY`; caches are in-process. If a genuine cache/pub-sub scale need ever appears, Redis returns behind a small seam — a reversible decision.
+
 ---
 
 ## 1. High-level architecture
@@ -46,12 +48,12 @@ Added with the MVP review (2026-08): the persistence invariants and party/access
               │                                       │                    │
      ┌────────▼────────┐                     ┌────────▼───────┐   ┌────────▼────────┐
      │     worker      │                     │   PostgreSQL   │   │  Object storage │
-     │ Procrastinate:  │────────────────────▶│  (all state)   │   │   S3 API:       │
-     │ jobs, cron, PDF,│                     └────────────────┘   │ Cloudflare R2   │
-     │ signing, agent  │                     ┌────────────────┐   │ plans, PDFs,    │
-     └──┬──────┬───────┘────────────────────▶│     Redis      │   │ signed asice    │
-        │      │                             │ cache, pub/sub │   └─────────────────┘
-        │      │                             └────────────────┘
+     │ Procrastinate:  │────────────────────▶│  ALL state:    │   │   S3 API:       │
+     │ jobs, cron, PDF,│                     │  domain · jobs │   │ Cloudflare R2   │
+     │ signing, agent  │                     │  events · FTS  │   │ plans, PDFs,    │
+     └──┬──────┬───────┘                     │  LISTEN/NOTIFY │   │ signed asice    │
+        │      │                             └────────────────┘   └─────────────────┘
+        │      │
         │      └──────────────► External adapters (outbound only):
         │                       e-Äriregister · EHR · Moderan · Krediidiinfo ·
         │                       Inforegister · Kohtutäitur · Statistikaamet ·
@@ -71,17 +73,17 @@ Added with the MVP review (2026-08): the persistence invariants and party/access
 
 ### Components
 
-| Component       | Technology                                                                     | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| frontend        | Next.js (App Router), TypeScript, Tailwind, TanStack Query, TipTap (rich text) | Operator app = the demo's five-page IA — **Avaleht · Ülevaade · Portfell · Kalender · Suhtlus** — plus the **omnibox** (Cmd+K: search across all entities + command palette, §8); a new vertical adds types and filters to these pages, never a page. Route groups: `/app` (operator/admin — incl. the import review UI, the largest new v2 surface) and `/portal` (client; quote/lease-draft share-link views run accountless, see §8). UI strings i18n-ready from day 1. API types generated from OpenAPI via Orval. |
-| api             | FastAPI, SQLAlchemy 2 (async), Pydantic v2, Alembic                            | REST + SSE (chat streaming, notifications).                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| worker          | Procrastinate (Postgres-backed, async, built-in periodic tasks)                | Key-date scanning, indexation, quote expiry, PDF rendering, signing ceremonies, risk reports, emails, audit exports, agent runs. Jobs enqueue in the same DB transaction as the domain write (no dual-write window). Procrastinate's tables are created alongside Alembic migrations (`procrastinate schema --apply`).                                                                                                                                                                                                 |
-| db              | PostgreSQL 16                                                                  | Single database; multi-tenant by `account_id` + RLS (§8). Also holds the job queue, the event log, and the search projection.                                                                                                                                                                                                                                                                                                                                                                                          |
-| cache / pub-sub | Redis 7                                                                        | SSE pub/sub and short-lived cache. The durable job queue now lives in Postgres (Procrastinate); Redis no longer holds queue state. Optional: Postgres `LISTEN/NOTIFY` can drive SSE too, letting you drop Redis entirely.                                                                                                                                                                                                                                                                                              |
-| files           | S3 API — Cloudflare R2 (MinIO as local-dev stand-in)                           | Floor plans, site plans, generated PDFs, signed containers, imported source documents, audit exports. Never store file bytes in Postgres.                                                                                                                                                                                                                                                                                                                                                                              |
-| llm             | Anthropic API (`claude-opus-5`), agent loop in-process                         | See §6.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| pdf             | WeasyPrint (HTML/CSS → PDF, Jinja2 templates)                                  | Pure-Python, no headless browser; company logo/accent color injected per Company.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| digidoc         | libdigidocpp (RIA) with Python bindings, in the worker image                   | ASiC-E container assembly, OCSP + timestamp. Fallback if packaging fights back: tiny DigiDoc4j (Java) sidecar with a 3-endpoint HTTP API.                                                                                                                                                                                                                                                                                                                                                                              |
+| Component       | Technology                                                                     | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontend        | Next.js (App Router), TypeScript, Tailwind, TanStack Query, TipTap (rich text) | Operator app = the demo's five-page IA — **Avaleht · Ülevaade · Portfell · Kalender · Suhtlus** — plus the **omnibox** (Cmd+K: search across all entities + command palette, §8); a new vertical adds types and filters to these pages, never a page. Route groups: `/app` (operator/admin — incl. the import review UI, the largest new v2 surface) and `/portal` (client; quote/lease-draft share-link views run accountless, see §8). UI strings i18n-ready from day 1. API types generated from OpenAPI via Orval.                                                                                                       |
+| api             | FastAPI, SQLAlchemy 2 (async), Pydantic v2, Alembic                            | REST + SSE (chat streaming, notifications).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| worker          | Procrastinate (Postgres-backed, async, built-in periodic tasks)                | Key-date scanning, indexation, quote expiry, PDF rendering, signing ceremonies, risk reports, emails, audit exports, agent runs. Jobs enqueue in the same DB transaction as the domain write (no dual-write window). Procrastinate's tables are created alongside Alembic migrations (`procrastinate schema --apply`).                                                                                                                                                                                                                                                                                                       |
+| db              | PostgreSQL 16                                                                  | Single database; multi-tenant by `account_id` + RLS (§8). Also holds the job queue, the event log, and the search projection.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| pub/sub / cache | Postgres `LISTEN/NOTIFY`; in-process TTL caches                                | No Redis. Worker→browser fan-out (SSE) rides `LISTEN/NOTIFY`: each process holds one dedicated listener connection (outside the SQLAlchemy pool; works because Railway connects direct — no transaction-pooling PgBouncer in front) and fans out to its SSE clients in-process. `NOTIFY` fires only on commit — an event can never announce a rolled-back change — and carries just `{entity, id, event}` (≤8 KB; receivers refetch). Caching needs no tier of its own at this scale: in-process TTL caches per instance, an `UNLOGGED` table if cross-instance; locks = Postgres advisory locks; idempotency = unique keys. |
+| files           | S3 API — Cloudflare R2 (MinIO as local-dev stand-in)                           | Floor plans, site plans, generated PDFs, signed containers, imported source documents, audit exports. Never store file bytes in Postgres.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| llm             | Anthropic API (`claude-opus-5`), agent loop in-process                         | See §6.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| pdf             | WeasyPrint (HTML/CSS → PDF, Jinja2 templates)                                  | Pure-Python, no headless browser; company logo/accent color injected per Company.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| digidoc         | libdigidocpp (RIA) with Python bindings, in the worker image                   | ASiC-E container assembly, OCSP + timestamp. Fallback if packaging fights back: tiny DigiDoc4j (Java) sidecar with a 3-endpoint HTTP API.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ---
 
@@ -228,7 +230,7 @@ Key modeling rules from the spec, enforced in the domain layer:
 
 A clause is a **node in a tree** (adjacency list via `parent_id`), not a flat bullet — Estonian leases nest (§5 → 5.1 → (a)), and the spec requires every _point_ to be independently addressable, commentable, and override-targetable.
 
-- **Node vs. inline bullet.** A bullet becomes its own `clause` node if and only if it must be independently commented on, overridden, or cross-referenced. Anything below that bar (a parenthetical enumeration nobody addresses on its own) stays as inline formatting inside a node's rich-text `text`. This keeps the tree from exploding into one node per line.
+- **Node per marked item.** Every _marked_ item — numbered, lettered, dashed — is its own `clause` node; only unmarked in-sentence enumerations („büroo-, lao- ja tootmispinnana", „sh …") stay inline in a node's rich-text `text`. The rule is mechanical, so import needs no granularity judgment, and every line a client might comment on is addressable with no preparatory step. Validated against the real data: the T6B general terms are 18 sections of flat numbered points — 114 nodes, no third level, no inline bullets (even §17's „…kui need on: / …; või" alternatives carry their own point numbers in the source) — so trees stay in the low hundreds of nodes at worst. What must stay controlled is node _lifecycle_, not node count: nodes are created only at authoring boundaries (template ingestion, import, the explicit add-point command), never by keystrokes — Enter inside a clause is a paragraph break, and split/merge/promote are guarded model operations, so ids never churn from typing.
 - **Numbers are derived, never stored as identity.** The displayed number (§5.1.2) is a pure function of the committed tree — walk `parent_id` to the container root, applying each level's `number_style`. Identity is the immutable `clause.id` (UUID), assigned once and never changed by reorder, insert, or re-parent.
 - **Everything references by id.** `overrides_clause_id`, `clause_comment.clause_id`, and in-text cross-references all store `clause.id`, never a number. A mid-list insert or reorder changes only the _projection_: every number on a rendered document — including a number shown _inside_ a clause that cross-references another — is computed from one consistent read of the tree, so the referencing and referenced clauses renumber together, atomically. Drift is structurally impossible because no reference points at a number.
 - **In-text cross-references are structured tokens.** Prose like "subject to §7.3" is a reference node in the rich text carrying the target `clause.id`, resolved to the live number at render time — never a typed string. This is the one place the by-id rule must reach _into_ the body text, not just the foreign keys.
@@ -297,7 +299,7 @@ backend/
       templates/        #   Jinja2 HTML for quote, lease, annexes
       render.py         #   WeasyPrint
       container.py      #   libdigidocpp ASiC-E assembly
-    infra/              # db session, S3 client, redis, settings (pydantic-settings)
+    infra/              # db session, S3 client, LISTEN/NOTIFY pub-sub, settings (pydantic-settings)
     worker/             # Procrastinate app: task + periodic-task definitions
   tests/
 ```
@@ -321,8 +323,8 @@ The clause tree is edited in the operator UI by a **structure-owns-the-tree, Tip
 
 - **The app/React layer owns the structure**, keyed by `clause_id`: the tree, sibling order, derived numbering, lock state, comment pins, override links, and all block operations (add / indent / reorder / promote / merge). These are commands on the domain model, not editor side-effects — so `clause_id`s are created and destroyed only by guarded operations, never by an editor split/merge you'd have to police.
 - **TipTap edits one clause's inline body**, not the document. Each clause renders as static HTML; a TipTap instance is mounted only on the clause being actively edited (click-to-edit), so there is ~1 live editor at a time, not one per clause. Locked clauses (general/main) render as static HTML with no editor at all.
-- **Minimal per-clause schema**: paragraph, bold/italic, inline bullet lists (the non-addressable enumerations from §2), plus one custom inline extension — `clauseRef`, carrying `targetClauseId` and rendered through a NodeView to the _live_ derived number. That extension is what makes in-text cross-references store ids and resolve to numbers at render time. Bodies persist as TipTap/ProseMirror **JSON** in `clause.text` (JSON, not HTML, so `clauseRef` ids survive round-trips).
-- **Promotion** (inline bullet → addressable clause, per §2) is "extract the selected range from this clause's JSON → create a new clause row with a fresh id" — a model operation, not a ProseMirror split.
+- **Minimal per-clause schema**: paragraph, bold/italic, plus one custom inline extension — `clauseRef`, carrying `targetClauseId` and rendered through a NodeView to the _live_ derived number. No list nodes in the schema: under §2's node-per-marked-item rule a list item _is_ a clause, so lists exist as sibling nodes in the tree, not as markup inside a body. That extension is what makes in-text cross-references store ids and resolve to numbers at render time. Bodies persist as TipTap/ProseMirror **JSON** in `clause.text` (JSON, not HTML, so `clauseRef` ids survive round-trips).
+- **Promotion** (inline text → addressable clause) survives as the rare escape hatch: "extract the selected range from this clause's JSON → create a new clause row with a fresh id" — a model operation, not a ProseMirror split. Under the node-per-marked-item rule it is seldom needed — markers already became nodes at ingestion.
 
 **Three renderers, one numbering function.** The editing view (React tree + per-clause TipTap), the signed-PDF view (server-side WeasyPrint, step 2 above), and the LLM-context view (`render_contract_context`, §6 Contract Q&A) all consume the _same_ clause tree and the _same_ numbering derivation. That derivation lives in shared logic — computed server-side and handed to all three — so the operator's editor, the legal PDF, and any `§` the agent cites can never disagree on "§5.1.2".
 
@@ -377,7 +379,7 @@ class ChatModel(Protocol):
 
 - **`anthropic_native.py`** — official `anthropic` SDK (never an OpenAI-compatible shim for Claude). Default model `claude-opus-5`, adaptive thinking, streaming. Prompt caching: `cache_control` breakpoint after the (stable) system prompt + tool definitions; conversation appended after it.
 - Internal event vocabulary (`text_delta`, `tool_call`, `done`) keeps the loop and UI provider-agnostic. The sole adapter today is Anthropic; the seam exists so a self-hosted adapter could return if a customer ever demands it.
-- **In-process, not a service.** The loop runs inside api/worker — tools are plain Python functions sharing transactions and Pydantic models with the domain. A separate agent service (one reading of the spec's "AI-kihi taristu jookseb Railway platvormil") is explicitly rejected: it would turn every tool call into a network hop and route context data through an extra processor for no benefit. The sentence is satisfied by the platform itself running on Railway.
+- **In-process, not a service.** The loop runs inside api/worker — tools are plain Python functions sharing transactions and Pydantic models with the domain.
 
 The loop itself is hand-rolled (~small): the agent here is ~15 domain tools + entity resolution + Q&A, and human-in-the-loop control matters more than framework features. Because tools are plain Pydantic-typed functions, adopting deepagents/LangGraph later is a harness swap, not a rewrite.
 
@@ -418,7 +420,7 @@ Rules first, LLM garnish. The attention queue is computed by deterministic domai
 
 ### Import structuring
 
-The ingest pipeline (§4) reuses the same provider: a worker job sends extracted text to the model with a structured-output schema mirroring the clause tree + typed parameters + parties + key dates; the proposal is validated against the schema, anchored to source offsets, and queued for operator review. Nothing is committed without confirmation. Because Q&A and structuring outputs are operator-reviewed, the quality bar everywhere stays operator-assist, not client-facing legal advice.
+The ingest pipeline (§4) reuses the same provider: a worker job sends extracted text to the model with a structured-output schema mirroring the clause tree + typed parameters + parties + key dates; the proposal is validated against the schema, anchored to source offsets, and queued for operator review. Granularity is not a judgment call: the node-per-marked-item rule (§2) goes into the schema and prompt — any numbered/lettered/dashed item becomes a node — and imported contracts keep the source document's own numbering verbatim (the original is the legal truth, §4). Nothing is committed without confirmation. Because Q&A and structuring outputs are operator-reviewed, the quality bar everywhere stays operator-assist, not client-facing legal advice.
 
 ---
 
@@ -463,17 +465,17 @@ All adapters are outbound-only, retried via the worker, and snapshot their raw r
 
 ## 9. Deployment (Railway)
 
-Single target per spec v2; the v1 on-prem layout (Proxmox VMs + vLLM + GPU sizing) is retired. Local development runs the same containers via `deploy/compose.dev.yml` — postgres, redis, minio (S3-compatible stand-in for R2) — with `INTEGRATIONS_MODE=fake`, so the full workflow runs with zero external accounts.
+Single target per spec v2; the v1 on-prem layout (Proxmox VMs + vLLM + GPU sizing) is retired. Local development runs the same containers via `deploy/compose.dev.yml` — postgres, minio (S3-compatible stand-in for R2) — with `INTEGRATIONS_MODE=fake`, so the full workflow runs with zero external accounts.
 
-| Concern                 | Railway implementation                                                                                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| frontend / api / worker | Three Railway services from the same Dockerfiles; private networking between them.                                                                                      |
-| Postgres / Redis        | Railway managed plugins. Postgres also backs the Procrastinate job queue; Redis is only cache + SSE pub/sub (and is optional if SSE moves to Postgres `LISTEN/NOTIFY`). |
-| Object storage          | Railway has no S3 — Cloudflare R2 (S3 API), EU jurisdiction. Plans, PDFs, signed containers, imported source documents, audit exports.                                  |
-| LLM                     | `ANTHROPIC_API_KEY`, model `claude-opus-5` (adaptive thinking, streaming, prompt caching on system + tools + loaded contract).                                          |
-| Signing/digidoc         | libdigidocpp in the worker image; only SHA-256 digests leave the infrastructure (Dokobit hash-signing, §5).                                                             |
-| Email                   | Postmark / SES on a dedicated sending domain (SPF/DKIM/DMARC); bounce webhooks → `notification`.                                                                        |
-| Cron                    | Procrastinate periodic tasks (the worker is a long-running service); no Railway-specific cron needed.                                                                   |
+| Concern                 | Railway implementation                                                                                                                                                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontend / api / worker | Three Railway services from the same Dockerfiles; private networking between them.                                                                                                                                                                                                           |
+| Postgres                | The single Railway managed datastore: domain state, job queue (Procrastinate), event log, search projection, and SSE pub/sub via `LISTEN/NOTIFY` (one dedicated listener connection per process; requires the direct connection Railway provides — no transaction pooler). No Redis service. |
+| Object storage          | Railway has no S3 — Cloudflare R2 (S3 API), EU jurisdiction. Plans, PDFs, signed containers, imported source documents, audit exports.                                                                                                                                                       |
+| LLM                     | `ANTHROPIC_API_KEY`, model `claude-opus-5` (adaptive thinking, streaming, prompt caching on system + tools + loaded contract).                                                                                                                                                               |
+| Signing/digidoc         | libdigidocpp in the worker image; only SHA-256 digests leave the infrastructure (Dokobit hash-signing, §5).                                                                                                                                                                                  |
+| Email                   | Postmark / SES on a dedicated sending domain (SPF/DKIM/DMARC); bounce webhooks → `notification`.                                                                                                                                                                                             |
+| Cron                    | Procrastinate periodic tasks (the worker is a long-running service); no Railway-specific cron needed.                                                                                                                                                                                        |
 
 Privacy posture (document it to customers): contract data resides on Railway + R2 (EU); prompts reach Anthropic under DPA and are not used for training; only per-request context is ever sent — the datastore is never synced to the model provider (the spec's minimality principle). The v1 "data never leaves the house" guarantee is retired together with the on-prem target.
 
@@ -484,7 +486,7 @@ Everything environment-specific is an env var consumed by `infra/settings.py`:
 ```
 ANTHROPIC_API_KEY / LLM_MODEL   (ChatModel seam in code; single provider today)
 S3_ENDPOINT / S3_BUCKET / S3_KEY / S3_SECRET
-DATABASE_URL / REDIS_URL
+DATABASE_URL
 DOKOBIT_SIGN_TOKEN / DOKOBIT_IDENTITY_TOKEN / DOKOBIT_ENV=sandbox|prod
 INTEGRATIONS_MODE=fake|live     (per-adapter overrides: ARIREGISTER_MODE=..., etc.)
 EMAIL_PROVIDER=postmark|ses|smtp  POSTMARK_TOKEN / SMTP_URL  (sending domain DNS: SPF/DKIM/DMARC)
@@ -504,7 +506,7 @@ thinkone/
   backend/            # FastAPI + worker (one package, two entrypoints)
   frontend/           # Next.js (operator app + client portal)
   deploy/
-    compose.dev.yml   # local dev: postgres, redis, minio, INTEGRATIONS_MODE=fake
+    compose.dev.yml   # local dev: postgres, minio, INTEGRATIONS_MODE=fake
     railway/          # service configs / railway.json
   scripts/            # openapi→orval codegen, db seed, backup
 ```
@@ -513,25 +515,53 @@ thinkone/
 
 ## 11. Build plan
 
-_(build-plan.md, which estimated the retired v1 on-prem scope, is deleted; this section is the plan of record — per-phase estimates to be added.)_
+_(build-plan.md, which estimated the retired v1 on-prem scope, is deleted; this section is the plan of record, aligned with the development contract's four phases. Expected timeline ≈ 2–3 months from signing, Payment 1, and initial inputs — a planning timeline with weekly sync demos, not a fixed deadline.)_
 
-De-risking order: generalize the data model **while** building the real-estate vertical on it; prove the platform with the employment vertical; ship import as its own phase. The invariants land in phase 0 because retrofitting them is the expensive path — and they are exactly what keeps the review's "future" list possible.
+Sequencing in one breath: the persistence/party/tenancy invariants land at the top of Phase 2 because retrofitting them is the expensive path; import comes early (Phase 2, per contract), which pulls the clause model's **read path** and the **LLM plumbing** forward with it; key dates appear as data + calendar in Phase 2 while their automation ships in Phase 4; the employment vertical's config path is proven in Phase 3 and its lifecycle completes in Phase 4.
 
-- **Phase 0 — platform skeleton.** Monolith scaffold (api + worker), auth, `membership` M2M, RLS tenancy, `domain_event` + command pattern + CI enforcement, `party`, settings, provider fakes, CI/CD to Railway, i18n scaffolding, Sentry, sending domain + email provider with bounce webhooks.
-- **Phase 1 — asset registry + real-estate config.** Company onboarding (äriregistri autofill), property/EHR, spaces CSV import, allocations + derived status, attachments, templates.
-- **Phase 2 — contract engine + offer→lease flow.** Clause tree + editor, versioned facts, state machines, rendering + sent-version freezing, share links, quote wizard (incl. stepped rent), negotiation (comments, threads), Ülevaade/Portfell pages, omnibox v1 (search).
-- **Phase 3 — signing + lifecycle.** Multi-signer Dokobit ceremonies, both containers, account-at-signing, archive visibility, key-date engine on `key_date_kind`, indexation (fixed % + CPI) as fact versions, notifications + Kalender page.
-- **Phase 4 — agent.** Tool belt over the same commands (`requires_confirmation` on every mutating def), contract Q&A with stored citations, entity resolution, confirmation + answer cards, omnibox↔agent merge, smart-dashboard rules, eval harness + golden set, token budgets/metering.
-- **Phase 5 — import.** Extraction (PDF/DOCX + ASiC-E unpack), LLM structuring, review UI (the largest new frontend surface), manual registration for scans, portfolio health report (below), Suhtlus completeness.
-- **Phase 6 — second vertical + amendments.** Employment vertical as the modularity proof (config + thin module), amendment flow (annex rounds), renewal drafts, audit-export polish.
+### Phase 1 — Architecture & acceptance criteria (~wk 1)
+
+- **Architecture finalized with Future Invest** — this document plus this phase breakdown; the contract's no-cost, scope-neutral adjustment round, exercised once.
+- **Objective acceptance criteria per phase**, written against the exit demos below — including closing the open scope decisions (next subsection), since criteria can't be objective over undecided scope. The confirmed out-list (OCR, TÖR, eIDAS, intra-account roles) is restated in the same doc.
+
+**Exit:** both documents signed off in a sync call. Nothing else lives in Phase 1.
+
+### Phase 2 — Foundation, portfolio, import (~wk 1–5)
+
+1. **Inputs & scaffold** — demo walkthrough as UX sign-off (delta list, not new design); sample corpus (10–20 real contracts — PDF, DOCX, .asice/.bdoc, one scanned — plus lease/quote/special-terms and employment templates, space CSVs, logos); credentials round — **Dokobit sandbox + SK paperwork out on day 1, the longest lead item** — Railway/R2/Anthropic, sending-domain DNS, Moderan, äriregister/EHR, Statistikaamet, risk sources; golden-set format agreed + first ~10 questions; repo scaffold, CI/CD to Railway, compose.dev, provider seams + fakes.
+2. **Invariant substrate** — auth + `membership` M2M, RLS, `domain_event` + command wrapper + CI check, `party`, soft delete, settings, i18n scaffold, Sentry, email provider + bounce webhooks, notification rows.
+3. **Asset registry** — company onboarding (äriregistri autofill), property + EHR, spaces CSV import + manual forms, attachments (R2), allocations + derived status.
+4. **Clause model, read path** (pulled forward because import needs it) — tree + node-per-marked-item ingestion of the general-terms DOCX, numbering derivation, read-only rendering.
+5. **Import pipeline** — upload incl. ASiC-E unpack → extraction with anchors → LLM structuring (first `ChatModel` consumer; structured output, versioned prompts) → review UI → manual key-data registration for scans → linking (coverage allocations for haldus/hooldus/kindlustus) → `contract_fact` seeded from import → `key_date` records + read-only Kalender + Portfell views + `search_index` → portfolio health report (if agreed in Phase 1).
+
+**Exit demo:** a real portfolio imported, reviewed, linked; portfolio, calendar, health report live; every write event-logged, RLS on.
+
+### Phase 3 — Quotes, portal, contract prep, AI foundation (~wk 5–9)
+
+1. **Quote loop** — wizard (client autofill, risk report, spaces, pricing/VAT, stepped rent, special-term items, commercial rich text), branded quote PDF, sent-version freezing from the first send, share-link portal (accountless), client accept/propose/decline + comments, Suhtlus messaging, notifications, quote state machine + expiry (worker cron arrives here).
+2. **Contract preparation** — clause editor (TipTap-per-clause; locked üld; generated main terms; quote special terms → Lisa 3 with `kirjutab_üle`), employment template configured, quote→N draft generation, per-clause comment/accept loop, dashboard + rule-based attention list, omnibox v1.
+3. **AI foundation** — chat UI (SSE), agent loop + read/draft tools with `requires_confirmation`, entity resolution, `load_contract` Q&A with validated + stored citations, confirmation/answer cards, eval runner on the golden set, token metering + budgets.
+
+**Exit demo:** full operator↔client loop — quote created by hand _and_ by agent command, link sent, client proposes, operator folds into Lisa 3, draft reaches "all points accepted"; AI answers portfolio Q&A with clickable citations.
+
+### Phase 4 — Lifecycle, signing, automation, pilot (~wk 9–12)
+
+1. **Signing** — Dokobit hash flow + local ASiC-E, both containers, N signers per party, account-at-signing, archive + visibility rules, frozen numbering.
+2. **Lifecycle automation** — key-date scanning + notifications (90-day defaults), indexation (fixed % + CPI) writing fact versions, contract-end transitions, amendments (annex rounds, early termination), post-signature correction path, one-click renewal (if agreed).
+3. **AI completion** — remaining tools (amendment drafts, apply-proposal, draft-reply, summaries), smart-dashboard polish, eval pass at target, cost visibility.
+4. **Hardening + pilot** — security review (RLS tests, share-link token audit, authz matrix, upload limits), integration validation where credentials arrived, restore drill, audit "court folder" export + account data export, pilot account seeded with real data, pilot support, handover.
+
+**Exit:** a real contract signed end-to-end in the pilot; Phase 1's acceptance criteria checked off.
+
+Signing is the main external-dependency risk: `FakeSigner` keeps Phase 4 development unblocked, real validation gated "where credentials are available" per the contract — so anything Future Invest can initiate early (Dokobit/SK paperwork, DNS) costs zero dev effort and buys lead time.
 
 ### Open scope decisions (Future Invest)
 
-Three yes/no proposals from the MVP review — all are rules + jobs over primitives that exist by phase 5, all recommended yes:
+Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide, all recommended yes:
 
-1. **One-click renewal** — 90 days before end, a ready renewal draft (new period, indexed price, same special terms), not just a notification. A trigger + assembly of existing parts; the landlord's most repeated workflow.
-2. **Portfolio health report after import** — "X lepingut sees · 3 lõpevad 6 kuu jooksul · 2-l puudub viidatud lisa · 4-l pole indekseerimist kokku lepitud." Rule-based; the first "wow" of day one. (Ships with phase 5.)
-3. **Follow-up autopilot** — 5 days without a client response → queued "Saada meeldetuletus?" + AI-drafted polite nudge. A time rule + the `requires_confirmation` card.
+1. **One-click renewal** — 90 days before end, a ready renewal draft (new period, indexed price, same special terms), not just a notification. A trigger + assembly of existing parts; the landlord's most repeated workflow. (Ships with Phase 4.)
+2. **Portfolio health report after import** — "X lepingut sees · 3 lõpevad 6 kuu jooksul · 2-l puudub viidatud lisa · 4-l pole indekseerimist kokku lepitud." Rule-based; the first "wow" of day one. (Ships with Phase 2.)
+3. **Follow-up autopilot** — 5 days without a client response → queued "Saada meeldetuletus?" + AI-drafted polite nudge. A time rule + the `requires_confirmation` card. (Ships with Phase 4.)
 
 Plus the still-open **imported-contract amendment path** (their question 4.2): registration of externally signed amendments ships (§4); the verified-amendment flow remains the post-MVP proposal pending their answer.
 
