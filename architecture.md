@@ -522,13 +522,13 @@ Sequencing in one breath: the persistence/party/tenancy invariants land at the t
 ### Phase 1 — Architecture & acceptance criteria (~wk 1)
 
 - **Architecture finalized with Future Invest** — this document plus this phase breakdown; the contract's no-cost, scope-neutral adjustment round, exercised once.
-- **Objective acceptance criteria per phase**, written against the exit demos below — including closing the open scope decisions (next subsection), since criteria can't be objective over undecided scope. The confirmed out-list (OCR, TÖR, eIDAS, intra-account roles) is restated in the same doc.
+- **Objective acceptance criteria per phase**, written against the exit demos below — including closing the open scope decisions (next subsection), since criteria can't be objective over undecided scope. The confirmed out-list (OCR, TÖR, eIDAS, intra-account roles) is restated in the same doc. Where the demo is richer than the written spec — the juhtriba guided flow, per-comment arutelu threads, printable A4 previews, stepped-rent special terms — criteria are written against the **demo**, so that richness doesn't get silently under-scoped.
 
 **Exit:** both documents signed off in a sync call. Nothing else lives in Phase 1.
 
 ### Phase 2 — Foundation, portfolio, import (~wk 1–5)
 
-1. **Inputs & scaffold** — demo walkthrough as UX sign-off (delta list, not new design); sample corpus (10–20 real contracts — PDF, DOCX, .asice/.bdoc, one scanned — plus lease/quote/special-terms and employment templates, space CSVs, logos); credentials round — **Dokobit sandbox + SK paperwork out on day 1, the longest lead item** — Railway/R2/Anthropic, sending-domain DNS, Moderan, äriregister/EHR, Statistikaamet, risk sources; golden-set format agreed + first ~10 questions; repo scaffold, CI/CD to Railway, compose.dev, provider seams + fakes.
+1. **Inputs & scaffold** — demo walkthrough as UX sign-off (delta list, not new design); sample corpus (10–20 real contracts — PDF, DOCX, .asice/.bdoc, one scanned — plus lease/quote/special-terms and employment templates, space CSVs, logos); credentials round — **Dokobit sandbox + SK paperwork out on day 1, the longest lead item** — Railway/R2/Anthropic, sending-domain DNS, Moderan, äriregister/EHR, Statistikaamet, risk sources; golden-set format agreed + first ~10 questions; repo scaffold, CI/CD to Railway, compose.dev, provider seams + fakes. The demo gets extended with mockups of the two surfaces it doesn't yet cover — the **import review screen** and the **setup/CSV flows** — before they're built: Phase 2 is where the demo is thinnest, and the review UI's right pane largely reuses the demo's existing contract-document component (source PDF left, familiar clause tree right, confirm controls on top).
 2. **Invariant substrate** — auth + `membership` M2M, RLS, `domain_event` + command wrapper + CI check, `party`, soft delete, settings, i18n scaffold, Sentry, email provider + bounce webhooks, notification rows.
 3. **Asset registry** — company onboarding (äriregistri autofill), property + EHR, spaces CSV import + manual forms, attachments (R2), allocations + derived status.
 4. **Clause model, read path** (pulled forward because import needs it) — tree + node-per-marked-item ingestion of the general-terms DOCX, numbering derivation, read-only rendering.
@@ -557,7 +557,7 @@ Signing is the main external-dependency risk: `FakeSigner` keeps Phase 4 develop
 
 ### Open scope decisions (Future Invest)
 
-Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide, all recommended yes:
+Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide:
 
 1. **One-click renewal** — 90 days before end, a ready renewal draft (new period, indexed price, same special terms), not just a notification. A trigger + assembly of existing parts; the landlord's most repeated workflow. (Ships with Phase 4.)
 2. **Portfolio health report after import** — "X lepingut sees · 3 lõpevad 6 kuu jooksul · 2-l puudub viidatud lisa · 4-l pole indekseerimist kokku lepitud." Rule-based; the first "wow" of day one. (Ships with Phase 2.)
