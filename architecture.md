@@ -532,7 +532,7 @@ Sequencing in one breath: the persistence/party/tenancy invariants land at the t
 2. **Invariant substrate** — auth + `membership` M2M, RLS, `domain_event` + command wrapper + CI check, `party`, soft delete, settings, i18n scaffold, Sentry, email provider + bounce webhooks, notification rows.
 3. **Asset registry** — company onboarding (äriregistri autofill), property + EHR, spaces CSV import + manual forms, attachments (R2), allocations + derived status.
 4. **Clause model, read path** (pulled forward because import needs it) — tree + node-per-marked-item ingestion of the general-terms DOCX, numbering derivation, read-only rendering.
-5. **Import pipeline** — upload incl. ASiC-E unpack → extraction with anchors → LLM structuring (first `ChatModel` consumer; structured output, versioned prompts) → review UI → manual key-data registration for scans → linking (coverage allocations for haldus/hooldus/kindlustus) → `contract_fact` seeded from import → `key_date` records + read-only Kalender + Portfell views + `search_index` → portfolio health report (if agreed in Phase 1).
+5. **Import pipeline** — upload incl. ASiC-E unpack → extraction with anchors → LLM structuring (first `ChatModel` consumer; structured output, versioned prompts) → review UI → manual key-data registration for scans → linking (coverage allocations for haldus/hooldus/kindlustus) → `contract_fact` seeded from import → `key_date` records + read-only Kalender + Portfell views + `search_index` → portfolio health report.
 
 **Exit demo:** a real portfolio imported, reviewed, linked; portfolio, calendar, health report live; every write event-logged, RLS on.
 
@@ -547,7 +547,7 @@ Sequencing in one breath: the persistence/party/tenancy invariants land at the t
 ### Phase 4 — Lifecycle, signing, automation, pilot (~wk 9–12)
 
 1. **Signing** — Dokobit hash flow + local ASiC-E, both containers, N signers per party, account-at-signing, archive + visibility rules, frozen numbering.
-2. **Lifecycle automation** — key-date scanning + notifications (90-day defaults), indexation (fixed % + CPI) writing fact versions, contract-end transitions, amendments (annex rounds, early termination), post-signature correction path, one-click renewal (if agreed).
+2. **Lifecycle automation** — key-date scanning + notifications (90-day defaults), indexation (fixed % + CPI) writing fact versions, contract-end transitions, amendments (annex rounds, early termination), post-signature correction path, one-click renewal.
 3. **AI completion** — remaining tools (amendment drafts, apply-proposal, draft-reply, summaries), smart-dashboard polish, eval pass at target, cost visibility.
 4. **Hardening + pilot** — security review (RLS tests, share-link token audit, authz matrix, upload limits), integration validation where credentials arrived, restore drill, audit "court folder" export + account data export, pilot account seeded with real data, pilot support, handover.
 
@@ -557,7 +557,7 @@ Signing is the main external-dependency risk: `FakeSigner` keeps Phase 4 develop
 
 ### Open scope decisions (Future Invest)
 
-Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide:
+Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide, all yes:
 
 1. **One-click renewal** — 90 days before end, a ready renewal draft (new period, indexed price, same special terms), not just a notification. A trigger + assembly of existing parts; the landlord's most repeated workflow. (Ships with Phase 4.)
 2. **Portfolio health report after import** — "X lepingut sees · 3 lõpevad 6 kuu jooksul · 2-l puudub viidatud lisa · 4-l pole indekseerimist kokku lepitud." Rule-based; the first "wow" of day one. (Ships with Phase 2.)
