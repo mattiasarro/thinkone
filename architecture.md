@@ -519,14 +519,14 @@ _(build-plan.md, which estimated the retired v1 on-prem scope, is deleted; this 
 
 Sequencing in one breath: the persistence/party/tenancy invariants land at the top of Phase 2 because retrofitting them is the expensive path; import comes early (Phase 2, per contract), which pulls the clause model's **read path** and the **LLM plumbing** forward with it; key dates appear as data + calendar in Phase 2 while their automation ships in Phase 4; the employment vertical's config path is proven in Phase 3 and its lifecycle completes in Phase 4.
 
-### Phase 1 — Architecture & acceptance criteria (~wk 1)
+### Phase 1 — Architecture & acceptance criteria
 
 - **Architecture finalized with Future Invest** — this document plus this phase breakdown; the contract's no-cost, scope-neutral adjustment round, exercised once.
 - **Objective acceptance criteria per phase**, written against the exit demos below — including closing the open scope decisions (next subsection), since criteria can't be objective over undecided scope. The confirmed out-list (OCR, TÖR, eIDAS, intra-account roles) is restated in the same doc. Where the demo is richer than the written spec — the juhtriba guided flow, per-comment arutelu threads, printable A4 previews, stepped-rent special terms — criteria are written against the **demo**, so that richness doesn't get silently under-scoped.
 
 **Exit:** both documents signed off in a sync call. Nothing else lives in Phase 1.
 
-### Phase 2 — Foundation, portfolio, import (~wk 1–5)
+### Phase 2 — Foundation, portfolio, import
 
 1. **Inputs & scaffold** — demo walkthrough as UX sign-off (delta list, not new design); sample corpus (10–20 real contracts — PDF, DOCX, .asice/.bdoc, one scanned — plus lease/quote/special-terms and employment templates, space CSVs, logos); credentials round — **Dokobit sandbox + SK paperwork out on day 1, the longest lead item** — Railway/R2/Anthropic, sending-domain DNS, Moderan, äriregister/EHR, Statistikaamet, risk sources; golden-set format agreed + first ~10 questions; repo scaffold, CI/CD to Railway, compose.dev, provider seams + fakes. The demo gets extended with mockups of the two surfaces it doesn't yet cover — the **import review screen** and the **setup/CSV flows** — before they're built: Phase 2 is where the demo is thinnest, and the review UI's right pane largely reuses the demo's existing contract-document component (source PDF left, familiar clause tree right, confirm controls on top).
 2. **Invariant substrate** — auth + `membership` M2M, RLS, `domain_event` + command wrapper + CI check, `party`, soft delete, settings, i18n scaffold, Sentry, email provider + bounce webhooks, notification rows.
@@ -536,7 +536,7 @@ Sequencing in one breath: the persistence/party/tenancy invariants land at the t
 
 **Exit demo:** a real portfolio imported, reviewed, linked; portfolio, calendar, health report live; every write event-logged, RLS on.
 
-### Phase 3 — Quotes, portal, contract prep, AI foundation (~wk 5–9)
+### Phase 3 — Quotes, portal, contract prep, AI foundation
 
 1. **Quote loop** — wizard (client autofill, risk report, spaces, pricing/VAT, stepped rent, special-term items, commercial rich text), branded quote PDF, sent-version freezing from the first send, share-link portal (accountless), client accept/propose/decline + comments, Suhtlus messaging, notifications, quote state machine + expiry (worker cron arrives here).
 2. **Contract preparation** — clause editor (TipTap-per-clause; locked üld; generated main terms; quote special terms → Lisa 3 with `kirjutab_üle`), employment template configured, quote→N draft generation, per-clause comment/accept loop, dashboard + rule-based attention list, omnibox v1.
@@ -544,7 +544,7 @@ Sequencing in one breath: the persistence/party/tenancy invariants land at the t
 
 **Exit demo:** full operator↔client loop — quote created by hand _and_ by agent command, link sent, client proposes, operator folds into Lisa 3, draft reaches "all points accepted"; AI answers portfolio Q&A with clickable citations.
 
-### Phase 4 — Lifecycle, signing, automation, pilot (~wk 9–12)
+### Phase 4 — Lifecycle, signing, automation, pilot
 
 1. **Signing** — Dokobit hash flow + local ASiC-E, both containers, N signers per party, account-at-signing, archive + visibility rules, frozen numbering.
 2. **Lifecycle automation** — key-date scanning + notifications (90-day defaults), indexation (fixed % + CPI) writing fact versions, contract-end transitions, amendments (annex rounds, early termination), post-signature correction path, one-click renewal.
