@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThinkOne · Addendum arhitektuurile — platvormi vaade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231B1C1F'/><rect x='18' y='30' width='40' height='12' fill='%230b23ff'/><rect x='18' y='30' width='12' height='42' fill='%230b23ff'/></svg>">
+<style>
+  :root{
+    --paper:#f5f5f5; --paper-2:#ECECEC; --card:#FFFFFF;
+    --ink:#212226; --ink-2:#4A4B52; --muted:#8A8A8A;
+    --line:#E4E4E4; --line-strong:#D7D7D7;
+    --accent:#0b23ff; --accent-deep:#0719C2; --accent-soft:#E4E8FF; --accent-lite:#97A4FF;
+    --green:#3D7A4E; --green-soft:#E4EFE6;
+    --red:#B4462E; --red-soft:#F6E4DE;
+    --blue:#3A5F8A; --violet:#6D5A8E;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-ui:"Hanken Grotesk","Segoe UI",sans-serif;
+    --font-mono:"Geist Mono",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:var(--font-ui); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* paberi tekstuur */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:radial-gradient(var(--line) .8px, transparent .8px);
+    background-size:26px 26px; opacity:.35;
+  }
+  .wrap{position:relative; z-index:1; max-width:880px; margin:0 auto; padding:0 32px 120px}
+
+  /* ── topbar ─────────────────────────────────────────── */
+  .topbar{
+    display:flex; align-items:center; gap:14px;
+    padding:26px 0 22px; border-bottom:2px solid var(--ink); margin-bottom:64px;
+  }
+  .logo{height:39px;width:auto;display:block}
+  .logo path,.logo polygon{fill:var(--ink)}
+  .logo .ic{fill:var(--accent)}
+  .topbar .s{color:var(--muted);font-size:12.5px;font-family:var(--font-mono)}
+  .topbar .right{margin-left:auto;text-align:right;font-size:11px;color:var(--muted);font-family:var(--font-mono);line-height:1.5}
+
+  /* ── hero ───────────────────────────────────────────── */
+  .overline{
+    font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-deep);display:flex;align-items:center;gap:10px;
+  }
+  .overline::before{content:"";width:26px;height:2px;background:var(--accent)}
+  h1{
+    font-family:var(--font-display);font-weight:600;font-size:clamp(38px,6vw,58px);
+    line-height:1.06;letter-spacing:-.01em;margin:18px 0 26px;
+  }
+  h1 em{font-style:italic;color:var(--accent-deep)}
+  .lede{font-size:18.5px;line-height:1.7;color:var(--ink-2);max-width:640px}
+  .lede b{color:var(--ink)}
+
+  .verdict{
+    margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+    background:var(--line-strong);border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(33,34,38,.07);
+  }
+  .verdict>div{background:var(--card);padding:18px 20px}
+  .verdict .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .verdict .v{font-size:14px;font-weight:600;line-height:1.45}
+  .verdict .v.good{color:var(--green)} .verdict .v.warn{color:var(--red)}
+
+  /* ── sektsioonid ────────────────────────────────────── */
+  section{margin-top:96px}
+  .sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:14px}
+  .sec-num{
+    font-family:var(--font-display);font-style:italic;font-weight:500;
+    font-size:44px;color:var(--accent);line-height:1;flex:none;min-width:64px;
+  }
+  h2{font-family:var(--font-display);font-weight:600;font-size:clamp(24px,3.4vw,32px);line-height:1.15;letter-spacing:-.005em}
+  .sec-sub{color:var(--ink-2);max-width:620px;margin:6px 0 30px;font-size:15.5px}
+  .sec-sub b{color:var(--ink)}
+  h3{font-family:var(--font-display);font-weight:600;font-size:20px;margin:44px 0 10px}
+
+  /* ── kernel/vertikaal diagramm ─────────────────────── */
+  .stack{display:flex;flex-direction:column;gap:0;margin:34px 0 8px}
+  .kernel{
+    background:var(--ink);color:#EDECE6;border-radius:14px;padding:28px 30px;
+    box-shadow:0 18px 44px rgba(33,34,38,.28);position:relative;
+  }
+  .kernel .tag,.vpack .tag{
+    font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    display:inline-block;padding:4px 10px;border-radius:99px;margin-bottom:16px;
+  }
+  .kernel .tag{background:var(--accent);color:#fff;font-weight:600}
+  .ent{display:grid;grid-template-columns:150px 1fr;gap:3px 18px;font-size:13.5px}
+  .ent dt{font-family:var(--font-mono);color:var(--accent-lite);font-size:12.5px;padding:3px 0}
+  .ent dd{color:#C9C7BE;padding:3px 0}
+  .kernel .not{
+    margin-top:18px;padding-top:14px;border-top:1px dashed rgba(255,255,255,.22);
+    font-size:13px;color:#DAD8CF;
+  }
+  .kernel .not b{color:#fff}
+  .kernel .not s{color:#9a9890;text-decoration-color:var(--red);text-decoration-thickness:2px}
+  .arrow-lane{display:flex;align-items:center;gap:14px;padding:10px 0 10px 30px}
+  .arrow-lane .a{font-size:22px;color:var(--accent-deep);transform:translateY(-1px)}
+  .arrow-lane .l{font-family:var(--font-mono);font-size:12px;color:var(--ink-2)}
+  .arrow-lane .l b{color:var(--red)}
+  .vpack{
+    background:var(--card);border-left:5px solid var(--accent);box-shadow:0 2px 16px rgba(33,34,38,.07);
+    border-radius:14px;padding:26px 30px;
+  }
+  .vpack .tag{background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+  .vlist{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;font-size:13.5px}
+  .vlist div{display:flex;gap:10px}
+  .vlist .b{color:var(--accent-deep);font-weight:800;flex:none}
+  .vlist span b{font-weight:700}
+
+  .rule{
+    margin-top:26px;background:var(--accent-soft);border-radius:12px;
+    padding:18px 22px;font-size:15px;display:flex;gap:14px;align-items:flex-start;
+  }
+  .rule .ic{font-size:18px;line-height:1.5}
+  .rule code{font-family:var(--font-mono);font-size:13px;background:#fff;border-radius:5px;padding:1px 7px;white-space:nowrap}
+
+  /* ── enne/pärast kaardid ───────────────────────────── */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:26px 0 8px;align-items:stretch}
+  .ba-card{background:var(--card);box-shadow:0 2px 16px rgba(33,34,38,.07);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  .ba-card .hd{
+    padding:10px 18px;font-family:var(--font-mono);font-size:11px;font-weight:600;
+    letter-spacing:.13em;text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  }
+  .ba-card.before .hd{background:var(--red-soft);color:var(--red)}
+  .ba-card.after .hd{background:var(--green-soft);color:var(--green)}
+  .ba-card .hd::before{content:"";width:8px;height:8px;border-radius:99px;background:currentColor}
+  .code{
+    padding:18px 20px;font-family:var(--font-mono);font-size:12.5px;line-height:1.85;
+    color:var(--ink-2);flex:1;
+  }
+  .code b{color:var(--ink);font-weight:600}
+  .code .c{color:var(--muted)}
+  .code .hl{color:var(--accent-deep);font-weight:600}
+  .code .bad{color:var(--red)}
+  .code i{font-style:normal;color:var(--muted)}
+  .code .ind{padding-left:18px} .code .ind2{padding-left:36px}
+
+  /* ── tabelid ────────────────────────────────────────── */
+  table{width:100%;border-collapse:collapse;background:var(--card);box-shadow:0 2px 16px rgba(33,34,38,.07);border-radius:12px;overflow:hidden;font-size:14px;margin:24px 0 8px}
+  th{
+    text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;padding:12px 18px;border-bottom:2px solid var(--ink);background:var(--paper-2);
+  }
+  td{padding:12px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.mono{font-family:var(--font-mono);font-size:12.5px}
+  .chip{
+    display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:600;
+    padding:3px 10px;border-radius:99px;white-space:nowrap;
+  }
+  .chip.ex{background:var(--red-soft);color:var(--red)}
+  .chip.qt{background:var(--accent-soft);color:var(--accent-deep)}
+  .chip.sh{background:var(--green-soft);color:var(--green)}
+
+  /* ── staatuse projektsioon ─────────────────────────── */
+  .proj{background:var(--card);box-shadow:0 2px 16px rgba(33,34,38,.07);border-radius:12px;overflow:hidden;margin:24px 0 8px}
+  .proj .hd{padding:13px 20px;background:var(--paper-2);border-bottom:2px solid var(--ink);font-family:var(--font-mono);font-size:12px;color:var(--ink-2)}
+  .proj .hd b{color:var(--ink)}
+  .prow{display:grid;grid-template-columns:1fr 46px 130px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--line);font-size:14px}
+  .prow:last-child{border-bottom:none}
+  .prow .cond{color:var(--ink-2)} .prow .cond code{font-family:var(--font-mono);font-size:12px}
+  .prow .arr{color:var(--muted);text-align:center}
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 12px;border-radius:99px;justify-self:start}
+  .pill.vaba{background:var(--green-soft);color:var(--green)}
+  .pill.pakk{background:#EAE4F2;color:var(--violet)}
+  .pill.lep{background:#E2EAF3;color:var(--blue)}
+  .pill.yyr{background:var(--ink);color:#fff}
+
+  /* ── noodid ─────────────────────────────────────────── */
+  .proof{
+    margin:26px 0 8px;background:var(--card);box-shadow:0 2px 16px rgba(33,34,38,.07);
+    border-left:5px solid var(--accent);border-radius:12px;padding:20px 24px;
+  }
+  .proof .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-deep);font-weight:600;margin-bottom:8px}
+  .proof p{font-size:14.5px;color:var(--ink-2)}
+  .proof b{color:var(--ink)}
+
+  .plain{max-width:660px;color:var(--ink-2);font-size:15.5px}
+  .plain b{color:var(--ink)}
+  .plain code{font-family:var(--font-mono);font-size:13px;background:var(--card);border-radius:5px;padding:1px 7px}
+
+  /* ── lõpp: kaks veergu ─────────────────────────────── */
+  .close{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+  .close .col{background:var(--card);box-shadow:0 2px 16px rgba(33,34,38,.07);border-radius:12px;padding:24px 26px}
+  .close .col.dark{background:var(--ink);color:#EDECE6;border-color:var(--ink)}
+  .close h4{font-family:var(--font-display);font-size:19px;font-weight:600;margin-bottom:14px}
+  .close ul{list-style:none}
+  .close li{padding:6px 0 6px 26px;position:relative;font-size:14px;color:var(--ink-2)}
+  .close .col.dark li{color:#C9C7BE}
+  .close li::before{position:absolute;left:0;font-weight:800}
+  .close .no li::before{content:"✕";color:var(--red)}
+  .close .yes li::before{content:"✓";color:var(--accent-lite)}
+  .close .col.dark li b{color:#fff}
+
+  footer{
+    margin-top:90px;padding-top:22px;border-top:2px solid var(--ink);
+    display:flex;justify-content:space-between;gap:20px;
+    font-family:var(--font-mono);font-size:11.5px;color:var(--muted);
+  }
+
+  /* ── reveal ─────────────────────────────────────────── */
+  .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .rv.in{opacity:1;transform:none}
+
+  @media (max-width:720px){
+    .verdict,.ba,.vlist,.close{grid-template-columns:1fr}
+    .ent{grid-template-columns:120px 1fr}
+    .sec-num{min-width:44px;font-size:34px}
+    .prow{grid-template-columns:1fr 30px 110px}
+  }
+  @media print{
+    body::before{display:none}
+    body{background:#fff}
+    .wrap{max-width:none;padding:0 8mm}
+    .rv{opacity:1;transform:none}
+    section{margin-top:40px;break-inside:avoid-page}
+    .kernel{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <svg class="logo" viewBox="0 0 501 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
+        <path class="ic" d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/>
+        <path class="ic" d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/>
+        <path d="M130.73,80.64v-31.4h-14.2v-10.1h40.61v10.1h-14.64v31.4h-11.76Z"/>
+        <path d="M168.56,80.64v-41.49h11.76v41.49h-11.76ZM173,65.21l.11-10.32h30.4v10.32h-30.51ZM197.08,80.64v-41.49h11.76v41.49h-11.76Z"/>
+        <path d="M250,80.64v-41.49h10.76l23.52,27.62-2.22-.55c-.22-1.55-.44-3-.55-4.22-.11-1.22-.22-2.44-.33-3.55s-.22-2.22-.22-3.22c0-1.11-.11-2.22-.11-3.33v-12.76h11.32v41.49h-10.87l-25.07-29.62,3.88,1c.11,1.22.22,2.22.33,3.22s.22,1.89.33,2.77.22,1.89.22,2.77c.11,1,.11,2.11.11,3.33s.11,2.66.11,4.1v12.31h-11.21s0,.11,0,.11Z"/>
+        <path d="M307.13,80.64v-41.49h11.76v41.49h-11.76ZM315.01,69.65l-3.55-9.21,23.63-21.3h13.98l-34.06,30.51ZM336.42,80.64l-16.09-20.41,7.43-7.1,22.41,27.51h-13.76Z"/>
+        <path d="M380.47,81.19c-3.33,0-6.32-.55-8.99-1.55-2.66-1-4.99-2.55-7.1-4.44-2-1.89-3.55-4.1-4.66-6.77-1.11-2.55-1.55-5.44-1.55-8.43s.55-5.88,1.55-8.43c1.11-2.55,2.66-4.88,4.66-6.77s4.33-3.44,7.1-4.44c2.66-1,5.66-1.55,8.99-1.55s6.21.55,8.99,1.55c2.77,1,5.1,2.55,7.1,4.44,2,1.89,3.55,4.22,4.66,6.77s1.66,5.44,1.66,8.43-.55,5.88-1.66,8.43-2.66,4.88-4.66,6.77-4.33,3.33-7.1,4.44-5.77,1.55-8.99,1.55ZM380.47,78.31c2.77,0,5.33-.44,7.66-1.33,2.33-.89,4.44-2.11,6.1-3.77,1.78-1.66,3-3.55,3.99-5.77.89-2.22,1.44-4.66,1.44-7.32s-.44-5.1-1.44-7.32c-.89-2.22-2.22-4.22-3.99-5.77-1.78-1.66-3.77-2.88-6.1-3.77s-4.88-1.33-7.66-1.33-5.33.44-7.66,1.33c-2.33.89-4.33,2.22-6.1,3.77-1.66,1.66-3,3.55-3.99,5.77-.89,2.22-1.44,4.66-1.44,7.32s.44,5.1,1.44,7.32c.89,2.22,2.22,4.1,3.99,5.77,1.66,1.66,3.77,2.88,6.1,3.77,2.33.89,4.88,1.33,7.66,1.33Z"/>
+        <path d="M417.19,80.64v-41.49h2.88l32.4,37.94-.67,1.55c-.11-.44-.11-1.44-.11-2.88,0-1.55,0-3.22-.11-5.21,0-2-.11-3.99-.11-5.99v-25.41h3v41.49h-3.11l-32.28-38.05.55-1.66v2.88c0,1.33.11,2.77.11,4.44.11,1.66.11,3.33.22,4.88.11,1.66.11,3.11.11,4.44v23.08s-2.88,0-2.88,0Z"/>
+        <path d="M472.33,80.64v-41.49h27.51v3h-24.52v35.5h24.3v3h-27.29ZM473.88,60.67v-3h22.63v3h-22.63Z"/>
+        <polygon points="235.24 70.87 235.24 48.91 235.24 39.14 223.48 39.14 223.48 80.64 235.24 80.64 235.24 70.87"/>
+      </svg>
+      <div class="s" style="margin-top:6px">architecture.md · addendum</div>
+    </div>
+    <div class="right" style="margin-left:auto">v1.0 · juuli 2026<br>arendajale</div>
+  </div>
+
+  <!-- HERO -->
+  <header class="rv in">
+    <div class="overline">Addendum arhitektuurile</div>
+    <h1>Ehitame lepingu&shy;platvormi.<br>Kinnisvara on <em>esimene vertikaal.</em></h1>
+    <p class="lede">
+      ThinkOne pikem eesmärk ei ole kinnisvaratarkvara, vaid <b>lepingute platvorm</b> —
+      haldus, dokumendid, hiljem RAG. Kinnisvara testime emaettevõtte peal. Järgmised
+      vertikaalid (teenuslepingud, seadmed, parkimine) peavad tulema peale
+      <b>konfiguratsioonina, mitte uue arendusena</b>.
+    </p>
+    <div class="verdict">
+      <div><div class="k">architecture.md</div><div class="v good">Tugev alus — klauslimootor, olekud, audit jäävad muutmata</div></div>
+      <div><div class="k">Üks probleem</div><div class="v warn">Andmemudel kirjutab kinnisvara tuuma sisse</div></div>
+      <div><div class="k">Ajastus</div><div class="v">Tabeleid pole veel — praegu odav, hiljem väga kallis</div></div>
+    </div>
+  </header>
+
+  <!-- PÕHIIDEE -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">—</div><h2>Põhiidee: tuum ei tea, mis on „pind"</h2></div>
+    <p class="sec-sub">Kaks kihti. Tuum tunneb <b>lepinguid</b>. Vertikaal tunneb <b>ruutmeetreid</b>. Piir nende vahel ongi kogu platvorm.</p>
+
+    <div class="stack">
+      <div class="kernel">
+        <span class="tag">Tuum · kernel — ühine kõigile lepingutele</span>
+        <dl class="ent">
+          <dt>contract</dt><dd>leping: tüüp, pooled, olek, versioonid</dd>
+          <dt>clause</dt><dd>klauslipuu, ülimuslikkus, kommentaarid</dd>
+          <dt>claim</dt><dd>hõive: leping ⟷ ese <i>(vt § 02)</i></dd>
+          <dt>unit</dt><dd>ese/üksus registris, tüübitud</dd>
+          <dt>document</dt><dd>renderdatud, külmutatud, allkirjastatud</dd>
+          <dt>key_date</dt><dd>tähtajad ja kohustused</dd>
+          <dt>audit_event</dt><dd>kõik muutused</dd>
+        </dl>
+        <div class="not"><b>Siin EI OLE:</b> <s>m²</s> · <s>üür</s> · <s>parkimine</s> · <s>EHR</s> · <s>property</s> · <s>space</s></div>
+      </div>
+      <div class="arrow-lane"><span class="a">▲</span><span class="l">vertikaal kasutab tuuma — <b>mitte kunagi vastupidi</b></span></div>
+      <div class="vpack">
+        <span class="tag">Vertikaal · kinnisvara — esimene pakett</span>
+        <div class="vlist">
+          <div><span class="b">·</span><span><b>Üksusetüübid:</b> hoone, üüripind (m², hind, korrus…)</span></div>
+          <div><span class="b">·</span><span><b>Lepingutüübid:</b> hinnapakkumine, üürileping</span></div>
+          <div><span class="b">·</span><span><b>Parameetriskeem:</b> üüripind, hind, tagatis, indeks</span></div>
+          <div><span class="b">·</span><span><b>Arvutused:</b> üür = m² × hind, KM, astmeline graafik</span></div>
+          <div><span class="b">·</span><span><b>Mallid:</b> üldtingimused, pakkumuse põhi</span></div>
+          <div><span class="b">·</span><span><b>Integratsioonid:</b> EHR, äriregister, Moderan, risk</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule">
+      <span class="ic">⚖</span>
+      <div><b>Reegel koodis:</b> <code>domain/contracts/</code> ei tohi kunagi importida <code>domain/realestate/</code>.
+      Vertikaal impordib tuuma. Üks rida kihistamisreeglisse — aga see rida <b>ongi platvorm</b>.</div>
+    </div>
+  </section>
+
+  <!-- 01 -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">01</div><h2><code style="font-family:var(--font-mono);font-size:.85em">contract</code> + tüüp, mitte ainult <code style="font-family:var(--font-mono);font-size:.85em">lease</code></h2></div>
+    <p class="sec-sub">Praegu on <code style="font-family:var(--font-mono);font-size:13px">quote</code> ja <code style="font-family:var(--font-mono);font-size:13px">lease</code> ainsad lepinguvormid ning põhitingimused arvutatakse koodis. Uues mudelis ütleb lepingu <b>tüüp</b>, mis parameetreid ta kannab.</p>
+
+    <div class="ba">
+      <div class="ba-card before"><div class="hd">Enne</div>
+        <div class="code">
+          <b>lease</b><br>
+          <span class="ind">├─ space_id</span> <span class="bad">← kinnisvara</span><br>
+          <span class="ind">├─ rent</span> <span class="bad">← kinnisvara</span><br>
+          <span class="ind">├─ utility</span> <span class="bad">← kinnisvara</span><br>
+          <span class="ind">└─ indexation</span>
+        </div>
+      </div>
+      <div class="ba-card after"><div class="hd">Pärast</div>
+        <div class="code">
+          <b>contract</b><br>
+          <span class="ind">├─ <span class="hl">contract_type</span></span> <i>· nt "yyrileping"</i><br>
+          <span class="ind">├─ status, parties, clauses…</span><br>
+          <span class="ind">└─ <span class="hl">params</span> (JSONB, valideeritud</span><br>
+          <span class="ind2">tüübi skeemiga)</span><br>
+          <span class="c">──────────────────────────</span><br>
+          <span class="c">yyrileping skeem:</span><br>
+          <span class="ind">{ hind, tagatis_kuud,</span><br>
+          <span class="ind2">indeks: {…}, <span class="hl">hinnagraafik: […]</span> }</span>
+        </div>
+      </div>
+    </div>
+    <p class="plain">V1-s on ainult üks tüüp — see on OK. Oluline on, et <b>õmblus eksisteerib</b>.</p>
+
+    <div class="proof">
+      <div class="k">Tõestus prototüübist</div>
+      <p>Lame <b>rent</b>-veerg purunes juba demos. Vajasime <b>astmelist üüri</b> (1.–12. kuu 7,50 €/m², edasi 8,00),
+      pakkumuse-põhist erihinda ja kontaktisiku ülekirjutust — kõik nõudsid struktuuri, mitte numbrit veerus.
+      Parameetrid <b>peavad</b> olema skeemiga struktuur.</p>
+    </div>
+  </section>
+
+  <!-- 02 -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">02</div><h2>Hõive (<code style="font-family:var(--font-mono);font-size:.85em">claim</code>), mitte <code style="font-family:var(--font-mono);font-size:.85em">space_id</code> veerg</h2></div>
+    <p class="sec-sub">Leping ei viita esemele veeruga — leping <b>hõivab</b> eset. Hõivel on iseloom, periood ja kogus.</p>
+
+    <div class="ba">
+      <div class="ba-card before"><div class="hd">Enne</div>
+        <div class="code">
+          <b>lease.space_id</b> <i>(täpselt 1)</i><br><br>
+          <span class="c">seos = veerg tabelis;</span><br>
+          <span class="c">eksklusiivsus kõvas koodis;</span><br>
+          <span class="c">parkimine = <span class="bad">parking_spots INT</span></span>
+        </div>
+      </div>
+      <div class="ba-card after"><div class="hd">Pärast</div>
+        <div class="code">
+          <b>claim</b><br>
+          <span class="ind">├─ contract_id</span><br>
+          <span class="ind">├─ unit_id</span><br>
+          <span class="ind">├─ <span class="hl">iseloom</span>: exclusive | quota | shared</span><br>
+          <span class="ind">├─ <span class="hl">periood</span>: algus … lõpp</span><br>
+          <span class="ind">└─ <span class="hl">kogus</span>: (quota puhul)</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="plain" style="margin-top:18px">Miks see loeb — <b>sama primitiiv katab kõik tulevased juhud:</b></p>
+    <table>
+      <thead><tr><th>Leping</th><th>Ese</th><th>Hõive</th></tr></thead>
+      <tbody>
+        <tr><td>Üürileping</td><td class="mono">Pind 4</td><td><span class="chip ex">exclusive</span> · 60 kuud</td></tr>
+        <tr><td>Parkimise annekst</td><td class="mono">Tsoon A</td><td><span class="chip qt">quota</span> · 4 kohta</td></tr>
+        <tr><td>Hooldusleping</td><td class="mono">Hoone T6B</td><td><span class="chip sh">shared</span></td></tr>
+        <tr><td>Teenusleping</td><td class="mono">Teenus „IT-tugi"</td><td><span class="chip qt">quota</span> · 20 kasutajat</td></tr>
+      </tbody>
+    </table>
+    <p class="plain" style="margin-top:16px">Reegel „üürileping = täpselt 1 eksklusiivne pind" <b>jääb alles</b> — aga vertikaali
+    valideerimisreeglina, mitte tabeliskeemas. <code>space.parking_spots INT</code> kaotada: parkimine on tulevikus
+    omaette üksusetüüp (tsoon) + quota-hõive.</p>
+  </section>
+
+  <!-- 03 -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">03</div><h2>Staatus on tuletis, mitte väli</h2></div>
+    <p class="sec-sub">Pinna olekut ei salvestata ega uuendata käsitsi — see <b>arvutatakse</b> aktiivsetest hõivetest. Siis ei saa ta kunagi valeks minna.</p>
+
+    <div class="proj">
+      <div class="hd">staatus(<b>„Pind 4"</b>) = projektsioon aktiivsetest hõivetest ajas</div>
+      <div class="prow"><span class="cond">ei ühtegi hõivet</span><span class="arr">→</span><span class="pill vaba">Vaba</span></div>
+      <div class="prow"><span class="cond">hõive pakkumusest</span><span class="arr">→</span><span class="pill pakk">Pakkumusel</span></div>
+      <div class="prow"><span class="cond">hõive lepingust <code>(draft)</code></span><span class="arr">→</span><span class="pill lep">Lepingus</span></div>
+      <div class="prow"><span class="cond">hõive lepingust <code>(live)</code></span><span class="arr">→</span><span class="pill yyr">Üüritud</span></div>
+    </div>
+    <p class="plain" style="margin-top:14px">Vajadusel cache kiiruse jaoks — aga <b>tõde elab hõivetes</b>. Konfliktikontroll
+    (kaks eksklusiivset hõivet kattuvad; kvoodisumma &gt; maht) tuleb tuumast tasuta, igale vertikaalile.</p>
+  </section>
+
+  <!-- 04 + 05 -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">04</div><h2>Mallid lepingutüübi külge</h2></div>
+    <p class="plain"><code>template.property_id</code> → <code>template.contract_type</code> (+ konto).
+    Mallid kuuluvad loogiliselt lepingutüübi ja ettevõtte alla; objektipõhine mall võib jääda <b>valikulise ülekirjutusena</b>, aga mitte ainsa kohana.</p>
+
+    <div class="sec-head" style="margin-top:64px"><div class="sec-num">05</div><h2>Klausli päritolu laiendatav</h2></div>
+    <p class="plain"><code>clause.source: template | negotiated | <b>imported</b></code></p>
+    <p class="plain" style="margin-top:12px"><b>imported</b> on tulevase pärand-lepingute impordi ja kogu RAG-visiooni uks.
+    Praegu maksab see ühe enum-väärtuse; hiljem avab terve tootesuuna — vanad PDF-lepingud loetakse
+    <b>samasse klauslimudelisse</b>, mille peal kõik muu juba töötab.</p>
+  </section>
+
+  <!-- KOKKUVÕTE -->
+  <section class="rv">
+    <div class="sec-head"><div class="sec-num">∎</div><h2>Piirid selgeks</h2></div>
+    <div class="close">
+      <div class="col no">
+        <h4>Mida praegu MITTE ehitada</h4>
+        <ul>
+          <li>teist vertikaali <i>(aga skeem peab teda kandma — ülaltoodu ongi selle test)</i></li>
+          <li>üldist registri-UI-d ega reeglimootorit</li>
+          <li>import-konveierit ja portfelli-RAG-i</li>
+          <li>parkimise geomeetriat ja jooniseid</li>
+        </ul>
+      </div>
+      <div class="col dark yes">
+        <h4 style="color:#fff">Mis jääb architecture.md-st samaks</h4>
+        <ul>
+          <li><b>klauslipuu</b> + tuletatud numbrid + id-viited</li>
+          <li><b>kolm renderdajat</b>, üks nummerdusfunktsioon</li>
+          <li><b>olekumasinad</b> ühe teega, Procrastinate-outbox</li>
+          <li><b>audit, allkirjastamine, agent, deploy</b></li>
+        </ul>
+        <p style="margin-top:14px;font-size:13px;color:var(--accent-lite)">Kõik see on juba platvormi-kvaliteediga.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>ThinkOne · architecture-addendum</span>
+    <span>5 muudatust enne esimest koodirida · päevad praegu, kuud hiljem</span>
+  </footer>
+</div>
+
+<script>
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: .12 });
+  document.querySelectorAll(".rv").forEach(el => io.observe(el));
+</script>
+</body>
+</html>

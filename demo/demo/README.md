@@ -64,3 +64,10 @@ on ja kellega? ā€” esemeregister, pakkumised, lepingud, osapooled, dokumend
 > Demo on illustratiivne: andmed on nĆ¤idislikud, vĆ¤lised liidesed (e-Ć¤riregister, EHR,
 > Moderan, riskiregistrid, Statistikaamet, TĆ–R, allkirjastamine, frontier-mudeli API)
 > on simuleeritud.
+
+
+### Objekti lisamine (v399)
+
+Portfell → Objektid → Lisa objekt (või ülariba Uus → Objekt). Kolm sammu: hoone andmed, pinnad, pakkumuse seaded. EHR-otsingu näide on „Näidise 8”; käsitsi saab sisestada uue aadressi. Pinnad saab lisada ükshaaval, CSV/TSV-failist või Excelist kopeerides. Impordi vead parandatakse enne salvestamist samas vormis. XLSX-faili otse ei loeta.
+
+Pinnad, objektid ja lisatud failid säilivad ettevõttepõhiselt brauseris. PDF-plaanid ja PNG/JPEG-logo: kuni 1 MB faili kohta; brauseri salvestusruumi täitumisel jääb mustand parandamiseks avatuks. Töövoo sammude vahel säilivad sisestused; lõpetamata mustand lehe värskendamist üle ei ela. Tühja objekti saab salvestada ja hiljem täiendada nupust Muuda / Lisa pind. Loo pakkumus avab selle objekti pinnavaliku. Puuduv kõrvalkulu ei võrdu nulliga; enne uue objekti pakkumuse saatmist küsib demo puuduvaid kõrvalkulusid ja pinnaplaani. Täiendamise järel avaneb sama pakkumus. EHR ja pakkumuse saatmine on jätkuvalt simuleeritud.

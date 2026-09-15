@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThinkOne · Tootekaart — lepinguplatvorm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231B1C1F'/><rect x='18' y='30' width='40' height='12' fill='%230b23ff'/><rect x='18' y='30' width='12' height='42' fill='%230b23ff'/></svg>">
+<style>
+  :root{
+    --paper:#f5f5f5; --paper-2:#ECECEC; --card:#FFFFFF;
+    --ink:#212226; --ink-2:#4A4B52; --muted:#8A8A8A;
+    --line:#E4E4E4; --line-strong:#D7D7D7;
+    --accent:#0b23ff; --accent-deep:#0719C2; --accent-soft:#E4E8FF; --accent-lite:#97A4FF;
+    --green:#3D7A4E; --green-soft:#E4EFE6;
+    --red:#B4462E; --red-soft:#F6E4DE;
+    --violet:#6D5A8E; --violet-soft:#EAE4F2;
+    --font-display:"Fraunces", Georgia, serif;
+    --font-ui:"Hanken Grotesk","Segoe UI",sans-serif;
+    --font-mono:"Geist Mono",Consolas,monospace;
+    --shadow:0 2px 16px rgba(33,34,38,.07);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--font-ui);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(var(--line) .8px, transparent .8px);background-size:26px 26px;opacity:.4}
+  .wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 32px 110px}
+
+  /* topbar */
+  .topbar{display:flex;align-items:center;gap:14px;padding:26px 0 20px;border-bottom:2px solid var(--ink);margin-bottom:52px}
+  .logo{height:34px;width:auto;display:block}
+  .logo path,.logo polygon{fill:var(--ink)}
+  .logo .ic{fill:var(--accent)}
+  .topbar .s{color:var(--muted);font-size:12.5px;font-family:var(--font-mono);margin-top:5px}
+  .topbar .right{margin-left:auto;text-align:right;font-size:11px;color:var(--muted);font-family:var(--font-mono);line-height:1.5}
+
+  /* hero */
+  .overline{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-deep);display:flex;align-items:center;gap:10px}
+  .overline::before{content:"";width:26px;height:2px;background:var(--accent)}
+  h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,5vw,50px);line-height:1.08;margin:16px 0 20px}
+  h1 em{font-style:italic;color:var(--accent-deep)}
+  .lede{font-size:17.5px;line-height:1.7;color:var(--ink-2);max-width:700px}
+  .lede b{color:var(--ink)}
+  .claims{margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line-strong);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  .claims>div{background:var(--card);padding:16px 20px}
+  .claims .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .claims .v{font-size:14px;font-weight:600;line-height:1.45}
+
+  /* map layout */
+  .map{margin-top:70px;display:grid;grid-template-columns:1fr 235px;gap:20px;align-items:stretch}
+  .mapmain{display:flex;flex-direction:column}
+  .band-label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px 4px}
+  .flow-arrow{display:flex;justify-content:center;padding:10px 0;color:var(--accent-deep);font-size:17px}
+
+  .card{background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:20px 22px}
+  .card h3{font-family:var(--font-display);font-weight:600;font-size:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .card .desc{font-size:13px;color:var(--ink-2);margin-top:5px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+  .chip{font-family:var(--font-mono);font-size:11px;font-weight:500;background:var(--paper);color:var(--ink-2);padding:4px 11px;border-radius:99px;white-space:nowrap}
+  .chip.hi{background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+  .badge{font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
+  .badge.blue{background:var(--accent);color:#fff}
+  .badge.soft{background:var(--accent-soft);color:var(--accent-deep)}
+  .badge.green{background:var(--green-soft);color:var(--green)}
+  .badge.grey{background:var(--paper-2);color:var(--muted)}
+
+  /* kasutajad */
+  .users{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+  /* töövoog: elutsükli riba */
+  .life{background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:22px 22px 18px;overflow-x:auto}
+  .life-steps{display:flex;align-items:stretch;gap:0;min-width:640px}
+  .lstep{flex:1;position:relative;padding:0 14px 0 4px}
+  .lstep+.lstep{border-left:2px dashed var(--line);padding-left:16px}
+  .lstep .n{font-family:var(--font-display);font-style:italic;font-size:19px;color:var(--accent);line-height:1}
+  .lstep .t{font-weight:700;font-size:13.5px;margin-top:5px}
+  .lstep .d{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+
+  /* kaks sammast + hõive */
+  .pillars{display:grid;grid-template-columns:1fr 158px 1fr;gap:0;align-items:stretch}
+  .pillar{background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:22px}
+  .pillar .ent{margin-top:13px;display:flex;flex-direction:column;gap:8px}
+  .pillar .ent div{font-size:13px;color:var(--ink-2);padding-left:16px;position:relative}
+  .pillar .ent div::before{content:"·";position:absolute;left:2px;color:var(--accent-deep);font-weight:800}
+  .pillar .ent b{color:var(--ink)}
+  .joint{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0 6px}
+  .joint .wire{flex:1;width:2px;background:repeating-linear-gradient(180deg,var(--accent-lite) 0 5px,transparent 5px 10px)}
+  .joint .box{background:var(--ink);color:#fff;border-radius:11px;padding:13px 12px;text-align:center;box-shadow:var(--shadow);width:100%}
+  .joint .box .t{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-lite)}
+  .joint .box .d{font-size:10.5px;color:#C9C7BE;margin-top:5px;line-height:1.5}
+  .joint .box .modes{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+  .joint .box .modes span{font-family:var(--font-mono);font-size:10px;background:rgba(255,255,255,.08);border-radius:99px;padding:2px 8px}
+
+  /* andmeregister (tume vundament) */
+  .register{background:var(--ink);color:#EDECE6;border-radius:14px;box-shadow:0 16px 40px rgba(33,34,38,.25);padding:26px 28px}
+  .register .hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .register h3{font-family:var(--font-display);font-weight:600;font-size:20px;color:#fff}
+  .register .desc{font-size:13px;color:#C9C7BE;margin-top:6px;max-width:620px}
+  .register .chips{margin-top:15px}
+  .register .chip{background:rgba(255,255,255,.08);color:#DAD8CF}
+  .register .chip.hi{background:var(--accent);color:#fff}
+  .reg-io{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;padding-top:16px;border-top:1px dashed rgba(255,255,255,.2)}
+  .reg-io .io .k{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-lite);margin-bottom:4px}
+  .reg-io .io .v{font-size:12.5px;color:#C9C7BE;line-height:1.55}
+  .reg-io .io .v b{color:#fff}
+
+  /* vertikaalid */
+  .verticals{background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:20px 22px}
+  .vrow{display:flex;flex-wrap:wrap;gap:9px;margin-top:13px}
+  .vcart{border-radius:10px;padding:9px 14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;background:var(--paper)}
+  .vcart.live{background:var(--accent-soft);color:var(--accent-deep);outline:2px solid var(--accent)}
+  .vcart .st{font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .vcart.live .st{color:var(--accent-deep)}
+  .vnote{margin-top:13px;font-size:12.5px;color:var(--ink-2);background:var(--accent-soft);border-radius:9px;padding:10px 14px}
+  .vnote b{color:var(--accent-deep)}
+
+  /* AI rail */
+  .airail{display:flex;flex-direction:column;gap:0}
+  .aicard{background:linear-gradient(175deg,#2A2C33 0%,#212226 60%);color:#EDECE6;border-radius:14px;box-shadow:0 16px 40px rgba(33,34,38,.25);padding:24px 22px;flex:1;display:flex;flex-direction:column;position:sticky;top:20px}
+  .aicard .tag{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;background:var(--accent);color:#fff;border-radius:99px;padding:4px 10px;align-self:flex-start}
+  .aicard h3{font-family:var(--font-display);font-weight:600;font-size:19px;color:#fff;margin-top:14px}
+  .aicard .blk{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(255,255,255,.18)}
+  .aicard .blk .k{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-lite);margin-bottom:6px}
+  .aicard .blk .v{font-size:12.5px;color:#C9C7BE;line-height:1.6}
+  .aicard .blk .v b{color:#fff}
+  .aicard .foot{margin-top:auto;padding-top:16px;font-size:11px;color:#8a8880;font-family:var(--font-mono);line-height:1.6}
+
+  /* pistikprogrammid */
+  .plugs{background:var(--card);border-radius:13px;box-shadow:var(--shadow);padding:20px 22px}
+  .plug-io{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .plug-io .io-col{padding:2px 22px 2px 0}
+  .plug-io .io-col+.io-col{border-left:2px dashed var(--line);padding:2px 0 2px 22px}
+  .plug-io .desc b{color:var(--ink)}
+  @media (max-width:900px){
+    .plug-io{grid-template-columns:1fr}
+    .plug-io .io-col+.io-col{border-left:none;border-top:2px dashed var(--line);padding:16px 0 0;margin-top:14px}
+  }
+
+  /* aruteluks */
+  section.talk{margin-top:80px}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+  .sec-num{font-family:var(--font-display);font-style:italic;font-weight:500;font-size:38px;color:var(--accent);line-height:1}
+  h2{font-family:var(--font-display);font-weight:600;font-size:clamp(22px,3vw,28px)}
+  .talkgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+  .talkcard{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px}
+  .talkcard .q{font-weight:700;font-size:14.5px}
+  .talkcard .a{font-size:13px;color:var(--ink-2);margin-top:6px;line-height:1.55}
+  .talkcard .a b{color:var(--ink)}
+
+  footer{margin-top:80px;padding-top:20px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;gap:20px;font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+
+  .rv{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+  .rv.in{opacity:1;transform:none}
+
+  @media (max-width:900px){
+    .map{grid-template-columns:1fr}
+    .aicard{position:static}
+    .pillars{grid-template-columns:1fr}
+    .joint{flex-direction:row;padding:14px 0}
+    .joint .wire{height:2px;width:auto;flex:1;background:repeating-linear-gradient(90deg,var(--accent-lite) 0 5px,transparent 5px 10px)}
+    .joint .box{width:auto;min-width:210px}
+    .users,.claims,.talkgrid,.reg-io{grid-template-columns:1fr}
+  }
+  @media print{
+    body::before{display:none} body{background:#fff}
+    .wrap{max-width:none;padding:0 6mm}
+    .rv{opacity:1;transform:none}
+    .aicard{position:static}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    section.talk{break-before:page}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <svg class="logo" viewBox="0 0 501 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
+        <path class="ic" d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/>
+        <path class="ic" d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/>
+        <path d="M130.73,80.64v-31.4h-14.2v-10.1h40.61v10.1h-14.64v31.4h-11.76Z"/>
+        <path d="M168.56,80.64v-41.49h11.76v41.49h-11.76ZM173,65.21l.11-10.32h30.4v10.32h-30.51ZM197.08,80.64v-41.49h11.76v41.49h-11.76Z"/>
+        <path d="M250,80.64v-41.49h10.76l23.52,27.62-2.22-.55c-.22-1.55-.44-3-.55-4.22-.11-1.22-.22-2.44-.33-3.55s-.22-2.22-.22-3.22c0-1.11-.11-2.22-.11-3.33v-12.76h11.32v41.49h-10.87l-25.07-29.62,3.88,1c.11,1.22.22,2.22.33,3.22s.22,1.89.33,2.77.22,1.89.22,2.77c.11,1,.11,2.11.11,3.33s.11,2.66.11,4.1v12.31h-11.21s0,.11,0,.11Z"/>
+        <path d="M307.13,80.64v-41.49h11.76v41.49h-11.76ZM315.01,69.65l-3.55-9.21,23.63-21.3h13.98l-34.06,30.51ZM336.42,80.64l-16.09-20.41,7.43-7.1,22.41,27.51h-13.76Z"/>
+        <path d="M380.47,81.19c-3.33,0-6.32-.55-8.99-1.55-2.66-1-4.99-2.55-7.1-4.44-2-1.89-3.55-4.1-4.66-6.77-1.11-2.55-1.55-5.44-1.55-8.43s.55-5.88,1.55-8.43c1.11-2.55,2.66-4.88,4.66-6.77s4.33-3.44,7.1-4.44c2.66-1,5.66-1.55,8.99-1.55s6.21.55,8.99,1.55c2.77,1,5.1,2.55,7.1,4.44,2,1.89,3.55,4.22,4.66,6.77s1.66,5.44,1.66,8.43-.55,5.88-1.66,8.43-2.66,4.88-4.66,6.77-4.33,3.33-7.1,4.44-5.77,1.55-8.99,1.55ZM380.47,78.31c2.77,0,5.33-.44,7.66-1.33,2.33-.89,4.44-2.11,6.1-3.77,1.78-1.66,3-3.55,3.99-5.77.89-2.22,1.44-4.66,1.44-7.32s-.44-5.1-1.44-7.32c-.89-2.22-2.22-4.22-3.99-5.77-1.78-1.66-3.77-2.88-6.1-3.77s-4.88-1.33-7.66-1.33-5.33.44-7.66,1.33c-2.33.89-4.33,2.22-6.1,3.77-1.66,1.66-3,3.55-3.99,5.77-.89,2.22-1.44,4.66-1.44,7.32s.44,5.1,1.44,7.32c.89,2.22,2.22,4.1,3.99,5.77,1.66,1.66,3.77,2.88,6.1,3.77,2.33.89,4.88,1.33,7.66,1.33Z"/>
+        <path d="M417.19,80.64v-41.49h2.88l32.4,37.94-.67,1.55c-.11-.44-.11-1.44-.11-2.88,0-1.55,0-3.22-.11-5.21,0-2-.11-3.99-.11-5.99v-25.41h3v41.49h-3.11l-32.28-38.05.55-1.66v2.88c0,1.33.11,2.77.11,4.44.11,1.66.11,3.33.22,4.88.11,1.66.11,3.11.11,4.44v23.08s-2.88,0-2.88,0Z"/>
+        <path d="M472.33,80.64v-41.49h27.51v3h-24.52v35.5h24.3v3h-27.29ZM473.88,60.67v-3h22.63v3h-22.63Z"/>
+        <polygon points="235.24 70.87 235.24 48.91 235.24 39.14 223.48 39.14 223.48 80.64 235.24 80.64 235.24 70.87"/>
+      </svg>
+      <div class="s">tootekaart · arutelu alus</div>
+    </div>
+    <div class="right">v1 · juuli 2026<br>tiimile</div>
+  </div>
+
+  <!-- HERO -->
+  <header class="rv in">
+    <div class="overline">Tootekaart</div>
+    <h1>Lepinguplatvorm: <em>esemed, lepingud</em> ja kõik, mis nende vahel juhtub.</h1>
+    <p class="lede">
+      ThinkOne viib lepingu <b>sünnist täitmiseni</b> — pakkumine, läbirääkimine, allkiri, kohustused —
+      nii, et iga tükk sünnib <b>struktuursena ja masinloetavana</b>. Esimesed vertikaalid on
+      <b>ärikinnisvara ja töölepingud</b> — teadlikult paralleelselt, sest kaks erinevat lepinguliiki
+      samal mootoril tõestavad platvormi: järgmine liik on <b>konfiguratsioon, mitte arendus</b>.
+    </p>
+    <div class="claims">
+      <div><div class="k">Kaks sammast</div><div class="v">Esemeregister ja lepingukernel, mida ühendab hõive</div></div>
+      <div><div class="k">Andmed enne dokumenti</div><div class="v">Kõik sünnib struktuursena → AI teab, mis tegelikult kehtib</div></div>
+      <div><div class="k">Self-service platvorm</div><div class="v">Template Builder: klient loob ise lepingutüüpe ja malle</div></div>
+    </div>
+  </header>
+
+  <!-- KAART -->
+  <div class="map rv">
+    <div class="mapmain">
+
+      <!-- kasutajad -->
+      <div class="band-label">Kasutajad ja kanalid</div>
+      <div class="users">
+        <div class="card">
+          <h3>Operaatori töölaud <span class="badge grey">sisemine pool</span></h3>
+          <div class="desc">Portfell, töövood, läbirääkimine, dokumendid — kogu tehing ühes vaates.</div>
+        </div>
+        <div class="card">
+          <h3>Kliendiportaal <span class="badge grey">vastaspool</span></h3>
+          <div class="desc">Vastaspool — üürnik, töötaja, partner — näeb, kommenteerib punkti tasemel, aktsepteerib ja allkirjastab (eID).</div>
+        </div>
+      </div>
+
+      <div class="flow-arrow">▼</div>
+
+      <!-- töövood -->
+      <div class="band-label">Töövood · lepingu elutsükkel</div>
+      <div class="life">
+        <div class="life-steps">
+          <div class="lstep"><div class="n">01</div><div class="t">Pakkumine</div><div class="d">hinnapakkumine pinnale · tööpakkumine kandidaadile — parameetrid arvutuvad</div></div>
+          <div class="lstep"><div class="n">02</div><div class="t">Negotiation</div><div class="d">kommentaar punkti küljes → aktsept → ülimuslik eritingimus (üür · palk · tingimused)</div></div>
+          <div class="lstep"><div class="n">03</div><div class="t">Leping + allkiri</div><div class="d">mall + andmed → dokument; külmutatud versioon, eID-allkiri</div></div>
+          <div class="lstep"><div class="n">04</div><div class="t">Täitmine</div><div class="d">tähtajad ja kohustused: indekseerimine · katseaja lõpp · palgaülevaatus; muudatused lisadena</div></div>
+          <div class="lstep"><div class="n">05</div><div class="t">Arhiiv + mälu</div><div class="d">audit trail, decision memory, 1-klikk eksport</div></div>
+        </div>
+      </div>
+
+      <div class="flow-arrow">▼</div>
+
+      <!-- kaks sammast -->
+      <div class="band-label">Kaks sammast — millega ja mille üle tehinguid tehakse</div>
+      <div class="pillars">
+        <div class="pillar">
+          <h3>Esemeregister</h3>
+          <div class="desc">Kõik, mille kohta lepingud käivad — tüübitud ja hierarhiline.</div>
+          <div class="ent">
+            <div><b>Esemetüübid</b> — atribuudiskeemid vertikaalist (pind: m², hind; ametikoht: ülesanded, töötasu)</div>
+            <div><b>Konteinerid ja üksused</b> — hoone → pinnad; osakond → ametikohad</div>
+            <div><b>Staatus = projektsioon</b> — pind vaba/üüritud, ametikoht täidetud — arvutub hõivetest</div>
+            <div><b>Manused</b> — plaanid, ametijuhendid, dokumendid eseme küljes</div>
+          </div>
+        </div>
+        <div class="joint">
+          <div class="wire"></div>
+          <div class="box">
+            <div class="t">Hõive</div>
+            <div class="d">leping hõivab eset — pinda või ametikohta, perioodi ja kogusega</div>
+            <div class="modes"><span>eksklusiivne</span><span>kvoot</span><span>jagatud</span></div>
+          </div>
+          <div class="wire"></div>
+        </div>
+        <div class="pillar">
+          <h3>Lepingud</h3>
+          <div class="desc">Lepingukernel — tüübid, mallid, klauslid, olekud.</div>
+          <div class="ent">
+            <div><b>Lepingutüübid</b> — üürileping, tööleping, … = mall + parameetriskeem + reeglid</div>
+            <div><b>Klauslimudel</b> — üld (lukus) / põhi (andmed) / eri (kirjutab üle)</div>
+            <div><b>Lepingumallid</b> — versioneeritud, külmuvad allkirjaga</div>
+            <div><b>Template Builder</b> <span class="badge blue">self-service</span> — klient loob ise tüüpe ja malle</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-arrow">▼</div>
+
+      <!-- andmeregister -->
+      <div class="band-label">Vundament — kuhu kõik koguneb</div>
+      <div class="register">
+        <div class="hd"><h3>Struktureeritud andmeregister</h3><span class="badge soft">RAG-i alus</span></div>
+        <div class="desc">Iga leping, klausel, parameeter ja otsus on masinloetav kirje — mitte PDF kaustas.
+          Sellest kihist vastab platvorm küsimusele, mida keegi teine ei suuda: <b style="color:#fff">mis tegelikult kehtib?</b></div>
+        <div class="chips">
+          <span class="chip">klauslid + ülimuslikkus</span><span class="chip">tüübitud parameetrid</span>
+          <span class="chip">hõived</span><span class="chip">tähtajad ja kohustused</span>
+          <span class="chip">dokumendiversioonid (külmutatud)</span><span class="chip">audit · decision memory</span>
+          <span class="chip hi">efektiivne seis lepingu ja eseme lõikes</span>
+        </div>
+        <div class="reg-io">
+          <div class="io"><div class="k">Sisse ⟶</div>
+            <div class="v"><b>Platvormis sündivad lepingud</b> (juba struktuursed) + <b>import</b>: pärand-lepingud PDF/DOCX → loetakse samasse klauslimudelisse. Olemasolev portfell muutub varaks.</div></div>
+          <div class="io"><div class="k">⟶ Välja</div>
+            <div class="v"><b>AI-agent ja Q&A</b>, otsing ja filtrid ("mis indekseerub 2027?" · "kelle katseaeg lõpeb sel kuul?"), aruandlus, võtmekuupäevade kalender, eksport.</div></div>
+        </div>
+      </div>
+
+      <div class="flow-arrow">▼</div>
+
+      <!-- vertikaalid -->
+      <div class="band-label">Vertikaalipaketid — kuidas platvorm laieneb</div>
+      <div class="verticals">
+        <h3>Üks kernel, palju vertikaale</h3>
+        <div class="vrow">
+          <div class="vcart live">Ärikinnisvara <span class="st">esimene · live</span></div>
+          <div class="vcart live">Töölepingud <span class="st">paralleeltest</span></div>
+          <div class="vcart">Parkimine <span class="st">plaanis</span></div>
+          <div class="vcart">Teenuslepingud <span class="st">plaanis</span></div>
+          <div class="vcart">Seadmed ja rent <span class="st">plaanis</span></div>
+          <div class="vcart">+ kliendi enda vertikaal <span class="st">Template Builderiga</span></div>
+        </div>
+        <div class="vnote"><b>Vertikaal = konfiguratsioon:</b> esemetüübid + parameetriskeemid + mallid + arvutused + integratsioonid. Mitte uus koodibaas.
+          <br><b>Töölepingud kui modulaarsuse test:</b> ametikohad esemeregistris (ülesanded, töötasu, headcount = kvoothõive), tööpakkumine → läbirääkimine → allkiri sama töövooga, katseaeg ja palgaülevaatus võtmekuupäevadena, TÖR-kanne vertikaali adapterina.</div>
+      </div>
+
+      <div class="flow-arrow">▼</div>
+
+      <!-- pistikprogrammid -->
+      <div class="band-label">Pistikprogrammid · 3rd party — mõlemas suunas</div>
+      <div class="plugs">
+        <div class="plug-io">
+          <div class="io-col">
+            <h3>Sisse ⟵ <span class="badge grey">adapterid</span></h3>
+            <div class="desc">Andmed teistest süsteemidest rikastavad platvormi; iga liides on vahetatav adapter, vertikaal toob kaasa omad.</div>
+            <div class="chips">
+              <span class="chip hi">Dokobit — eID login + allkiri</span>
+              <span class="chip">e-Äriregister</span><span class="chip">EHR ehitisregister</span>
+              <span class="chip">Krediidiinfo / Inforegister — riskiraport</span>
+              <span class="chip">Statistikaamet — THI indeks</span><span class="chip">Moderan — kõrvalkulud</span>
+            </div>
+          </div>
+          <div class="io-col">
+            <h3>Välja ⟶ <span class="badge blue">tõe allikas</span></h3>
+            <div class="desc">ThinkOne on esemete ja lepingute seisu <b>tõe allikas</b> — muutused voolavad ise välja, avaliku API ja webhook'ide kaudu.</div>
+            <div class="chips">
+              <span class="chip hi">koduleht: pind vabaneb/hõivatakse → veeb uueneb ise</span>
+              <span class="chip">karjäärileht: ametikoht vabaneb → kuulutus väljas</span>
+              <span class="chip">avalik API — vabad esemed, hinnad, saadavus</span>
+              <span class="chip">webhookid — lepingu ja hõive sündmused</span>
+              <span class="chip">TÖR / EMTA — tööleping allkirjastatud → töötamise kanne</span>
+              <span class="chip">kalendrivood — võtmekuupäevad (iCal)</span>
+              <span class="chip">raamatupidamine / CRM (tulevik)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI rail -->
+    <div class="airail">
+      <div class="aicard">
+        <span class="tag">Läbiv kiht</span>
+        <h3>AI-agent + RAG</h3>
+        <div class="blk"><div class="k">Töövoogudes</div>
+          <div class="v">Agent <b>koostab</b>: pakkumuse mustandid, lepingudraftid, eritingimuste sõnastused, riskiraporti tellimine. <b>Human-in-the-loop:</b> saatmine ja allkiri jäävad alati inimesele — struktuurselt, mitte lubadusega.</div></div>
+        <div class="blk"><div class="k">Küsimustele vastates</div>
+          <div class="v">"Millal saab üürnik lepingu üles öelda?" · "Mis on Mardi konkurentsipiirangu tingimus?" — vastus <b>tsiteerib klauslit</b>, viide valideeritakse masinaga. Üle portfelli: struktuursed päringud registri pealt.</div></div>
+        <div class="blk"><div class="k">Miks see töötab</div>
+          <div class="v">Sest andmed on <b>all juba struktuursed</b> — agent ei arva PDF-ist, vaid loeb registrit, kus ülimuslikkus on lahendatud.</div></div>
+        <div class="foot">toitub: struktureeritud andmeregister<br>osaleb: kõik töövood<br>piirang: ei saada, ei allkirjasta</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARUTELUKS -->
+  <section class="talk rv">
+    <div class="sec-head"><div class="sec-num">?</div><h2>Aruteluks tiimiga</h2></div>
+    <div class="talkgrid">
+      <div class="talkcard">
+        <div class="q">Template Builderi V1 piir?</div>
+        <div class="a">Self-service on lõppsiht — aga kui palju avame V1-s? Ettepanek: <b>V1 sisemine</b> (meie seadistame kinnisvara), V2 partneritele, V3 avalik. Self-service nõuab skeemivalidaatorit, mallide versioneerimist ja "ära lase kliendil endale jalga tulistada" kaitseid.</div>
+      </div>
+      <div class="talkcard">
+        <div class="q">Töölepingute testi skoop?</div>
+        <div class="a">Otsustatud: <b>töölepingud</b> on paralleelne test-vertikaal. Lahtine on sügavus: kas ainult leping + allkiri + katseaja tähtajad, või ka TÖR-kanne ja puhkused? Test toob lauale kolm uut platvorminõuet: <b>isik kui lepingupool</b>, <b>rollipõhine ligipääs tüübi lõikes</b> (HR näeb palku, kinnisvarahaldur mitte) ja GDPR.</div>
+      </div>
+      <div class="talkcard">
+        <div class="q">Import — millal tootesse?</div>
+        <div class="a">Iga kliendi esimene küsimus on "mis saab mu vanadest lepingutest?". Import on adoptsiooni võti, aga ka suur ehitus (ekstraktsioon → klauslimudel). Kas V1 müüb ilma selleta (ainult uued lepingud) või vajame vähemalt poolautomaatset importi?</div>
+      </div>
+      <div class="talkcard">
+        <div class="q">Portaali sügavus?</div>
+        <div class="a">Kas vastaspool ainult vaatab/aktsepteerib/allkirjastab, või saab ta ka ise algatada (taotlused, muudatusettepanekud, oma dokumendid)? Sügavam portaal = kleepuvam toode, aga rohkem tuge ja rolle.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>ThinkOne · tootekaart · elav dokument — muudame arutelu käigus</span>
+    <span>kaks sammast + hõive · struktuurne register · AI läbiva kihina</span>
+  </footer>
+</div>
+
+<script>
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: .08 });
+  document.querySelectorAll(".rv").forEach(el => io.observe(el));
+</script>
+</body>
+</html>

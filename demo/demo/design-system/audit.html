@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThinkOne · UI audit ja kujundussüsteemi ettepanek</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --canvas:#F6F5F3; --surface:#FFFFFF; --subtle:#ECECEA; --divider:#D6D6D2; --ctrl:#85857F;
+    --text:#161512; --text-2:#60605B; --text-3:#85857F;
+    --primary:#006566; --primary-hover:#005455; --primary-subtle:#EAF2F0; --primary-deep:#005758;
+    --success:#246747; --success-subtle:#EEF6F1;
+    --warning:#805719; --warning-subtle:#FBF4E8;
+    --error:#A12B35; --error-subtle:#FBEEF0;
+    --info:#345F9A; --info-subtle:#EDF3FA;
+    --edge:1px solid rgb(22 21 18 / .08);
+    --shadow:0 1px 3px rgb(22 21 18 / .06), 0 6px 20px rgb(22 21 18 / .05);
+    --font-ui:"Inter","Segoe UI",system-ui,sans-serif;
+    --font-head:"Bricolage Grotesque",var(--font-ui);
+    --font-mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace;
+    --r-sm:4px; --r-ctrl:8px; --r-surf:12px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; scroll-padding-top:24px}
+  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+  body{
+    margin:0; font-family:var(--font-ui); font-size:16px; line-height:1.5; color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgb(255 255 255 / .9), transparent 60%),
+      var(--canvas);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  a{color:var(--primary-deep); text-decoration-color:rgb(0 101 102 / .35); text-underline-offset:3px}
+  a:hover{color:var(--primary-hover); text-decoration-color:currentColor}
+  code,.mono{font-family:var(--font-mono); font-size:.875em; font-variant-numeric:tabular-nums}
+  code{background:var(--subtle); padding:.1em .4em; border-radius:var(--r-sm); color:var(--text)}
+  strong{font-weight:600}
+
+  /* ---- layout ---- */
+  .page{max-width:1240px; margin:0 auto; padding:40px 32px 96px}
+  .grid{display:grid; grid-template-columns:220px minmax(0,1fr); gap:56px; align-items:start}
+  main{min-width:0; max-width:820px}
+  nav.toc{position:sticky; top:24px}
+  nav.toc .toc-h{font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin:0 0 12px}
+  nav.toc ol{list-style:none; margin:0; padding:0; border-left:1px solid var(--divider)}
+  nav.toc li{margin:0; max-width:none}
+  nav.toc li a{display:block; padding:6px 14px; font-size:14px; line-height:1.35; color:var(--text-2); text-decoration:none; border-left:2px solid transparent; margin-left:-1px}
+  nav.toc li a:hover{color:var(--text); background:rgb(22 21 18 / .03)}
+  nav.toc li a.on{color:var(--primary-deep); border-left-color:var(--primary); font-weight:500}
+  nav.toc .files{margin-top:24px; padding-top:16px; border-top:1px solid var(--divider)}
+  nav.toc .files a{display:flex; gap:8px; align-items:center; font-size:13px; padding:5px 0; color:var(--text-2); text-decoration:none}
+  nav.toc .files a:hover{color:var(--primary-deep)}
+  nav.toc .files svg{flex:none; width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.6; opacity:.7}
+
+  @media (max-width:1040px){
+    .grid{grid-template-columns:1fr; gap:24px}
+    nav.toc{position:static; background:var(--surface); border:var(--edge); border-radius:var(--r-surf); padding:16px 20px; box-shadow:var(--shadow)}
+    nav.toc ol{display:flex; flex-wrap:wrap; gap:4px 12px; border:0}
+    nav.toc li a{padding:4px 0; border:0; margin:0}
+    nav.toc .files{display:flex; flex-wrap:wrap; gap:4px 20px}
+  }
+  @media (max-width:640px){ .page{padding:24px 16px 64px} }
+
+  /* ---- header ---- */
+  header.hero{margin-bottom:48px; padding-bottom:32px; border-bottom:1px solid var(--divider)}
+  .eyebrow{display:inline-flex; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text-2); margin:0 0 16px}
+  .eyebrow .mark{width:22px; height:22px; border-radius:6px; background:linear-gradient(90deg,#1B1A17,#2A2823); display:inline-grid; place-items:center; color:#fff; font-family:var(--font-head); font-weight:700; font-size:13px}
+  h1{font-family:var(--font-head); font-weight:650; font-size:clamp(28px,3.6vw,40px); line-height:1.12; letter-spacing:-.02em; margin:0 0 20px; text-wrap:balance}
+  .meta{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:14px; color:var(--text-2); align-items:center}
+  .meta b{font-weight:500; color:var(--text)}
+  .lede{font-size:17px; color:var(--text-2); max-width:62ch; margin:20px 0 0}
+
+  /* ---- badges & chips ---- */
+  .badge{display:inline-flex; align-items:center; gap:6px; min-height:24px; padding:2px 8px; border-radius:var(--r-sm); font-size:12px; font-weight:500; line-height:16px; white-space:nowrap}
+  .badge.warning{background:var(--warning-subtle); color:var(--warning)}
+  .badge.error{background:var(--error-subtle); color:var(--error)}
+  .badge.success{background:var(--success-subtle); color:var(--success)}
+  .badge.info{background:var(--info-subtle); color:var(--info)}
+  .badge.neutral{background:var(--subtle); color:var(--text-2)}
+  .badge.primary{background:var(--primary-subtle); color:var(--primary-deep)}
+  .badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor}
+
+  /* ---- sections ---- */
+  section{margin:0 0 64px; scroll-margin-top:24px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin:0 0 20px}
+  .sec-num{font-family:var(--font-mono); font-size:13px; color:var(--text-3); font-variant-numeric:tabular-nums; min-width:2ch}
+  h2{font-family:var(--font-head); font-weight:650; font-size:26px; line-height:1.2; letter-spacing:-.015em; margin:0}
+  h3{font-family:var(--font-head); font-weight:600; font-size:19px; line-height:1.3; margin:36px 0 14px; letter-spacing:-.01em}
+  h3 .badge{vertical-align:2px; margin-left:8px; font-family:var(--font-ui)}
+  p{margin:0 0 14px; max-width:70ch}
+  ul,ol{padding-left:22px; margin:0 0 16px}
+  li{margin:0 0 8px; max-width:70ch}
+  li::marker{color:var(--text-3)}
+
+  /* ---- callouts ---- */
+  .callout{display:grid; grid-template-columns:auto 1fr; gap:14px; padding:16px 20px; border-radius:var(--r-surf); border:var(--edge); background:var(--surface); box-shadow:var(--shadow); margin:20px 0 24px}
+  .callout p{margin:0; max-width:none}
+  .callout .ic{width:22px; height:22px; border-radius:6px; display:grid; place-items:center; flex:none; margin-top:1px}
+  .callout .ic svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+  .callout.warn{border-color:rgb(128 87 25 / .25)} .callout.warn .ic{background:var(--warning-subtle); color:var(--warning)}
+  .callout.ok{border-color:rgb(36 103 71 / .25)} .callout.ok .ic{background:var(--success-subtle); color:var(--success)}
+
+  /* ---- tables ---- */
+  .tbl{overflow-x:auto; background:var(--surface); border:var(--edge); border-radius:var(--r-surf); box-shadow:var(--shadow); margin:0 0 20px; -webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse; width:100%; font-size:14px; line-height:1.45}
+  thead th{position:sticky; top:0; text-align:left; font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-2); background:#FAFAF9; padding:12px 16px; border-bottom:1px solid var(--divider); white-space:nowrap}
+  tbody td{padding:12px 16px; border-bottom:1px solid rgb(22 21 18 / .06); vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  tbody th{text-align:left; font-weight:600; padding:12px 16px; border-bottom:1px solid rgb(22 21 18 / .06); vertical-align:top; white-space:nowrap; color:var(--text)}
+  tbody tr:last-child th{border-bottom:0}
+  .tbl.inv td:nth-child(2){min-width:220px} .tbl.inv td:nth-child(3){min-width:200px; color:var(--text-2)}
+  .tbl.views tbody th{white-space:normal; min-width:150px} .tbl.views td{min-width:190px}
+  .tbl.views td:last-child{color:var(--primary-deep)}
+  .tbl.tokens tbody th{white-space:normal; min-width:110px}
+  .tbl.tokens td:nth-child(2){min-width:200px} .tbl.tokens td:nth-child(3){min-width:200px; color:var(--text-2)}
+  .num{font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:13px; white-space:nowrap}
+  .tbl.compact table{font-size:13.5px} .tbl.compact tbody td, .tbl.compact tbody th{padding:9px 14px}
+  td.right,th.right{text-align:right}
+
+  /* ---- swatches ---- */
+  .sw{display:inline-flex; align-items:center; gap:6px; margin:2px 8px 2px 0; white-space:nowrap; font-family:var(--font-mono); font-size:12.5px; color:var(--text-2)}
+  .sw i{width:16px; height:16px; border-radius:4px; border:1px solid rgb(22 21 18 / .12); flex:none; display:inline-block}
+  .sw.big i{width:22px; height:22px; border-radius:6px}
+  .fam{margin:0 0 6px; max-width:none} .fam b{display:inline-block; min-width:9em; font-weight:500; font-size:13px; color:var(--text)}
+  .pair{display:inline-flex; align-items:center; gap:8px; padding:3px 10px 3px 3px; border-radius:6px; margin:2px 6px 2px 0; font-size:13px; font-weight:500}
+  .pair i{width:18px; height:18px; border-radius:4px; display:inline-block}
+
+  /* ---- finding cards ---- */
+  .findings{display:grid; gap:14px; margin:0 0 24px}
+  .finding{background:var(--surface); border:var(--edge); border-radius:var(--r-surf); box-shadow:var(--shadow); padding:18px 20px 18px 18px; display:grid; grid-template-columns:34px 1fr; gap:14px}
+  .finding > div{min-width:0}
+  .finding .n{width:30px; height:30px; border-radius:8px; background:var(--error-subtle); color:var(--error); font-family:var(--font-mono); font-weight:600; font-size:13px; display:grid; place-items:center}
+  .finding h4{margin:4px 0 8px; font-size:16px; font-weight:600; line-height:1.3}
+  .finding p{font-size:15px; color:var(--text-2); margin:0 0 8px}
+  .finding p:last-child{margin:0}
+  .finding .tbl{margin:10px 0 8px; box-shadow:none}
+  .finding .ref{font-size:13px}
+  .p2 li{margin-bottom:12px}
+  .p2 li b{font-weight:600}
+
+  /* ---- component cards ---- */
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; margin:0 0 20px}
+  .card{background:var(--surface); border:var(--edge); border-radius:var(--r-surf); box-shadow:var(--shadow); padding:18px 20px}
+  .card h4{margin:0 0 8px; font-family:var(--font-head); font-size:17px; font-weight:600}
+  .card p{font-size:14.5px; color:var(--text-2); margin:0; max-width:none}
+  .card .spec{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px}
+  .card .spec span{font-family:var(--font-mono); font-size:12px; background:var(--subtle); padding:2px 7px; border-radius:4px; color:var(--text-2)}
+
+  /* ---- steps ---- */
+  ol.steps{list-style:none; padding:0; margin:0 0 24px; counter-reset:s}
+  ol.steps li{counter-increment:s; display:grid; grid-template-columns:36px 1fr; gap:14px; padding:14px 0; border-bottom:1px solid var(--divider); max-width:none; margin:0}
+  ol.steps li:last-child{border-bottom:0}
+  ol.steps li::before{content:counter(s); width:32px; height:32px; border-radius:50%; background:linear-gradient(90deg,#1B1A17,#2A2823); color:#fff; display:grid; place-items:center; font-family:var(--font-mono); font-size:13px; font-weight:600}
+  ol.steps li div{padding-top:5px; font-size:15px}
+
+  /* ---- decision ---- */
+  .decision{background:linear-gradient(90deg,#1B1A17,#2A2823); color:#fff; border-radius:var(--r-surf); padding:26px 28px; margin:8px 0 0; box-shadow:0 8px 24px rgb(22 21 18 / .14)}
+  .decision .k{font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:rgb(255 255 255 / .6); margin:0 0 10px}
+  .decision p{color:#fff; margin:0; max-width:none}
+  .decision .q{font-family:var(--font-head); font-size:22px; font-weight:600; line-height:1.3; letter-spacing:-.01em; margin:0 0 12px}
+  .decision .sub{color:rgb(255 255 255 / .75); font-size:15px}
+
+  footer{margin-top:48px; padding-top:20px; border-top:1px solid var(--divider); font-size:13px; color:var(--text-3); display:flex; flex-wrap:wrap; gap:8px 24px}
+
+  @media print{
+    body{background:#fff}
+    .page{padding:0; max-width:none}
+    .grid{display:block}
+    nav.toc{display:none}
+    .tbl,.card,.finding,.callout{box-shadow:none; break-inside:avoid}
+    a{color:inherit; text-decoration:none}
+    .decision,ol.steps li::before,.eyebrow .mark{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="hero">
+  <p class="eyebrow"><span class="mark">T</span> ThinkOne · kujundussüsteem</p>
+  <h1>UI audit ja kujundussüsteemi ettepanek</h1>
+  <div class="meta">
+    <span>Kuupäev <b>10.09.2026</b></span>
+    <span>Alus <b>demo v420</b></span>
+    <span class="badge success"><span class="dot"></span>Rakendatud demos v421</span>
+    <span class="badge neutral">Ainult hele teema</span>
+  </div>
+  <p class="lede">Audit katab kõik 23 vaadet ja ühised komponendid, mõõdab mobiiliülevoolu ja kontrasti ning pakub ühe tokenikomplekti, ühised komponendid ja rakendamise järjekorra. Rakendatud 10.09.2026 (v421): petrooleum kõigile põhitegevustele, Inter + Bricolage; vt HANDOFF.md.</p>
+</header>
+
+<div class="grid">
+<nav class="toc" aria-label="Sisukord">
+  <p class="toc-h">Sisukord</p>
+  <ol>
+    <li><a href="#ulatus">Ulatus ja lähtekoht</a></li>
+    <li><a href="#inventuur">1 · Variantide inventuur</a></li>
+    <li><a href="#leiud">2 · Leiud ja prioriteet</a></li>
+    <li><a href="#tokenid">3 · Pakutav tokenikomplekt</a></li>
+    <li><a href="#komponendid">4 · Ühised komponendid</a></li>
+    <li><a href="#vaated">5 · Vaadete kaupa</a></li>
+    <li><a href="#jarjekord">6 · Rakendamise järjekord</a></li>
+  </ol>
+  <div class="files">
+    <a href="inventory.json"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>inventory.json</a>
+    <a href="tokens.proposed.css"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>tokens.proposed.css</a>
+    <a href="style-guide.proposed.md"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>style-guide.proposed.md</a>
+    <a href="audit.md"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>audit.md (allikas)</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============ ULATUS ============ -->
+<section id="ulatus">
+  <div class="sec-head"><span class="sec-num">0</span><h2>Ulatus ja lähtekoht</h2></div>
+  <p>ThinkOne on lepingutöövoo demo: kinnisvaraportfell, pakkumused, läbirääkimised ja lepingud, lisaks personalisuund. Kasutajarollid on operaator ja klient/üürnik. Lähtun töölaudadest igapäevaseks tööks ning telefonist dokumentide ja tegevuste jälgimiseks; see on olemasolevast tootest tuletatud eeldus.</p>
+  <p>Tehnoloogia on raamistikuvaba HTML/CSS/JavaScript SPA. Säilib olemasolev teostus, sõltuvusi ei lisata. Säilivad tekstid, äriloogika, andmed, dokumendisisu, rollid ja teekonnad. Ainult hele teema.</p>
+  <p>Lähtekoodis vaadati üle kõik 23 View-vaadet, objekti lisamise/muutmise voog ning ühised komponendid; ruuteris on 26 kirjet. Lisaks kontrolliti kujundusgalerii ja kahe eraldiseisva näitelehe stiiliisolatsiooni. Brauseris mõõdeti 22 esinduslikku aadressi töölaual ja 320 px laiuses ning kuut vaadet 768 px laiuses. Operaatori kõrval kontrolliti kliendiportaali.</p>
+  <p>See ei ole kõigi andme-, õiguste-, laadimis- ja veaseisundite täielik läbimäng: native üüri- ja töölepingu detailide kontroll tugineb osaliselt lähtekoodile ja galeriile, sest testandmetes polnud vastavaid kirjeid. Selleks uusi ärikirjeid ei loodud.</p>
+  <div class="callout warn">
+    <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+    <p><strong>Praegu ei ole rakenduse faile muudetud.</strong> Kõrvalolev tokenifail ei ole rakendusega ühendatud.</p>
+  </div>
+</section>
+
+<!-- ============ 1 INVENTUUR ============ -->
+<section id="inventuur">
+  <div class="sec-head"><span class="sec-num">1</span><h2>Praeguste variantide inventuur</h2></div>
+  <p>Täielik leitud väärtuste loend koos näidisselektorite, esinemisarvude ja lähteridadega: <a href="inventory.json">inventory.json</a>. Allolevad arvud kirjeldavad kirjapildilt erinevaid CSS-väärtusi, mitte sama suurt arvu iseseisvaid disainivalikuid. Dünaamiline geomeetria ja dokumendi vormistus ei ole automaatselt vead.</p>
+
+  <div class="tbl inv"><table>
+    <thead><tr><th>Valdkond</th><th>Praegu kasutusel</th><th>Vastuolu / mõju</th></tr></thead>
+    <tbody>
+      <tr><th>Nupud</th><td>6 üldist välimust: primary, accent, green, ghost, soft, quiet; base ja sm; lisaks loomise-, saatmise-, rea-, filtri-, manuse- ja allkirjastamisnupud</td><td>Must, petrooleum ja roheline konkureerivad põhitegevusena. Puudub terviklik sm/md/lg ja olekute süsteem.</td></tr>
+      <tr><th>Nupu mõõt</th><td>Tavaline ligikaudu 35–40 px, väike 32 px; ikoonitoimingud muu hulgas 28, 36 ja 42 px</td><td>Kõrgus muutub ikooni/sisu järgi. <code>.btn:has(svg)</code> muudab ka külgpolstrit. Telefonis pole 44 px miinimum tagatud.</td></tr>
+      <tr><th>Värvid</th><td>51 juurtokenit kokku; põhistiilis 108 värviavaldiste kirjapilti, sh läbipaistvused</td><td>Neutraalid, aktsendivariandid ja varjud korduvad. Sama värv teenib tegevust, staatust ja kategooriat.</td></tr>
+      <tr><th>Kirjaperekonnad</th><td>Laetakse Inter, Inter Tight, Bricolage Grotesque ja Geist Mono; tegelikud põhivalikud on Inter/Bricolage/Geist</td><td>Projektijuhis ja rakendus on lahknenud. Inter Tight jääb varufondiks; nelja veebifondi pole vaja.</td></tr>
+      <tr><th>Kirjasuurus</th><td>32 väärtust, neist üks 0; 8–58 px ning <code>clamp(28px, 3.2vw, 42px)</code>; palju 0,5 px vahesid</td><td>9/9,5/10/10,5/11/11,5 px mikrotekst ning 13/13,5/14/14,5/15/15,5 px dubleerivad rolle.</td></tr>
+      <tr><th>Kirjakaal</th><td>400, 450, 500, 550, 600, 650, 700</td><td>Sama taseme siltidel eri kaalud; btn-soft 700, tavanupp 600.</td></tr>
+      <tr><th>Raadiused</th><td>26 väärtusekirjeldust; juurtokenid 8/10/12/14 px, kohalikud 2–24 px ning 99/999 px/50% ja liitnurgad</td><td>Kontrollide, kaartide ja kiipide nurgad ei väljenda kindlat hierarhiat.</td></tr>
+      <tr><th>Vahed</th><td>156 padding-kombinatsiooni, 27 gap-väärtust; puudub ühine vahede skaala</td><td>Kõrvuti elemendid ei joondu. Korduvad 5/6/7/9/11/13/15/17/19/22/26 px valikud.</td></tr>
+      <tr><th>Varjud</th><td>3 juurtaset, kuid 48 shadow-väärtusekirjeldust</td><td>Kaardid, nupud, teated ja hüpikaknad kasutavad eraldi varjuretsepte.</td></tr>
+      <tr><th>Staatused</th><td><code>.pill</code>: green/amber/red/blue/teal/grey/accent/ink; eraldi täidetud „Lahendamisel"</td><td>Oleku tähendus, tähelepanuprioriteet ja visuaalne tugevus on ühte klassi segatud.</td></tr>
+      <tr><th>Märgendid</th><td><code>.tag</code> + lime/lav; rolli-, allika- ja loendurikiibid, kohtpõhised staatuseülekirjutused</td><td>lime on tegelikult petrooleum, lav roheline; suurus, kaal, täide ja nurgad erinevad.</td></tr>
+      <tr><th>Sisendid</th><td><code>.field</code>, <code>.fact-in</code>, <code>.rep-in</code>, <code>.price-in</code>, <code>.ce-in</code>, <code>.eri-in</code>, <code>.prose-in</code>; otsingud ja vestluskastid; seadete inline-väljad</td><td>Tavalised väljad umbes 41–43 px, tekstisisesed 25–27 px; eri servad, polstrid ja fookus.</td></tr>
+      <tr><th>Valikud</th><td><code>.field select</code>, eraldi seadete select, brauseri checkbox, <code>.obj-check</code>, valiku- ja allkirjastamiskaardid</td><td>Puudub ühtne check/radio/switch mõõdustik ja vea-/disabled-/fookuskeel. Uut lülitit ei lisata sinna, kus seda pole.</td></tr>
+      <tr><th>Liikumine</th><td>55 transition- ja 21 animation-väärtusekirjeldust</td><td>Kestused on laiali; sisenemine ja väljumine pole paaris. Olemas on ka püsiv drift/pulse.</td></tr>
+      <tr><th>Kohalikud stiilid</th><td>app.js-is 716 style-atribuudi esinemist, neist 20 nuppudel</td><td>Komponentide väljanägemist dubleeritakse mallides. Osa on põhjendatud arvutatud mõõdud või dokumendisisu, mitte eemaldatav viga.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Põhivärvide praegused perekonnad</h3>
+  <div class="card" style="margin-bottom:16px">
+    <p class="fam"><b>Valged / hallid</b>
+      <span class="sw"><i style="background:#FFFFFF"></i>#FFFFFF</span><span class="sw"><i style="background:#F6F5F3"></i>#F6F5F3</span><span class="sw"><i style="background:#F0F0EE"></i>#F0F0EE</span><span class="sw"><i style="background:#E9E9E7"></i>#E9E9E7</span><span class="sw"><i style="background:#D9D9D6"></i>#D9D9D6</span></p>
+    <p class="fam"><b>Tekst</b>
+      <span class="sw"><i style="background:#161512"></i>#161512</span><span class="sw"><i style="background:#454542"></i>#454542</span><span class="sw"><i style="background:#666762"></i>#666762</span><span class="sw"><i style="background:#70716B"></i>#70716B</span><span class="sw"><i style="background:#515151"></i>#515151</span></p>
+    <p class="fam"><b>Petrooleum</b>
+      <span class="sw"><i style="background:#006566"></i>#006566</span><span class="sw"><i style="background:#005455"></i>#005455</span><span class="sw"><i style="background:#005758"></i>#005758</span></p>
+    <p class="fam"><b>Accent-soft</b>
+      <span class="sw"><i style="background:#EEEBE6"></i>#EEEBE6</span><span class="sw"><i style="background:#E4E0DA"></i>#E4E0DA</span></p>
+    <p class="fam" style="margin:0"><b>Muu</b> <span style="font-size:13.5px;color:var(--text-2)">kaks musta gradienti ning OKLCH roheline/ooker/punane/sinine/petrooleum koos pehmete ja tumedate harudega. Täpne täielik loend on inventuurifailis.</span></p>
+  </div>
+</section>
+
+<!-- ============ 2 LEIUD ============ -->
+<section id="leiud">
+  <div class="sec-head"><span class="sec-num">2</span><h2>Olulised leiud ja prioriteet</h2></div>
+
+  <h3>P1 · esmalt kasutatavus <span class="badge error"><span class="dot"></span>Kriitiline</span></h3>
+  <div class="findings">
+
+    <article class="finding">
+      <span class="n">1</span>
+      <div>
+        <h4>Mobiilis päris ülevool</h4>
+        <p>Mõõdetud lehe laius ületab vaateakent nii 320 kui 768 px juures. 1440 px kontrollis kogu lehe ülevoolu ei leitud.</p>
+        <div class="tbl compact"><table>
+          <thead><tr><th>Vaade</th><th class="right">320 px aknas</th><th class="right">768 px aknas</th></tr></thead>
+          <tbody>
+            <tr><th>Ülevaade</th><td class="right num">451 px</td><td class="right num">825 px</td></tr>
+            <tr><th>Portfell</th><td class="right num">328 px</td><td class="right num">857 px</td></tr>
+            <tr><th>Lepingud</th><td class="right num">392 px</td><td class="right num">–</td></tr>
+            <tr><th>Seaded</th><td class="right num">408 px</td><td class="right num">–</td></tr>
+            <tr><th>Pakkumuse detail</th><td class="right num">448 px</td><td class="right num">–</td></tr>
+            <tr><th>Pakkumuse mustand</th><td class="right num">444 px</td><td class="right num">–</td></tr>
+            <tr><th>Pakkumuse dokument</th><td class="right num">428 px</td><td class="right num">–</td></tr>
+            <tr><th>Objekt</th><td class="right num">641 px</td><td class="right num">895 px</td></tr>
+          </tbody>
+        </table></div>
+        <p>Pakkumuste tabel on lisaks sisemiselt vähemalt 780 px lai umbes 283 px konteineris; lehe ülevoolu puudumine üksi ei tähenda head mobiilivaadet.</p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <span class="n">2</span>
+      <div>
+        <h4>Osa väikese teksti kontrastist ei vasta AA-le</h4>
+        <p>Tavalise teksti nõue on vähemalt 4,5:1. Need pole suure teksti erandid: staatuse tekst on 11 px.</p>
+        <div class="tbl compact"><table>
+          <thead><tr><th>Paar</th><th class="right">Kontrast</th><th>Nõue</th></tr></thead>
+          <tbody>
+            <tr><th><code>--amber</code> valgel</th><td class="right num">4,36:1</td><td><span class="badge error">alla 4,5</span></td></tr>
+            <tr><th><code>--green</code> ja <code>--teal</code> lõuendil</th><td class="right num">≈ 4,39:1</td><td><span class="badge error">alla 4,5</span></td></tr>
+            <tr><th><code>--blue</code> pehmel pinnal</th><td class="right num">4,47:1</td><td><span class="badge error">alla 4,5</span></td></tr>
+            <tr><th><code>--faint</code> pehmel pinnal</th><td class="right num">4,32:1</td><td><span class="badge error">alla 4,5</span></td></tr>
+          </tbody>
+        </table></div>
+        <p class="ref"><a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html">WCAG 2.2 · teksti kontrast (1.4.3)</a></p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <span class="n">3</span>
+      <div>
+        <h4>Kontrollide tabamisala ja fookus pole ühtsed</h4>
+        <p>Mobiilis on 28–42 px juhtnuppe. Globaalne sisendite outline'i eemaldamine eeldab lokaalset asendust, mida näiteks inline-stiiliga seadete väljadel ei saa ühtselt eeldada. Vaja on kontrollida kogu klaviatuuriteekonda.</p>
+        <p>Nõutud 44 px mobiilsiht on selle projekti nõue; WCAG 2.2 AA baaskriteerium on 24 px koos eranditega.</p>
+        <p class="ref"><a href="https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html">WCAG 2.2 · sihtala miinimum (2.5.8)</a></p>
+      </div>
+    </article>
+
+    <article class="finding">
+      <span class="n">4</span>
+      <div>
+        <h4>Madalad servakontrastid</h4>
+        <p>Pehmel taustal läbipaistva servaga väljad ja väga heledad piirjooned ei anna alati piisavat kontrolli kontuuri. Olulise kontrollipiiri siht on vähemalt 3:1; dekoratiivne kaardiserv võib jääda peeneks.</p>
+        <p class="ref"><a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html">WCAG 2.2 · mittetekstiline kontrast (1.4.11)</a></p>
+      </div>
+    </article>
+  </div>
+
+  <h3>P2 · süsteemi järjepidevus <span class="badge warning"><span class="dot"></span>Oluline</span></h3>
+  <ul class="p2">
+    <li><b>Kujundusgalerii pole usaldusväärne lähteallikas.</b> Näiteks „Allkirjastamisel" on galeriis sinine, rakenduses ooker; „Tühistatud" hall versus punane; „Pakkumusel" sinine versus petrooleum; „Lepingus" ooker versus sinine. Galerii peab tulevikus kasutama sama olekukaarti ja komponente.</li>
+    <li><b>Nupu olekud pole täielikult koondatud.</b> Põhinupul on hover/active olemas, kuid disabled ei välista kõiki hover-efekte ning puudub ühine laadimisolek. Praegune ghost on sisuliselt valge äärisega secondary; quiet on eraldi destruktiivne välimus.</li>
+    <li><b>CSS-i kihistus tekitab päris vigu.</b> <code>.cl-side</code> hilisem sticky-deklaratsioon tühistab varasema väikse ekraani static-reegli. Objekti voos on <code>border-top/bottom: 1px solid var(--edge)</code>, kuigi <code>--edge</code> sisaldab juba kogu servadeklaratsiooni; tulemus on vigane.</li>
+    <li><b>Ülekatete käitumine erineb.</b> Dropdown'id ja PDF-modaal kasutavad display-vahetust; sisenemisanimatsioonil pole järjepidevat väljumispaari. Sahtel kasutab teist lahendust. Teate teksti nowrap/ellipsis võib olulise tagasiside ära lõigata.</li>
+    <li><b>Kitsal vaatel kohandumine on fragmentaarne.</b> Külgriba sulgub alles 760 px juures; fikseeritud tabelid, kaheveerulised vormid ja dokumendipolstrid vajavad sisupõhist murdumist.</li>
+    <li><b>Hooldatavus.</b> <code>--accent-soft-2</code> ja <code>--blue-soft</code> ei saanud kontrollitud runtime-failides kasutusviidet. Need on eemaldamiskandidaadid, mitte selles etapis kustutatud tokenid. Kohalikke stiile tuleb liigitada, mitte pimesi massiliselt eemaldada.</li>
+  </ul>
+
+  <h3>Mis juba töötab ja säilib <span class="badge success"><span class="dot"></span>Säilib</span></h3>
+  <div class="callout ok">
+    <span class="ic"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>
+    <p>Valged kaardid ja soe hele lõuend; olemasolev petrooleum; selge külgnavigatsioon; staatuste tekst ja edenemisikoonid; üldine prefers-reduced-motion kaitse; prindivaate eraldus. Uue lepingu illustratsioonikaardid jäävad valgeks ka hover'il: pehme vari, nool veidi paremale ja illustratsiooni kerge päripäevane pööre. Pilte, kompaktset mõõtu ega senist paigutust selle auditi käigus ei muudeta.</p>
+  </div>
+</section>
+
+<!-- ============ 3 TOKENID ============ -->
+<section id="tokenid">
+  <div class="sec-head"><span class="sec-num">3</span><h2>Pakutav tokenikomplekt</h2></div>
+  <p>Kavand: <a href="tokens.proposed.css">tokens.proposed.css</a>. Kasutusreeglid: <a href="style-guide.proposed.md">style-guide.proposed.md</a>.</p>
+
+  <div class="tbl tokens"><table>
+    <thead><tr><th>Roll</th><th>Väärtus / reegel</th><th>Põhjendus</th></tr></thead>
+    <tbody>
+      <tr><th>Primary</th><td>
+        <span class="sw big"><i style="background:#006566"></i>#006566</span>
+        <span class="sw big"><i style="background:#005455"></i>hover #005455</span>
+        <span class="sw big"><i style="background:#EAF2F0"></i>valik #EAF2F0</span>
+      </td><td>Üks aktsent kõigile põhitegevustele. See asendaks musta ja rohelise põhitegevuse konkurentsi; <strong>vajab kinnitust</strong>. Logo ja põhitekst jäävad süsimustaks.</td></tr>
+      <tr><th>Neutraalid, 7 astet</th><td>
+        <span class="sw"><i style="background:#FFFFFF"></i>#FFFFFF</span><span class="sw"><i style="background:#F6F5F3"></i>#F6F5F3</span><span class="sw"><i style="background:#ECECEA"></i>#ECECEA</span><span class="sw"><i style="background:#D6D6D2"></i>#D6D6D2</span><br>
+        <span class="sw"><i style="background:#85857F"></i>#85857F</span><span class="sw"><i style="background:#60605B"></i>#60605B</span><span class="sw"><i style="background:#161512"></i>#161512</span>
+      </td><td>Vastavalt pind, lõuend, hover/pehme pind, eraldaja, kontrolliserv, teisene tekst, põhitekst.</td></tr>
+      <tr><th>Success</th><td><span class="pair" style="background:#EEF6F1;color:#246747"><i style="background:#246747"></i>#246747 / #EEF6F1</span></td><td>Edu või kehtiv olek, mitte üldine kinnitamisnupu värv.</td></tr>
+      <tr><th>Warning</th><td><span class="pair" style="background:#FBF4E8;color:#805719"><i style="background:#805719"></i>#805719 / #FBF4E8</span></td><td>Ootab tähelepanu/kinnitust; paremini loetav ooker.</td></tr>
+      <tr><th>Error</th><td><span class="pair" style="background:#FBEEF0;color:#A12B35"><i style="background:#A12B35"></i>#A12B35 / #FBEEF0</span></td><td>Viga või destruktiivne tegevus.</td></tr>
+      <tr><th>Info</th><td><span class="pair" style="background:#EDF3FA;color:#345F9A"><i style="background:#345F9A"></i>#345F9A / #EDF3FA</span></td><td>Informatiivne olek; kategooriaid ei värvita automaatselt siniseks.</td></tr>
+      <tr><th>Fondid</th><td>Inter kasutajaliideses; <span style="font-family:var(--font-head);font-weight:600">Bricolage Grotesque</span> pealkirjades</td><td>Säilitab praeguse iseloomu kahe fondiga. Mõõtarvud Inter tabular-nums, ilma eraldi monofondita.</td></tr>
+      <tr><th>Tüpograafia</th><td><span class="num">12 / 14 / 16 / 20 / 24 / 32 px</span><br>read <span class="num">16 / 20 / 24 / 28 / 32 / 40 px</span><br>kaalud <span class="num">400 / 500 / 600</span></td><td>Kuus kindlat rolli, ära kaovad murd-pikslised vaheastmed.</td></tr>
+      <tr><th>Vahed</th><td><span class="num">0 / 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 px</span></td><td>Üks 4 px alusega skaala; jooned ja optiline ikoonigeomeetria pole paigutusvahed.</td></tr>
+      <tr><th>Raadiused</th><td><span class="num">4 / 8 / 12 px</span></td><td>Märgend/check, kontroll, kaart/ülekate. Ringikujuline ikoon/avatar on eraldi geomeetria, mitte uus kaardistiil.</td></tr>
+      <tr><th>Varjud</th><td>3 taset</td><td>Pind, hover/dropdown, modaal; üks soe varjutoon. Mitte vari iga elemendi ümber.</td></tr>
+      <tr><th>Liikumine</th><td><span class="num">150 / 250 / 400 ms</span>; ühine ease ja exit</td><td>Hover/fookus, ülekatted, vajadusel sektsiooni orientatsioon. 400 ms ei lisandu igale navigeerimisele.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Pakutavate paaride kontrast</h3>
+  <div class="tbl compact"><table>
+    <thead><tr><th>Paar</th><th class="right">Kontrast</th><th>Hinnang</th></tr></thead>
+    <tbody>
+      <tr><th>Valge tekst primary-taustal</th><td class="right num">6,88:1</td><td><span class="badge success">AA</span></td></tr>
+      <tr><th>Teisene tekst pehmel neutraalsel pinnal</th><td class="right num">5,34:1</td><td><span class="badge success">AA</span></td></tr>
+      <tr><th>Semantilised tekstid oma taustal</th><td class="right num">5,79–6,38:1</td><td><span class="badge success">AA</span></td></tr>
+      <tr><th>Kontrolliserv valgel</th><td class="right num">3,71:1</td><td><span class="badge success">≥ 3:1</span></td></tr>
+      <tr><th>Kontrolliserv lõuendil</th><td class="right num">3,41:1</td><td><span class="badge success">≥ 3:1</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>Need on kindlate värvipaaride kontrollid, mitte kogu saidi ligipääsetavuse sertifikaat. Läbipaistvused, pildid, fookuse taustad ja päris olekud kontrollitakse rakendamisel uuesti.</p>
+</section>
+
+<!-- ============ 4 KOMPONENDID ============ -->
+<section id="komponendid">
+  <div class="sec-head"><span class="sec-num">4</span><h2>Ühiste komponentide kavand</h2></div>
+  <div class="cards">
+    <article class="card">
+      <h4>Button</h4>
+      <div class="spec"><span>primary</span><span>secondary</span><span>ghost</span><span>destructive</span><span>sm 32</span><span>md 40</span><span>lg 48</span></div>
+      <p>Külgpolster 12/16/20 px. Mobiilis sm/md vähemalt 44 px. Ikoon ei muuda mõõtu. Kõigil default, hover, active, focus-visible, disabled ja loading; loading ei muuda nupu laiust ega käivita tegevust teist korda.</p>
+    </article>
+    <article class="card">
+      <h4>Badge</h4>
+      <div class="spec"><span>5 semantilist varianti</span><span>12 px tekst</span><span>min 24 px</span><span>r 4 px</span></div>
+      <p>Üks komponent. Säilivad olemasolevad olekusildid ja tähenduslikud ikoonid. Kategooriasilt on neutraalne. Olekukaart on ühine galeriiga; tähelepanuprioriteeti ei lahendata enam ühe erandliku musta kapsliga.</p>
+    </article>
+    <article class="card">
+      <h4>Field</h4>
+      <div class="spec"><span>input</span><span>select</span><span>textarea</span><span>check / radio / switch</span></div>
+      <p>Jagavad servi, fookust, tüpograafiat ja olekuid. Üherealiste kõrgused vastavad nuppudele. Mobiilis sisendi tekst 16 px; check/radio/switch saavad vähemalt 44 px sildiga tabamisala. Olemasolevaid veateateid ei kirjutata ümber.</p>
+    </article>
+    <article class="card">
+      <h4>Pinnad</h4>
+      <div class="spec"><span>r 12 px</span><span>polster 24 px</span><span>mobiil 16 px</span></div>
+      <p>Kaart ja modaal jagavad raadiust. Dropdown kasutab sama serva ja varjutaset; toast on hele ning tekst saab murduda. Tabeli joondus, reavahed ja sorteerimis-/filtritoimingud on ühised.</p>
+    </article>
+    <article class="card">
+      <h4>Responsiivsus</h4>
+      <div class="spec"><span>sahtel ≤ 1024 px</span><span>sildistatud kirjed</span></div>
+      <p>Külgriba läheb sahtliks kuni 1024 px; vormid murduvad sisu järgi. Tabelid muutuvad kitsal vaatel sildistatud kirjeteks, säilitades kõik andmed ja tegevused, ilma külgsuunalise kerimise nõudeta. Dokumendi ekraanivaade kohandub, trükivaade ja prinditav sisu säilivad.</p>
+    </article>
+    <article class="card">
+      <h4>Liikumine</h4>
+      <div class="spec"><span>hover / press / fookus</span><span>ülekate sisse–välja</span><span>skeleton</span></div>
+      <p>Ainult päris laadimisega seotud skeleton. Ei lisata dekoratiivset püsiliikumist. Reduced-motion lülitab nihked ja pöörded välja; sisu ei jää animatsiooni taha peitu.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ 5 VAATED ============ -->
+<section id="vaated">
+  <div class="sec-head"><span class="sec-num">5</span><h2>Vaadete kaupa: praegu → kavandatud tulemus</h2></div>
+  <p>See on <strong>enne / kavandatud pärast</strong>, mitte väide valmis refaktori kohta. Kõigile ridadele lisanduvad eespool kirjeldatud ühised komponendid.</p>
+
+  <div class="tbl views"><table>
+    <thead><tr><th>Vaade</th><th>Praegu / fookus</th><th>Kavandatud pärast</th></tr></thead>
+    <tbody>
+      <tr><th>Ühine kest ja navigatsioon</th><td>Eri loomise-, otsingu- ja ikooninupud; hiline mobiilimurre</td><td>Ühised kontrollid, selge aktiivne navigeerimine, 44 px tabamisalad ja varasem sahtel</td></tr>
+      <tr><th>Avaleht</th><td>Eraldi composer/preset/nupuretseptid, mitmed tekstiskaalad</td><td>Säilib AI-keskne kompositsioon; ühtsed sisendid, tegevused ja rahulikum liikumine</td></tr>
+      <tr><th>Ülevaade</th><td>320 ja 768 px juures ülevool; metriikide eri rõhutused</td><td>Murdvad sektsioonid, ühine arvude ja pealkirjade hierarhia</td></tr>
+      <tr><th>Portfell</th><td>Kaardi/tabeli režiimidel eri stiilid; ülevool</td><td>Sama filter ja staatus; kitsal ekraanil loetavad kirjed</td></tr>
+      <tr><th>Esemeregister</th><td>Tihedad tabelid ja väikesed märgendid</td><td>Ühised tabeliread, fondid, kategooriad ja mobiilikirjed</td></tr>
+      <tr><th>Objekt</th><td>Suurim mõõdetud ülevool; mitut tüüpi väiketoimingud</td><td>Üheveeruline mobiilipaigutus, murduvad andmeplokid ja üks esmane tegevus</td></tr>
+      <tr><th>Lisa objekt</th><td>Hiljem lisatud eraldi väljad/servareeglid</td><td>Ühised vormikontrollid, sammud ja veaseisundid; vigase servadeklaratsiooni parandus</td></tr>
+      <tr><th>Objekti seaded</th><td>Jagab lisamisvoogu; eraldi salvestus-/manusekontrollid</td><td>Sama vormisüsteem lisamisvooga; andmete salvestamine ei muutu</td></tr>
+      <tr><th>Pakkumised</th><td>Vähemalt 780 px sisetabel</td><td>Ühine tabel, mobiilis sildistatud kirjed ja nähtavad põhitegevused</td></tr>
+      <tr><th>Pakkumuse detail ja läbirääkimine</th><td>Kolm täidetud nupuvärvi, mikrotoimingud, kitsas külgpaan</td><td>Selge põhitegevus, ühtne vastamisrida ja kohanduv külgpaan; sama läbirääkimisloogika</td></tr>
+      <tr><th>Pakkumuse dokument</th><td>Paberi mõõdud/polster tekitavad telefonis ülevoolu</td><td>Ekraanil loetav dokument ja ühtne tööriistariba; trükipaigutus säilib</td></tr>
+      <tr><th>Koosta hinnapakkumine</th><td>Must/petrooleum tegevuste segu, inline-vormierandid</td><td>Ühtsed väljad, sammude hierarhia ja nupud</td></tr>
+      <tr><th>Lepingute loend</th><td>Eri lepinguplokkide tihedus ja 320 px ülevool</td><td>Sama loendireegel kõikidele lepinguliikidele</td></tr>
+      <tr><th>Üürilepingu detail</th><td>Eraldi redaktori-, punkti-, kinnitamis- ja allkirjanupud</td><td>Ühine kontrollisüsteem; dokument ja täpsed toimingud säilivad; runtime-kontroll vajab sobivat testkirjet</td></tr>
+      <tr><th>Töölepingu detail</th><td>Oma detail-/manusekujundus</td><td>Sama detailraam ja olekud; runtime-kontroll vajab sobivat testkirjet</td></tr>
+      <tr><th>Imporditud leping</th><td>Dokumendivalik, punktiredaktor ja muudatusringide eri nupud</td><td>Ühised tabs/tegevused/olekud, säilitades algdokumendi ja muudatuste sisu</td></tr>
+      <tr><th>Koosta leping</th><td>Illustratsioonikaardid juba sobivas valges suunas</td><td>Säilib kompaktne valge kaart, vari, noole nihe ja pildi pööre; ühtlustub ülejäänud vorm</td></tr>
+      <tr><th>Risk</th><td>Eraldi värviharud ja tihe allikate tabel</td><td>Kontrastsed semantilised olekud, sama otsing ja mobiilikirjed</td></tr>
+      <tr><th>Kalender</th><td>Eraldi kuupäeva-/filtrikiibid ja mininupud</td><td>Ühine juhtimisrida ja puutemõõdud; olemasolevate kuuvaate/nimekirja andmed säilivad</td></tr>
+      <tr><th>Tegevuste jälg</th><td>Väike metatekst ja eri loendirütm</td><td>Ühine ajajoone tüpograafia ja vahed; sündmusi ei muudeta</td></tr>
+      <tr><th>Kliendiportaal / Minu dokumendid</th><td>Oma composer ja mitu loendistiili</td><td>Sama süsteem kui operaatoril; kliendi õigused ja tegevused säilivad</td></tr>
+      <tr><th>Kliendi detail</th><td>Mitu eraldi tihedat tabeliplokki</td><td>Ühine kokkuvõte, andmerütm ja mobiilikirjed</td></tr>
+      <tr><th>Osapooled</th><td>Tabeli sisu võib kitsal ekraanil peituda</td><td>Kõik väljad säilivad sildistatud mobiilikirjetes</td></tr>
+      <tr><th>Suhtlus</th><td>Veel üks composer ja filtrinuppude perekond</td><td>Sama sisendi- ja saatmiskontroll, ühtne sõnumirütm</td></tr>
+      <tr><th>AI-agent</th><td>Eraldi saatmis- ja kinnitamis-/keeldumisnupud</td><td>Sama composer, ühine primary/destructive ning laadimisolek</td></tr>
+      <tr><th>Seaded</th><td>Palju inline-välju, erinev fookus, 408 px laius telefonis</td><td>Ühine vorm, vead, check/radio ja salvestusnupud; ettevõtte dokumendivärvid jäävad sisuks</td></tr>
+      <tr><th>Kujundusgalerii</th><td>Dubleerib staatuseid ja erineb rakendusest</td><td>Elav stiilijuhend päris komponentide ja sama olekukaardiga</td></tr>
+      <tr><th>Avalehe variandid / pakkumuse näiteleht</th><td>Isoleeritud katsetuste stiilid</td><td>Selgelt katsenäited, mitte teine tootmise disainisüsteem; ei kustutata ilma eraldi otsuseta</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 6 JÄRJEKORD ============ -->
+<section id="jarjekord">
+  <div class="sec-head"><span class="sec-num">6</span><h2>Rakendamise järjekord pärast kinnitust</h2></div>
+  <ol class="steps">
+    <li><div>Ühised tokenid, Button/Badge/Field ja tegelikke komponente kasutav galerii.</div></li>
+    <li><div>Ühine kest, navigatsioon, vormid, tabelid ja kõige suurema ülevooluga vaated.</div></li>
+    <li><div>Pakkumuste/lepingute detailid ja ülejäänud vaated; CSS-erandite eemaldamine komponentide kaupa.</div></li>
+    <li><div>Mõõdud 320/375/768/1024/1440+; klaviatuur, fookus, hover/active/disabled/loading/error, reduced-motion, mõlemad rollid ja prindivaade. Alles siis tegelik enne/pärast kokkuvõte iga vaate kohta.</div></li>
+  </ol>
+
+  <div class="decision">
+    <p class="k">Kinnitamiseks · üks brändiotsus</p>
+    <p class="q">Kas kõik üldised põhitegevused võivad minna ühtsele petrooleumtäitele, asendades praeguse musta / rohelise / petrooleumi jaotuse?</p>
+    <p class="sub">Ülejäänud ettepanek säilitab ThinkOne'i heleda, valgete kaartidega üldsuuna.</p>
+  </div>
+</section>
+
+<footer>
+  <span>ThinkOne · UI audit · 10.09.2026 · demo v420</span>
+  <span>Allikas: <a href="audit.md">audit.md</a> · lisad: <a href="inventory.json">inventory.json</a>, <a href="tokens.proposed.css">tokens.proposed.css</a>, <a href="style-guide.proposed.md">style-guide.proposed.md</a></span>
+</footer>
+
+</main>
+</div>
+
+<script>
+  // Sisukorra aktiivne kirje kerimise järgi
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc ol a'));
+    var secs = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+    if (!('IntersectionObserver' in window)) return;
+    var cur = null;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if (e.isIntersecting) cur = e.target; });
+      if (!cur) return;
+      links.forEach(function(a,i){ a.classList.toggle('on', secs[i] === cur); });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    secs.forEach(function(s){ if (s) io.observe(s); });
+  })();
+</script>
+</body>
+</html>

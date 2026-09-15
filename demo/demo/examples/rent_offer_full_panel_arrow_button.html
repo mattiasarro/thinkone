@@ -1,0 +1,56 @@
+<h2 class="sr-only">Full rent offer panel with a confirm button reading Kinnita ja saada with an arrow icon, Kokkuvõte summary card, and attachments with 3D-style PDF icons.</h2>
+<style>
+.wrap{background:var(--surface-1);border-radius:12px;padding:2rem;display:flex;justify-content:center}
+.col{width:340px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;font-size:14px;line-height:1.5}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.sub{font-size:12px;color:var(--text-muted)}
+.sec{color:var(--text-secondary)}
+.num{font-variant-numeric:tabular-nums}
+.hr{border-top:0.5px solid var(--border);margin:16px 0}
+.pill{display:inline-block;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--surface-1);color:var(--text-secondary)}
+.btn{width:100%;height:40px;border-radius:999px;background:var(--fill-success);color:var(--on-success);border:none;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px}
+.att{display:flex;align-items:center;gap:12px;padding:10px 0}
+.att+.att{border-top:0.5px solid var(--border)}
+</style>
+<svg style="display:none"><symbol id="pdf3d" viewBox="0 0 56 64">
+<path d="M14 6h22l14 14v36a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6V12a6 6 0 0 1 6-6z" fill="#B4B2A9"/>
+<path d="M12 3h22l14 14v36a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6V9a6 6 0 0 1 6-6z" fill="#F1EFE8"/>
+<path d="M34 3v10a4 4 0 0 0 4 4h10z" fill="#D3D1C7"/>
+<rect x="12" y="38" width="24" height="4" rx="2" fill="#B4B2A9"/>
+<rect x="12" y="46" width="18" height="4" rx="2" fill="#B4B2A9"/>
+<rect x="12" y="54" width="12" height="4" rx="2" fill="#B4B2A9"/>
+<rect x="2" y="20" width="36" height="16" rx="4" fill="#A32D2D"/>
+<rect x="2" y="18" width="36" height="16" rx="4" fill="#E24B4A"/>
+<rect x="5" y="20" width="30" height="2" rx="1" fill="#F09595"/>
+<text x="20" y="30.5" text-anchor="middle" font-size="11" font-weight="500" fill="#FCEBEB" font-family="var(--font-sans)" letter-spacing=".06em">PDF</text>
+</symbol></svg>
+<div class="wrap"><div class="col">
+
+<div class="card">
+  <button class="btn">Kinnita ja saada<i class="ti ti-arrow-right" style="font-size:18px" aria-hidden="true"></i></button>
+  <p class="sub" style="margin:10px 0 0;text-align:center">Klient saab lingi e-postile · kehtib 23.06.2026-ni</p>
+</div>
+
+<div class="card" style="padding:1.5rem 1.5rem 1.25rem">
+  <h3 style="margin:0 0 16px;font-size:16px;font-weight:500">Kokkuvõte</h3>
+  <p class="sub" style="margin:0 0 4px;letter-spacing:.04em">Üür kuus (bruto)</p>
+  <p class="num" style="margin:0;font-size:32px;font-weight:500;line-height:1.2;color:var(--text-accent)">3 391,15 €</p>
+  <p class="sub" style="margin:6px 0 0">sh käibemaks 24% · 656,35 €</p>
+  <div class="hr"></div>
+  <div class="row"><span class="sec">Pind 12</span><span class="num">318,0 m²</span></div>
+  <div class="row" style="margin-top:8px"><span class="sec">Hind</span><span class="num">8,60 €/m²</span></div>
+  <div class="row" style="margin-top:8px"><span class="sec">Üür kokku (neto)</span><span class="num" style="font-weight:500">2 734,80 €</span></div>
+  <div class="hr"></div>
+  <p class="sub" style="margin:0 0 8px;letter-spacing:.04em">Kõrvalkulud</p>
+  <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="pill">Talv ≈ 731 € · 2,30 €/m²</span><span class="pill">Suvi ≈ 461 € · 1,45 €/m²</span><span class="pill">Elekter 40 A</span><span class="pill">4 parkimiskohta</span></div>
+  <p class="sub" style="margin:14px 0 0;line-height:1.5">Kõrvalkulud tasutakse tegeliku tarbimise järgi ega sisaldu pakkumuse summas.</p>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 6px;font-size:16px;font-weight:500">Lisad</h3>
+  <div class="att"><svg width="30" height="34" aria-hidden="true"><use href="#pdf3d"/></svg><div style="flex:1;line-height:1.35"><span style="font-weight:500">Lisa 1</span> <span class="sec">· Pinnaplaan (Pind 12)</span></div><i class="ti ti-eye" style="font-size:18px;color:var(--text-muted)" aria-hidden="true"></i></div>
+  <div class="att"><svg width="30" height="34" aria-hidden="true"><use href="#pdf3d"/></svg><div style="flex:1;line-height:1.35"><span style="font-weight:500">Lisa 2</span> <span class="sec">· Asendiplaan + parkimisskeem</span></div><i class="ti ti-eye" style="font-size:18px;color:var(--text-muted)" aria-hidden="true"></i></div>
+</div>
+
+</div></div>

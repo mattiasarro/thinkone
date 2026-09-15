@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ThinkOne · Kujundusgalerii</title>
+  <!-- SAMA styles.css mis demol — muudatus seal = muudatus siin JA demos.
+       Ajatempel väldib vahemälu: galerii näitab alati värsket CSS-i. -->
+  <script>document.write('<link rel="stylesheet" href="styles.css?kg=' + Date.now() + '">');</script>
+  <noscript><link rel="stylesheet" href="styles.css" /></noscript>
+  <!-- samad fondid mis demol, et galerii näitaks tegelikku tüpograafiat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Poppins:wght@500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 116 116'><rect width='116' height='116' rx='24' fill='%23000'/><text x='58' y='78' font-size='60' text-anchor='middle' fill='white' font-family='sans-serif'>K</text></svg>">
+  <style>
+    /* --- galerii OMA karkass (kg-prefiks, et mitte demo klassidega põrkuda) --- */
+    .kg-wrap { max-width: 1180px; margin: 0 auto; padding: 48px 32px 120px; }
+    .kg-head { margin-bottom: 44px; }
+    .kg-head h1 { font-family: var(--font-display); font-size: 30px; font-weight: 650; letter-spacing: -.02em; }
+    .kg-head p { color: var(--muted); font-size: 13.5px; margin-top: 8px; max-width: 640px; line-height: 1.6; }
+    .kg-toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .kg-toc a { font-size: 12px; font-weight: 600; color: var(--ink-2); text-decoration: none;
+      background: var(--surface); border: var(--edge); border-radius: 999px; padding: 6px 13px; }
+    .kg-toc a:hover { border-color: var(--ink); color: var(--ink); }
+    .kg-sec { margin-top: 64px; scroll-margin-top: 24px; }
+    .kg-sec > h2 { font-family: var(--font-display); font-size: 19px; font-weight: 650; letter-spacing: -.015em;
+      padding-bottom: 10px; border-bottom: 2px solid var(--ink); margin-bottom: 6px; }
+    .kg-sec > .kg-note { color: var(--muted); font-size: 12px; margin-bottom: 22px; line-height: 1.55; }
+    .kg-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+    .kg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; align-items: start; }
+    .kg-item { min-width: 0; }
+    .kg-lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--faint); margin: 0 0 8px 2px; }
+    .kg-side { max-width: 300px; }
+    .kg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .kg-sw { border: var(--edge); border-radius: 12px; overflow: hidden; background: var(--surface); }
+    .kg-sw i { display: block; height: 52px; }
+    .kg-sw span { display: block; padding: 8px 11px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+    .kg-sw span b { display: block; font-family: var(--font-ui); font-size: 11.5px; color: var(--ink); margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div class="kg-wrap">
+
+  <div class="kg-head">
+    <h1>ThinkOne · kujundusgalerii</h1>
+    <p>Elav stiilijuhend: sama <code class="mono">styles.css</code> JA sama <code class="mono">app.js</code> mis demol —
+       olekukaart (STATUS), märgendid, ikoonid ja toast tulevad päris komponentidest, mitte koopiast.
+       Tokenid: <a href="design-system/tokens.proposed.css">tokens.proposed.css</a> · audit: <a href="design-system/audit.html">audit.html</a>.</p>
+    <div class="kg-toc">
+      <a href="#varvid">Värvid</a><a href="#tekst">Tüpograafia</a><a href="#nupud">Button</a>
+      <a href="#pillid">Pillid ja märgised</a><a href="#juhtkaart">Juhtkaart</a><a href="#kaardid">Kaardid</a>
+      <a href="#dokument">Dokumendiread</a><a href="#loim">Kommentaarilõim</a><a href="#lahenda">„Lahenda"</a>
+      <a href="#vormid">Vormid</a><a href="#kylg">Külgpaan</a><a href="#tabelid">Tabelid ja rajad</a>
+      <a href="#a4">A4 dokument</a><a href="#mikro">Mikro</a>
+    </div>
+  </div>
+
+  <!-- ================= VÄRVITOKENID ================= -->
+  <section class="kg-sec" id="varvid">
+    <h2>Värvitokenid</h2>
+    <div class="kg-note">Üks neutraalskaala (7 astet), üks primary (petrooleum) ja neli semantilist paari (success · warning · error · info). Tekst kasutab ainult <span class="mono">--color-text</span> / <span class="mono">--color-text-secondary</span>.</div>
+    <div class="kg-swatches" id="kg-swatches"></div>
+  </section>
+
+  <!-- ================= TÜPOGRAAFIA ================= -->
+  <section class="kg-sec" id="tekst">
+    <h2>Tüpograafia</h2>
+    <div class="kg-note">Bricolage Grotesque (pealkirjad, 600) · Geist (UI; .mono = tabular-nums) · Geist Mono (.num, tunnused, summad). Kuus rolli: caption 12/16 · label 14/20 · body 16/24 · heading-sm 20/28 · heading 24/32 · display 32/40.</div>
+    <div class="kg-item"><div class="kg-lbl">page-h1</div><h1 class="page-h1">Mikrotehnika AS</h1></div>
+    <div class="kg-item" style="margin-top:18px"><div class="kg-lbl">doc-h2 + h2-sub</div>
+      <span class="doc-h2">Äriruumide üürilepingu eritingimused <span class="h2-sub">· Lisa 3</span></span></div>
+    <div class="kg-item" style="margin-top:18px"><div class="kg-lbl">overline</div><div class="overline">Allkirjastamine</div></div>
+    <div class="kg-item" style="margin-top:18px"><div class="kg-lbl">body / muted / mono</div>
+      <div style="font-size:13.5px;max-width:560px;line-height:1.62">Üürnik tasub Üüri iga kuu 10. kuupäevaks Üürileandja arvelduskontole. <span class="muted">Teisene selgitav tekst on hall.</span> <span class="mono">LEP-2026-011 · 8,50 €/m²</span></div></div>
+  </section>
+
+  <!-- ================= NUPUD ================= -->
+  <section class="kg-sec" id="nupud">
+    <h2>Button</h2>
+    <div class="kg-note">variant = primary · ghost (secondary: valge + kontrolliserv) · text (läbipaistev) · destructive; size = sm 32 · md 40 · lg 48.
+      Ikoon ei muuda mõõtu. Kõigil: default · hover · active · focus-visible · disabled · loading. Mobiilis (≤640px / puude) vähemalt 44px.</div>
+    <div class="kg-lbl">md (vaikimisi)</div>
+    <div class="kg-row">
+      <button class="btn btn-primary"><span data-ic="check"></span> Kinnita</button>
+      <button class="btn btn-primary"><span data-ic="send"></span> Saada üürnikule</button>
+      <button class="btn btn-ghost">Lükka tagasi</button>
+      <button class="btn btn-text">Loobu</button>
+      <button class="btn btn-destructive">Kustuta</button>
+      <button class="btn btn-text btn-destructive">Tühista pakkumus</button>
+    </div>
+    <div class="kg-lbl">sm · lg</div>
+    <div class="kg-row">
+      <button class="btn btn-primary btn-sm"><span data-ic="edit"></span> Paku uus sõnastus</button>
+      <button class="btn btn-ghost btn-sm"><span data-ic="spark"></span> Sõnasta AI-ga</button>
+      <button class="btn btn-ghost btn-sm">Vaata üürnikuna <span data-ic="arrow"></span></button>
+      <button class="btn btn-primary btn-sm">Ava esimene<span class="bic" data-ic="arrow"></span></button>
+      <button class="btn btn-primary btn-lg"><span data-ic="check"></span> Allkirjasta</button>
+      <button class="btn btn-ghost btn-lg">Eelvaade</button>
+    </div>
+    <div class="kg-lbl">disabled · loading · fookus (Tab)</div>
+    <div class="kg-row">
+      <button class="btn btn-primary" disabled><span data-ic="check"></span> Aktsepteerin (disabled)</button>
+      <button class="btn btn-ghost" disabled>Teisene (disabled)</button>
+      <button class="btn btn-primary" aria-busy="true"><span data-ic="send"></span> Saadan…</button>
+      <button class="btn btn-ghost" aria-busy="true">Laen…</button>
+      <button class="btn btn-primary" id="kg-load-demo">Klõpsa: laadimisolek 1,5 s</button>
+    </div>
+    <div class="kg-lbl">muud tegevused: „+ Uus", ikooninupp, tekstilink, rea-eemaldus</div>
+    <div class="kg-row">
+      <button class="btn-loo"><span data-ic="plus"></span><span>Uus</span></button>
+      <button class="icon-btn" title="Teavitused"><span data-ic="info"></span></button>
+      <button class="steplink">+ hinnaperiood</button>
+      <button class="rmstep" title="Eemalda">×</button>
+    </div>
+  </section>
+
+  <!-- ================= PILLID JA MÄRGISED ================= -->
+  <section class="kg-sec" id="pillid">
+    <h2>Badge — olekud ja märgised</h2>
+    <div class="kg-note">Üks Badge, viis semantilist varianti (neutral · success · warning · error · info) + primary. 12/16 px, kaal 500, min 24 px, raadius 4; värv ja pehme taust samast paarist.
+      Olekukaart on <b>SAMA</b> mis rakenduses (app.js STATUS) — allolev renderdatakse sealt. Edenemisring: katkendlik mustand → veerand/pool/kolmveerand → täis-linnuke; X/kriips lõppseisud. Kategooriasilt (tag) on neutraalne.</div>
+    <div class="kg-lbl">Semantilised variandid</div>
+    <div class="kg-row">
+      <span class="badge neutral">neutral</span><span class="badge success">success</span><span class="badge warning">warning</span>
+      <span class="badge error">error</span><span class="badge info">info</span><span class="pill primary">primary</span>
+    </div>
+    <div class="kg-lbl">Kogu olekukaart (STATUS → semantika)</div>
+    <div class="kg-row" id="kg-status-all"></div>
+    <div class="kg-lbl">Lepingu ja pakkumuse elutsükkel</div>
+    <div class="kg-row" data-pills="Mustand V1,Saadetud,Allkirjastamisel,Kehtiv,Lõppenud,Aegunud,Tühistatud"></div>
+    <div class="kg-lbl">Kommentaari / läbirääkimise seisud</div>
+    <div class="kg-row" data-pills="Ootel,Arutelul,Ootab kinnitust,Lahendamisel,Kinnitatud,Selgitatud,Tagasi lükatud"></div>
+    <div class="kg-lbl">Muudatusring (Lisa N)</div>
+    <div class="kg-row" data-pills="Koostamisel,Kinnitamisel,Jõustunud,Teavitatud,Sõnastamisel"></div>
+    <div class="kg-lbl">Pinnad ja risk</div>
+    <div class="kg-row" data-pills="Vaba,Reserveeritud,Pakkumusel,Lepingus,Üüritud,Imporditud,MADAL,KESKMINE,KÕRGE"></div>
+    <div class="kg-lbl">Tag'id ja mikromärgised</div>
+    <div class="kg-row">
+      <span class="tag">Üürileping</span>
+      <span class="tag">5 punkti</span>
+      <span class="tag">Ärikinnisvara</span>
+      <span class="tag">Töölepingud</span>
+      <span class="src-chip">äriregister</span>
+      <span class="src-chip live">tehingust</span>
+    </div>
+    <div class="kg-lbl">Ülekirjutuse märgis (faktimärgis, mitte tegevus)</div>
+    <div class="kg-row">
+      <span class="overwrite"><span data-ic="arrow"></span> kirjutab üle: Üld · p 5.2 (indekseerimine 3%)</span>
+      <span class="overwrite"><span data-ic="arrow"></span> muudetud läbirääkimisel → Lisa 3</span>
+    </div>
+    <div class="kg-lbl">Olekuredel (dashboardi read)</div>
+    <div class="kg-row">
+      <div class="ladder-wrap"><div class="ladder"><i class="done"></i><b></b><i class="done"></i><b></b><i class="cur"></i><b></b><i></i><b></b><i></i></div><div class="llbl">Kõik aktsepteeritud</div></div>
+      <div class="ladder-wrap"><div class="ladder"><i class="done"></i><b></b><i class="cur amb"></i><b></b><i></i></div><div class="llbl">Kliendi ettepanek</div></div>
+    </div>
+  </section>
+
+  <!-- ================= JUHTKAART ================= -->
+  <section class="kg-sec" id="juhtkaart">
+    <h2>Juhtkaart</h2>
+    <div class="kg-note">Külgpaani esimene kaart: kompass + kelle kord + juhis + ÜKS tegevusnupp. „Sinu kord" = tume nõel, ootel = hall triiviv nõel.</div>
+    <div class="kg-grid">
+      <div class="kg-item kg-side"><div class="kg-lbl">me · tegevusega</div>
+        <div class="guide me"><span class="g-top"><span class="g-nav" aria-hidden="true"><i class="g-needle"></i></span><span class="g-kes">Sinu kord</span></span>
+          <span class="g-tx">Üürnik ootab vastust <b>3 punktile</b> — ava ja otsusta sealsamas.</span>
+          <button class="btn btn-primary btn-sm"><span data-ic="arrow"></span> Ava esimene</button></div></div>
+      <div class="kg-item kg-side"><div class="kg-lbl">wait</div>
+        <div class="guide wait"><span class="g-top"><span class="g-nav" aria-hidden="true"><i class="g-needle"></i></span><span class="g-kes">Ootab üürnikku</span></span>
+          <span class="g-tx">2 sõnastust ootab üürniku kinnitust punkti juures.</span>
+          <button class="btn btn-ghost btn-sm">Vaata üürnikuna <span data-ic="arrow"></span></button></div></div>
+      <div class="kg-item kg-side"><div class="kg-lbl">me · lõpusamm</div>
+        <div class="guide me"><span class="g-top"><span class="g-nav" aria-hidden="true"><i class="g-needle"></i></span><span class="g-kes">Sinu kord</span></span>
+          <span class="g-tx">Kõik punktid on kokku lepitud — aktsepteeri leping, siis liigub see allkirjastamisse.</span>
+          <button class="btn btn-primary btn-sm">Aktsepteeri leping<span class="bic" data-ic="check"></span></button></div></div>
+    </div>
+  </section>
+
+  <!-- ================= KAARDID ================= -->
+  <section class="kg-sec" id="kaardid">
+    <h2>Kaardid</h2>
+    <div class="kg-grid">
+      <div class="kg-item"><div class="kg-lbl">card pad + overline + kv</div>
+        <div class="card pad">
+          <div class="overline" style="margin-bottom:10px">Tehing</div>
+          <dl class="kv">
+            <dt>Pind</dt><dd>Pind 11 · Hoone T6B</dd>
+            <dt>Üür</dt><dd class="mono">8,50 €/m² · 2 720 € kuus</dd>
+            <dt>Periood</dt><dd class="mono">01.08.2026 – 31.07.2029</dd>
+          </dl>
+        </div></div>
+      <div class="kg-item"><div class="kg-lbl">met (mõõdikukaart)</div>
+        <a class="card pad met" href="#kaardid"><div class="l">Aktiivsed lepingud</div><div class="n mono">7<small>/ 12 pinda</small></div><div class="s">2 läbirääkimisel</div></a>
+        <div class="kg-lbl" style="margin-top:14px">stat-row (võtmefaktid kaardil)</div>
+        <div class="card pad"><div style="margin-bottom:10px"><b style="font-size:14px">Kehtiv leping</b></div>
+          <div class="stat-row">
+            <div class="stat"><div class="l">Üür kuus · +km</div><div class="v">2 720 €</div></div>
+            <div class="stat"><div class="l">Kehtib kuni</div><div class="v">31.07.2029</div></div>
+          </div></div></div>
+      <div class="kg-item"><div class="kg-lbl">note (infoplokk)</div>
+        <div class="note"><span data-ic="info"></span><div>Vabu ametikohti pole — kvoot on täidetud. Lisa uus esemeregistris.</div></div>
+        <div class="kg-lbl" style="margin-top:14px">empty (tühistate)</div>
+        <div class="card"><div class="empty" style="padding:28px"><div class="ic" data-ic="file"></div><div>Eritingimusi pole — lisanduvad läbirääkimisel.</div></div></div></div>
+      <div class="kg-item"><div class="kg-lbl">container-card (dokumendiloend)</div>
+        <div class="container-card">
+          <div class="ch"><b>Allkirjastatavad dokumendid</b><span class="tag">leping + plaanid</span></div>
+          <div class="ci"><span data-ic="file" class="kg-fic"></span> Üürileping LEP-2026-011</div>
+          <div class="ci" style="cursor:pointer"><span data-ic="file" class="kg-fic"></span> Lisa 1 · pinnaplaan <span class="tag" style="margin-left:auto">vaata</span></div>
+        </div>
+        <div class="kg-lbl" style="margin-top:14px">fin-cta (lõpusamm kohapeal)</div>
+        <div class="fin-cta"><b><span data-ic="check"></span> Kõik punktid on kokku lepitud</b>
+          <button class="btn btn-primary btn-sm">Aktsepteeri leping — liigu allkirjastamisele</button></div></div>
+    </div>
+  </section>
+
+  <!-- ================= DOKUMENDIREAD ================= -->
+  <section class="kg-sec" id="dokument">
+    <h2>Dokumendiread</h2>
+    <div class="kg-note">Lepingupunkti read: hoveril servast-servani jooned + pliiats; tööseisus punkt kannab õrna halli riba ja „Lahendamisel" pilli; lahendatud punkt rahuneb valgeks.</div>
+    <div class="doc">
+      <div class="doc-head">
+        <div><div class="doc-title">Üürilepingu dokument</div><div class="doc-sub">Klõpsa punktil kommenteerimiseks</div></div>
+        <span data-pill="Saadetud"></span>
+      </div>
+      <div class="clause-group">
+        <div class="gh sec-h"><span class="sec-n">3</span><span class="sec-t">Üür ja kõrvalkulud</span></div>
+        <div class="clause clickable">
+          <div class="ref">p 3.1</div>
+          <div class="body"><div class="ttl">Üür</div><div class="val">Üür on <b class="fv">8,50 €/m²</b> kuus, kokku <b class="fv">2 720 €</b> kuus (km-ta). <span class="muted" style="font-size:11px">(tavaline rida — hoveri proovimiseks)</span></div></div>
+          <div><span class="hov-edit" data-ic="edit"></span></div>
+        </div>
+        <div class="clause clickable flag">
+          <div class="ref">p 4.1</div>
+          <div class="body"><div class="ttl">Tagatisraha</div><div class="val">Tagatisraha on <b class="fv">3 kuu</b> Üür ehk <b class="fv">8 160 €</b>.</div></div>
+          <div><span data-pill="Lahendamisel"></span></div>
+        </div>
+        <div class="clause clickable">
+          <div class="ref">p 2.2</div>
+          <div class="body"><div class="ttl">Parkimine</div><div class="val">Üürnikul on õigus kasutada <b class="fv">4 parkimiskohta</b>.</div>
+            <div class="overwrite"><span data-ic="arrow"></span> kirjutatud üle: Lisa 4 eritingimustes (ülimuslik)</div></div>
+          <div><span data-pill="Kinnitatud"></span></div>
+        </div>
+      </div>
+      <div class="clause-group" style="border-top:1px solid var(--line)">
+        <details class="uld-sec" open>
+          <summary><span class="chev" data-ic="arrow"></span><span class="secnr">5.</span> Üür, kõrvalkulud ja maksed
+            <span class="cnt">6 punkti</span><span class="lockico" style="width:13px;height:13px" data-ic="lock"></span></summary>
+          <div class="uld-p clickable">
+            <span class="pref">5.2</span>
+            <div><p>Üüri korrigeeritakse üks kord aastas vastavalt tarbijahinnaindeksi muutusele, kuid mitte vähem kui 3% aastas.</p></div>
+            <div style="display:flex;gap:8px;align-items:center"><span data-pill="Selgitatud"></span></div>
+          </div>
+          <div class="uld-p clickable">
+            <span class="pref">5.3</span>
+            <div><p>Kõrvalkulud (elekter, vesi, küte, valve) tasub Üürnik vastavalt tegelikule tarbimisele esitatud arvete alusel.</p></div>
+            <div style="display:flex;gap:8px;align-items:center"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= KOMMENTAARILÕIM ================= -->
+  <section class="kg-sec" id="loim">
+    <h2>Kommentaarilõim</h2>
+    <div class="kg-note">Osapool loetav ilma nime lugemata: üürnik = hall kaart + hele märk, üürileandja = valge kaart + tume märk.
+      Staatusevärv elab AINULT otsusekaardi vasakus servas.</div>
+    <div class="doc"><div class="clause-group"><div class="clause open" style="border-bottom:none">
+      <div class="ref">p 4.1</div>
+      <div class="body">
+        <div class="ttl">Tagatisraha</div><div class="val">Tagatisraha on 3 kuu Üür ehk 8 160 €.</div>
+        <div class="clause-expand">
+          <div class="thread">
+            <div class="cmt th-card th-tenant">
+              <div class="th-head"><span class="th-av tenant" data-ic="user"></span>
+                <span class="th-id"><b>Laura Tamm</b><small>Üürnik</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Kas tagatisraha saaks olla 2 kuud? Emaettevõte on valmis andma garantiikirja.</div>
+            </div>
+            <div class="cmt th-card th-step th-lessor">
+              <div class="th-head"><span class="th-av lessor" data-ic="building"></span>
+                <span class="th-id"><b>Tarmo Sepp</b><small>Üürileandja · sina</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Millise tähtajaga garantiikirja saate esitada?</div>
+            </div>
+            <div class="cmt th-card th-step th-tenant">
+              <div class="th-head"><span class="th-av tenant" data-ic="user"></span>
+                <span class="th-id"><b>Laura Tamm</b><small>Üürnik</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Hiljemalt üleandmispäevaks.</div>
+              <div style="margin-top:9px"><span data-pill-k="Arutelul|amber"></span></div>
+            </div>
+            <div class="cmt th-card th-step th-lessor th-dec wait">
+              <div class="th-head"><span class="th-av lessor" data-ic="building"></span>
+                <span class="th-id"><b>Tarmo Sepp</b><small>Üürileandja · sina</small></span><span class="when">10.06.2026</span></div>
+              <div class="overline" style="margin:2px 0 6px">Uue sõnastuse ettepanek · vormistatakse Lisa 3 eritingimusena (ülimuslik)</div>
+              <div class="body">Erandina Põhitingimuste punktist 4.1 on tagatisraha suuruseks 2 (kahe) kuu Üür, tingimusel et Üürnik esitab garantiikirja hiljemalt Üleandmispäevaks.</div>
+              <div class="th-verdict"><span class="th-stamp wait">Ootab kinnitust</span></div>
+            </div>
+            <div class="cmt th-card th-step th-lessor th-dec ok">
+              <div class="th-head"><span class="th-av lessor" data-ic="building"></span>
+                <span class="th-id"><b>Tarmo Sepp</b><small>Üürileandja</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Kinnitatud — vormistatud Lisa 3 eritingimusena (ülimuslik, kirjutab üle: Põhi · p 4.1).</div>
+              <div class="th-verdict"><span class="th-stamp ok">Kinnitatud</span></div>
+            </div>
+            <div class="cmt th-card th-step th-lessor th-dec info">
+              <div class="th-head"><span class="th-av lessor" data-ic="building"></span>
+                <span class="th-id"><b>Tarmo Sepp</b><small>Üürileandja</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Selgitatud — indekseerimine on standard (üld p 5.2), eraldi kokkulepet pole vaja.</div>
+              <div class="th-verdict"><span class="th-stamp info">Selgitatud</span></div>
+            </div>
+            <div class="cmt th-card th-step th-lessor th-dec no">
+              <div class="th-head"><span class="th-av lessor" data-ic="building"></span>
+                <span class="th-id"><b>Tarmo Sepp</b><small>Üürileandja</small></span><span class="when">10.06.2026</span></div>
+              <div class="body">Ei aktsepteeritud — parkimiskohtade arv on hoone peale fikseeritud.</div>
+              <div class="th-verdict"><span class="th-stamp no">Tagasi lükatud</span></div>
+            </div>
+          </div>
+          <div class="th-wait" style="margin-top:10px"><span data-ic="hourglass"></span>
+            <div><b>Ootab üürileandja vastust</b> — saad teate, kui ta vastab.</div></div>
+          <details class="cmt-hist" style="margin-top:12px"><summary><span class="chev" data-ic="arrow"></span>Läbirääkimiste ajalugu · 2 lahendatud</summary>
+            <div class="thread">
+              <div class="cmt th-card th-tenant">
+                <div class="th-head"><span class="th-av tenant" data-ic="user"></span>
+                  <span class="th-id"><b>Laura Tamm</b><small>Üürnik</small></span><span class="when">02.05.2026</span></div>
+                <div class="body">Sõlmimisaegne lahendatud kommentaar (ajaloos, kergelt tuhmim).</div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+      <div></div>
+    </div></div></div>
+  </section>
+
+  <!-- ================= LAHENDA ================= -->
+  <section class="kg-sec" id="lahenda">
+    <h2>„Lahenda" minipaneel</h2>
+    <div class="kg-note">Operaatori üks sisenemiskoht kommentaari all: kolm üherealist teekonda (ikoonikivi · pealkiri · info-tooltip). Klõpsa real — valik + vormi trepp.</div>
+    <div style="max-width:560px">
+      <div class="wrap-actions" style="margin-bottom:10px"><button class="btn btn-primary btn-sm"><span data-ic="check"></span> Lahenda</button></div>
+      <div class="res-panel">
+        <div class="res-opts">
+          <button class="res-opt" data-o="vasta"><span class="ro-ic" data-ic="chat"></span><span class="ro-t">Vasta kommentaarile</span>
+            <span class="tip" data-tip="Kolm väljundit: vastus arutellu (punkt jääb lahtiseks), selgitus (üürnik kinnitab) või tagasilükkamine põhjendusega." data-ic="info"></span></button>
+          <button class="res-opt sel" data-o="muuda"><span class="ro-ic" data-ic="edit"></span><span class="ro-t">Muuda lepingupunkti</span>
+            <span class="tip" data-tip="Kirjutab põhitingimuse fakti ümber — laused, summad ja tähtajad arvutuvad üle. Jõustub pärast üürniku kinnitust." data-ic="info"></span></button>
+          <button class="res-opt" data-o="eri"><span class="ro-ic" data-ic="spark"></span><span class="ro-t">Sõnasta eritingimus</span>
+            <span class="tip" data-tip="Loob ülimusliku punkti (Lisa 3), mis kirjutab senise tingimuse üle. AI teeb eeltäite üürniku ettepaneku põhjal." data-ic="info"></span></button>
+        </div>
+        <div id="res-form">
+          <div class="overline" style="margin-bottom:8px">Üür (€/m² kuus)</div>
+          <div class="flex" style="gap:8px;flex-wrap:wrap;align-items:center">
+            <input class="fact-in" id="fact-edit-in" type="number" step="0.05" value="8.50" style="width:5.6em">
+          </div>
+          <div class="wrap-actions" style="margin-top:10px"><button class="btn btn-primary btn-sm"><span data-ic="send"></span> Saada üürnikule kinnitamiseks</button></div>
+          <div class="muted" style="font-size:11px;margin-top:6px">Põhitingimus kirjutatakse ümber pärast üürniku kinnitust.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VORMID ================= -->
+  <section class="kg-sec" id="vormid">
+    <h2>Vormid ja sisendid</h2>
+    <div class="kg-grid">
+      <div class="kg-item"><div class="kg-lbl">Field: input · select · date · textarea (40px, kontrolliserv 3:1, fookus outline)</div>
+        <div class="card pad">
+          <div class="field"><label for="kg-f1">Üürniku nimi või registrikood</label><input id="kg-f1" placeholder="nt Future Invest OÜ" /><span class="hint">Otsing äriregistrist</span></div>
+          <div class="field"><label for="kg-f2">Lepingu tähtaeg</label><select id="kg-f2"><option>3 aastaks</option><option>5 aastaks</option></select></div>
+          <div class="field"><label for="kg-f3">Lõppkuupäev</label><input id="kg-f3" type="date" value="2027-06-10" /></div>
+          <div class="field"><label for="kg-f4">Märkus</label><textarea id="kg-f4" placeholder="Vabatekst…"></textarea></div>
+        </div></div>
+      <div class="kg-item"><div class="kg-lbl">Field olekud: read-only · disabled · error · check/radio (20px, ≥44px tabamisala)</div>
+        <div class="card pad">
+          <div class="field"><label for="kg-f5">Registrikood (read-only)</label><input id="kg-f5" value="14258963" readonly /></div>
+          <div class="field"><label for="kg-f6">Disabled</label><input id="kg-f6" value="Pole muudetav" disabled /></div>
+          <div class="field error"><label for="kg-f7">E-post</label><input id="kg-f7" value="nimi@" aria-invalid="true" aria-describedby="kg-f7e" /><span class="err" id="kg-f7e">Sisesta korrektne e-posti aadress.</span></div>
+          <label class="check"><input type="checkbox" checked> Kinnitan, et andmed on õiged</label>
+          <label class="check"><input type="radio" name="kg-r" checked> Smart-ID</label>
+          <label class="check"><input type="radio" name="kg-r"> Mobiil-ID</label>
+        </div></div>
+      <div class="kg-item"><div class="kg-lbl">ce-in (lõime tekstiala) + wrap-actions</div>
+        <div class="card pad">
+          <textarea class="ce-in" rows="3" placeholder="Teie kommentaar või muudatusettepanek selle punkti kohta…"></textarea>
+          <div class="wrap-actions" style="margin-top:8px;justify-content:flex-end"><button class="btn btn-primary btn-sm"><span data-ic="enter"></span> Saada</button></div>
+        </div></div>
+      <div class="kg-item"><div class="kg-lbl">faktid lausetes (fact-in / fact)</div>
+        <div class="card pad" style="font-size:13.5px;line-height:2">
+          Üür on <input class="fact-in" type="number" value="8.50" step="0.05" style="width:5.6em"> €/m² kuus,
+          kokku <span class="fact">2 720 €</span> kuus. Üleandmispäev on
+          <input class="fact-in" type="date" value="2026-08-01">.
+        </div></div>
+      <div class="kg-item"><div class="kg-lbl">eri-add (eritingimuse lisamine)</div>
+        <div class="eri-add">
+          <div class="overline" style="margin-bottom:8px">Lisa eritingimus</div>
+          <textarea class="eri-in" placeholder="Sõnasta muudatus… nt „Alates 01.01.2027 on Üürnikul õigus kasutada täiendavalt 2 parkimiskohta.&quot;"></textarea>
+          <div class="eri-tools"><button class="btn btn-primary btn-sm"><span data-ic="plus"></span> Lisa punkt</button></div>
+          <div class="muted" style="font-size:11px;margin-top:8px">Punkt lisandub täiendava tingimusena — ülekirjutus tekib punktil klõpsates.</div>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ================= KÜLGPAAN ================= -->
+  <section class="kg-sec" id="kylg">
+    <h2>Külgpaani komponendid</h2>
+    <div class="kg-grid">
+      <div class="kg-item kg-side"><div class="kg-lbl">Dokumendid (doc-pick)</div>
+        <div class="card pad">
+          <div class="overline" style="margin-bottom:8px">Dokumendid · libisev valik</div>
+          <div class="doc-picks"><span class="dp-glide" aria-hidden="true"></span>
+          <button class="doc-pick on"><span data-ic="file" class="kg-dpic"></span><span class="dp-tx">Üürileping<small>LEP-2026-011</small></span></button>
+          <button class="doc-pick"><span data-ic="file" class="kg-dpic"></span><span class="dp-tx">Lisa 1 · Pinnaplaan<small>Pind 11</small></span></button>
+          <button class="doc-pick"><span data-ic="file" class="kg-dpic"></span><span class="dp-tx">Lisa 3 · Eritingimused<small>2 punkti</small></span></button>
+          <button class="doc-pick nofile"><span data-ic="file" class="kg-dpic"></span><span class="dp-tx">Lisa 2 · Asendiplaan<small>PDF lisamata</small></span></button>
+          </div>
+        </div></div>
+      <div class="kg-item kg-side"><div class="kg-lbl">Toimingud (act-row + sa-inline)</div>
+        <div class="card pad">
+          <div class="overline" style="margin-bottom:10px">Toimingud</div>
+          <button class="act-row"><span>Algata muudatus</span><span class="mono" style="font-size:10.5px;color:var(--faint)">→ Lisa 4</span><span class="chev" data-ic="arrow"></span></button>
+          <button class="act-row"><span style="color:var(--red)">Tühista muudatusring</span><span class="chev" data-ic="arrow"></span></button>
+          <div class="divline"></div>
+          <details class="sa-inline">
+            <summary><span>Lepingu lõpetamine</span><span class="chev" data-ic="arrow"></span></summary>
+            <div class="muted" style="font-size:11.5px;line-height:1.55;margin:4px 0 8px">Üld p 12: kumbki pool võib lepingu üles öelda 1-aastase etteteatamisega.</div>
+            <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center">Esita lõpetamisteade</button>
+          </details>
+        </div></div>
+      <div class="kg-item kg-side"><div class="kg-lbl">Allkirjastamismeetod (m-btn)</div>
+        <div class="card pad">
+          <div class="overline" style="margin-bottom:8px">Allkirjastamise meetod</div>
+          <div class="method" data-glide="kg-method">
+            <button class="m-btn sel"><span class="m-ic si" data-ic="smartid"></span><span class="m-tx"><span class="m">Smart-ID</span><span class="s">soovituslik</span></span></button>
+            <button class="m-btn"><span class="m-ic mi" data-ic="mobiilid"></span><span class="m-tx"><span class="m">Mobiil-ID</span><span class="s">+372</span></span></button>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px"><span data-ic="shield"></span> Alusta allkirjastamist</button>
+        </div></div>
+    </div>
+  </section>
+
+  <!-- ================= TABELID JA RAJAD ================= -->
+  <section class="kg-sec" id="tabelid">
+    <h2>Tabelid, filtrid ja rajad</h2>
+    <div class="kg-lbl">pf-views (filtrisakid)</div>
+    <div class="kg-row">
+      <div class="pf-views" data-glide="kg-pf"><button class="pf-view on">Kõik</button><button class="pf-view">Üürilepingud</button><button class="pf-view">Aktiivsed</button><button class="pf-view">Arhiiv</button></div>
+    </div>
+    <div class="kg-lbl">tbl (klõpsatavad read)</div>
+    <div class="card" style="overflow:hidden;margin-bottom:22px">
+      <table class="tbl">
+        <thead><tr><th>Tunnus</th><th>Üürnik</th><th>Pind</th><th>Periood</th><th>Olek</th></tr></thead>
+        <tbody>
+          <tr class="clickable"><td><span class="id">LEP-2026-005</span></td><td>Nordic Fresh Foods OÜ</td><td class="mono">Pind 3</td><td class="mono">01.01.2026 – 31.12.2030</td><td><span data-pill="Kehtiv"></span></td></tr>
+          <tr class="clickable"><td><span class="id">LEP-2026-011</span></td><td>Mikrotehnika AS</td><td class="mono">Pind 11</td><td class="mono">01.08.2026 – 31.07.2029</td><td><span data-pill="Saadetud"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kg-lbl">cl-track (elutsükli rada)</div>
+    <div class="cl-track">
+      <span class="ct-step done"><i></i><span>Mustand V1</span></span><span class="ct-rail done"></span>
+      <span class="ct-step current"><i></i><span>Saadetud</span></span><span class="ct-rail"></span>
+      <span class="ct-step"><i></i><span>Kõik aktsept.</span></span><span class="ct-rail"></span>
+      <span class="ct-step"><i></i><span>Allkirjastamisel</span></span><span class="ct-rail"></span>
+      <span class="ct-step"><i></i><span>Kehtiv</span></span>
+    </div>
+  </section>
+
+  <!-- ================= A4 ================= -->
+  <section class="kg-sec" id="a4">
+    <h2>A4 dokument (väljavõte)</h2>
+    <div class="kg-note">Päris dokumendi keel: päis (bränd + tunnus), sh-lbl sektsioonisildid, sh-tbl faktiread.</div>
+    <div class="sheet sheet-embed" style="max-width:840px">
+      <div class="sh-head">
+        <div><div class="sh-brand">Taevavärava OÜ</div></div>
+        <div style="text-align:right">
+          <div class="sh-title">Äriruumide üürileping</div>
+          <div class="sh-sub mono">LEP-2026-011<br>Versioon: V1 · allkirjastamisel</div>
+        </div>
+      </div>
+      <div class="sh-lbl" style="margin-top:16px">Põhitingimused · Pind 11 · Hoone T6B</div>
+      <table class="sh-tbl"><tbody>
+        <tr><td colspan="2" style="padding-top:12px"><span class="sh-lbl">3. Üür ja kõrvalkulud</span></td></tr>
+        <tr><td class="sh-sub" style="vertical-align:top;width:170px">3.1 · Üür</td><td>Üür on 8,50 €/m² kuus, kokku 2 720 € kuus (km-ta)</td></tr>
+        <tr><td class="sh-sub" style="vertical-align:top">4.1 · Tagatisraha</td><td>2 kuu Üür <span class="sh-sub">(kirjutatud üle: Lisa 3, ülimuslik)</span></td></tr>
+      </tbody></table>
+    </div>
+  </section>
+
+  <!-- ================= MIKRO ================= -->
+  <section class="kg-sec" id="mikro">
+    <h2>Mikrokomponendid</h2>
+    <div class="kg-grid">
+      <div class="kg-item"><div class="kg-lbl">toast stack (klõpsa — virnastub; hover laotab lahti)</div>
+        <div class="toastx" style="grid-area:auto;display:inline-flex"><span class="tic" data-ic="check"></span><span class="ttx">Ettepanek saadetud · üürnik kinnitab punkti juures</span></div>
+        <div style="margin-top:10px"><button class="btn btn-ghost btn-sm" id="kg-toast-demo">Käivita toast-virn</button></div></div>
+      <div class="kg-item"><div class="kg-lbl">thinking (AI töötab)</div>
+        <span class="thinking"><span class="d"></span><span class="d"></span><span class="d"></span></span>
+        <span class="muted" style="font-size:12px;margin-left:8px">sõnastan…</span></div>
+      <div class="kg-item"><div class="kg-lbl">tip (tooltip — hover)</div>
+        <span style="font-size:13px">Indekseerimine <span class="tip" data-tip="Standard tuleb üldtingimustest: p 5.2 = fikseeritud 3% aastas." data-ic="info"></span></span></div>
+      <div class="kg-item"><div class="kg-lbl">divline + steplink + muted</div>
+        <div class="card pad"><div class="muted" style="font-size:12px">Sektsioonide eraldaja:</div><div class="divline"></div><button class="steplink">+ Lisa pind</button></div></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- SAMAD skriptid mis demol: komponendid (I, pill, STATUS, toast) tulevad app.js-ist; kest ei käivitu (#app-view puudub) -->
+<script src="uldtingimused.js"></script>
+<script src="data.js"></script>
+<script src="klauslid.js"></script>
+<script src="app.js"></script>
+<script>
+/* ikoonid kohale */
+document.querySelectorAll("[data-ic]").forEach(el => {
+  const svg = I[el.dataset.ic] || "";
+  /* nupu sees: ikoon otse nupu lapsena (nagu app.js mallides) — nii kehtib .btn > svg ikoonikast */
+  if (!el.className && el.parentElement && el.parentElement.matches(".btn, .btn-loo, .icon-btn, .role-tab")) el.outerHTML = svg;
+  else el.innerHTML = svg;
+});
+/* pillid kohale: data-pill="Staatus" ja data-pill-k="Tekst|kind" */
+document.querySelectorAll("[data-pill]").forEach(el => { el.outerHTML = pill(el.dataset.pill); });
+document.querySelectorAll("[data-pill-k]").forEach(el => { const [t, k] = el.dataset.pillK.split("|"); el.outerHTML = pill(t, k); });
+/* pillimaatriksid */
+document.querySelectorAll("[data-pills]").forEach(row => { row.innerHTML = row.dataset.pills.split(",").map(s => pill(s.trim())).join(""); });
+/* kogu olekukaart rakenduse STATUS-ist */
+const kgAll = document.getElementById("kg-status-all");
+if (kgAll) kgAll.innerHTML = Object.keys(STATUS).map(s => pill(s)).join("");
+/* laadimisoleku demo */
+const kgLoad = document.getElementById("kg-load-demo");
+if (kgLoad) kgLoad.onclick = () => { kgLoad.setAttribute("aria-busy", "true"); setTimeout(() => kgLoad.removeAttribute("aria-busy"), 1500); };
+/* värvitokenid */
+const TOKENS = ["--neutral-0","--neutral-1","--neutral-2","--neutral-3","--neutral-4","--neutral-5","--neutral-6",
+  "--color-primary","--color-primary-hover","--color-primary-subtle",
+  "--color-success","--color-success-subtle","--color-warning","--color-warning-subtle",
+  "--color-error","--color-error-subtle","--color-info","--color-info-subtle"];
+const css = getComputedStyle(document.documentElement);
+document.getElementById("kg-swatches").innerHTML = TOKENS.map(t => {
+  const v = css.getPropertyValue(t).trim();
+  return v ? `<div class="kg-sw"><i style="background:var(${t})"></i><span><b>${t}</b>${v}</span></div>` : "";
+}).join("");
+/* klõpsatav valik galeriis: res-opt / m-btn / doc-pick / pf-view */
+[[".res-opt","sel"],[".m-btn","sel"],[".doc-pick","on"],[".pf-view","on"]].forEach(([q, cls]) => {
+  document.querySelectorAll(q).forEach(b => b.addEventListener("click", () => {
+    b.closest(".res-opts, .method, .card, .pf-views")?.querySelectorAll(q).forEach(x => x.classList.toggle(cls, x === b));
+    if (q === ".doc-pick") requestAnimationFrame(kgDpGlide);
+  }));
+});
+/* dokumendivalija liugur (SAMA loogika mis app.js dpGlide) */
+function kgDpGlide() {
+  const host = document.querySelector(".doc-picks");
+  const on = host && host.querySelector(".doc-pick.on");
+  const g = host && host.querySelector(".dp-glide");
+  if (!host || !on || !g) return;
+  g.style.transform = `translateY(${on.offsetTop}px)`; g.style.height = on.offsetHeight + "px";
+  g.classList.add("set");
+}
+requestAnimationFrame(kgDpGlide);
+/* üldine liugur ([data-glide]): pf-sakid ja allkirjameetodi plaadid */
+function kgGlide(host) {
+  const a = host.querySelector(".on, .sel"); if (!a) return;
+  let g = host.querySelector(":scope > .g-pill");
+  if (!g) { g = document.createElement("span"); g.className = "g-pill"; g.setAttribute("aria-hidden", "true"); host.prepend(g); }
+  g.style.transform = `translate(${a.offsetLeft}px,${a.offsetTop}px)`;
+  g.style.width = a.offsetWidth + "px"; g.style.height = a.offsetHeight + "px";
+  g.classList.add("set");
+}
+document.querySelectorAll("[data-glide]").forEach(h => {
+  requestAnimationFrame(() => kgGlide(h));
+  h.addEventListener("click", () => requestAnimationFrame(() => kgGlide(h)));
+});
+window.addEventListener("load", () => document.querySelectorAll("[data-glide]").forEach(kgGlide));
+const tdemo = document.getElementById("kg-toast-demo");
+if (tdemo) tdemo.onclick = () => {
+  toast("Ettepanek saadetud · üürnik kinnitab punkti juures");
+  setTimeout(() => toast("Muudatus lisatud Lisa 4 ringi"), 600);
+  setTimeout(() => toast("Kõik punktid aktsepteeritud · leping liigub allkirjastamisse"), 1300);
+};
+
+/* galerii ikoonide mõõt seal, kus app.js klass puudub */
+document.querySelectorAll(".kg-fic svg").forEach(s => { s.style.width = "15px"; s.style.height = "15px"; s.style.flex = "none"; });
+document.querySelectorAll(".kg-dpic svg").forEach(s => { s.style.width = "15px"; s.style.height = "15px"; });
+document.querySelectorAll(".overwrite svg, .chev svg, .hov-edit svg, .th-wait > span svg, .fin-cta b svg").forEach(s => { if (!s.style.width) { s.style.width = "13px"; s.style.height = "13px"; } });
+document.querySelectorAll(".steplink svg").forEach(s => { s.style.width = "14px"; s.style.height = "14px"; });
+</script>
+</body>
+</html>

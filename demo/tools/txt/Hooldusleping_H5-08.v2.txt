@@ -1,0 +1,625 @@
+HOOLDUSLEPING Nr H5.08
+Taevavärava 6b
+<<<PAGE 1>>>
+Hooldusleping H5.08
+i (i)
+149524_v4
+Sisukord
+1 LEPINGU DOKUMENDID .................................................................................................................... 2
+2 LEPINGU ESE ....................................................................................................................................... 2
+3 HOOLDAJA KOHUSTUSED ................................................................................................................. 3
+4 HOOLDAJA ÕIGUSED.......................................................................................................................... 4
+5 TELLIJA KOHUSTUSED....................................................................................................................... 4
+6 TELLIJA ÕIGUSED ............................................................................................................................... 5
+7 TÖÖDE ÜLEANDMINE JA VASTUVÕTMINE ...................................................................................... 5
+8 TÖÖDE MITTEVASTAVUS LEPINGUTINGIMUSTELE ....................................................................... 5
+9 TASU JA MAKSETINGIMUSED ........................................................................................................... 6
+10 KONFIDENTSIAALSUSE NÕUE .......................................................................................................... 7
+11 GARANTIID.......................................................................................................................................... 7
+12 VASTUTUS JA VÄÄRAMATU JÕUD ................................................................................................... 7
+13 LEPINGU MUUTMINE, LÕPPEMINE JA LÕPETAMINE ...................................................................... 8
+14 MUUD SÄTTED .................................................................................................................................... 8
+LISA 1 – OBJEKTID JA TÖÖVÕTU PIIRID ............................................................................................................... 9
+LISA 2 – HOOLDUSTÖÖDE SPETSIFIKATSIOONID ............................................................................................ 10
+LISA 3 – AVARII JA LISATÖÖDE VÄLJAKUTSETE KORD ................................................................................ 15
+LISA 4 – HOOLDUS-, LISATÖÖDE JA VÄLJAKUTSETE HINNAKIRI ............................................................... 16
+LISA 5 – POOLTE KONTAKTISIKUD JA KONTAKTANDMED .......................................................................... 17
+© 2013 Caverion Eesti AS
+Mustamäe tee 16, 10617 TALLINN, EESTI
+www.caverion.ee
+<<<PAGE 2>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+2
+Käesoleva teenuste osutamise Lepingu (edaspidi: Leping) on sõlminud Tallinnas 01.06.2023. aastal, Tae-
+vavärava OÜ, aadressiga Harju maakond, Tallinn, Lasnamäe linnaosa, Valukoja tn 8/1, 11415, registrikoo-
+diga 16333502 mida esindab Varne Mälksoo, tegutsedes seaduse ja põhikirja alusel (edaspidi nimetatud
+Tellija) ja
+Caverion Eesti AS, aadressiga Mustamäe tee 16, 10617 Tallinn, registrikoodiga 10010169, mida esindab
+seaduse ja põhikirja alusel juhatuse liige Mart Kivi (edaspidi nimetatud Hooldaja)
+edaspidi nimetatud ka Pool ja ühiselt Pooled, alljärgnevas:
+1 LEPINGU DOKUMENDID
+1.1. Lepingu dokumendid koosnevad käesolevast Lepingust ja koos Lepinguga allkirjastatud lisadest ning
+muudest Lepingus ja selle lisades viidatud dokumentidest, milles lepitakse kokku peale käesoleva Lepingu
+allkirjastamist.
+1.2. Käesolevale Lepingule on lisatud Lepingu sõlmimisel järgmised lisad:
+1.2.1. Objektid, töövõtu piirid ja maksumused – Lisa nr 1
+1.2.2. Hooldustööde spetsifikatsioonid – Lisa nr 2
+1.2.3. Avarii ja lisatööde väljakutsete kord – Lisa nr 3
+1.2.4. Hooldus-, remonttööde ja väljakutsete hinnakiri – Lisa nr 4
+1.2.5. Poolte kontaktisikud ja vastutavad isikud – Lisa nr 5.
+2 LEPINGU ESE
+2.1 Käesoleva Lepinguga kohustub Hooldaja teostama järgmised tööd (edaspidi: Tööd):
+2.1.1 Lepingu Lisas 1 toodud objektide hooldustööd Lepingu Lisas 2 toodud mahtudes (edaspidi:
+Korralised Hooldustööd) Lepingu Lisas 1 toodud hinnaga;
+2.1.2 avariitööd vastavalt Lepingu Lisas 3 kehtestatud korrale ning Lisas 4 kehtestatud hinnakir-
+jale;
+2.1.3 lisatööd vastavalt Tellija tellimusele ja Lepingu Lisas 4 kehtestatud hinnakirjale või hinna-
+pakkumisele.
+2.2 Käesoleva Lepingu Lisad omavad Lepingu osadena Lepinguga samaväärset juriidilist jõudu.
+<<<PAGE 3>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+3
+3 HOOLDAJA KOHUSTUSED
+Hooldaja on kohustatud:
+3.1 Tegema Tööd vastavuses Lepinguga. Tööd loetakse tehtuks vastavuses Lepinguga, kui Tööd vasta-
+vad kõikidele Lepingust tulenevatele nõuetele, samuti kõigile kehtivatele õigusaktidele, normidele.
+3.2 Lepingus sätestamata nõuete osas peavad Tööd vastama sarnasele tegevusele esitatavatele nõuetele
+ja võimaldama Tellija jaoks Lepinguga eeldatud eesmärgi saavutamist ning olema asjaolusid arves-
+tades mõistliku, kuid mitte madalama, kui keskmise kvaliteediga.
+3.3 Võtma kasutusele igale Lisas 1 toodud objektile Tööde ja märkuste registreerimise päeviku (edas-
+pidi: Hoolduspäevik), mille vorm tuleb kooskõlastada Tellijaga, ja täitma seda regulaarselt.
+3.4 Peale Lepingu sõlmimist 1 (ühe) kuu jooksul koostama järgmise 12 (kaheteistkümne) kuu Korraliste
+Hooldustööde kava. Igakuist Korraliste Hooldustööde kava täpsustatakse vajadusel jooksvalt.
+3.5 Tagama kõigi Lepingu Lisas 1 toodud objektide tehnosüsteemide toimimise ja hoolduse vastavalt
+kasutus- ja hooldusjuhenditele ning käesolevale Lepingule.
+3.6 Teostama lisatöid ja hankima materjale vastavalt Tellija tellimustes toodud tööde kirjeldusele. Täien-
+davalt tellitud tööde teostamise tähtajaks loetakse tellimiskirjas poolte vahel kokkulepitud tähtaega.
+3.7 Tööde käigus avastatud puudustest ning vajalikest ennetavatest remontidest on Hooldaja kohustatud
+informeerima Tellijat ning on kohustatud tegema märke Hoolduspäevikusse.
+3.8 Teavitama Tellijat esimesel võimalusel kõikidest asjaoludest, mis takistavad Lepinguga seatud ees-
+märkide täitmist või kujutavad ohtu Tellija või hoones asuva kolmandatele isikutele kuuluvale va-
+rale.
+3.9 Tagama avariiteate vastuvõtu ja korraldama avarii likvideerimist Lepingu Lisas 3 kokku lepitud kor-
+ras.
+3.10 Tagama Tellija poolt üle antud materjalide ja dokumentatsiooni (sealhulgas punktis 5.1 nimetatud
+dokumentide) tagastamise ning Hoolduspäevikute üleandmise Lepingu lõppemisel.
+3.11 Kasutama Lepingust tulenevate kohustuste täitmiseks Hooldaja ainukasutusse antud ruume vastavalt
+sihtotstarbele, vastutama Tellija poolt Hooldaja ainukasutusse antud materiaalsete vahendite eest.
+3.12 Kohustama oma töötajaid kandma Tööde tegemisel ühtset vormiriietust ning informeerima oma töö-
+tajaid hoone ja territooriumi sisekorra- ja läbipääsueeskirjadest.
+3.13 Tagama, et Lepingu Lisas 1 toodud süsteemide ja seadmete käidu osas on määratud õigusaktidega
+nõutud ja õigusaktides sätestatud nõuetele vastavad isiku(d), lisades nende kontaktandmed Lepingu
+Lisasse 5.
+3.14 Kasutama Tööde tegemisel üksnes neid töötajaid, kes omavad vastava töö sooritamiseks vajalikke
+teadmisi ja oskusi.
+<<<PAGE 4>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+4
+3.15 Tagama, et kõik Hooldaja töötajad ja alltöövõtjad, kes käesoleva Lepingu täitmiseks teevad Hooldaja
+nimel Tööd:
+3.15.1 on enne nende objektil rakendamist tutvunud Tellija sisekorra eeskirjadega;
+3.15.2 järgivad tingimusteta Tellija objektil kehtivat turvarežiimi ja läbipääsusüsteemide halda-
+mise korda;
+3.15.3 teavitavad koheselt objekti kontaktisikut kõigist neile tööülesannetega seoses teatavaks saa-
+nud läbipääsu-, valve- ja tulekahjusignalisatsiooni või teiste süsteemide häiretest.
+4 HOOLDAJA ÕIGUSED
+4.1 Hooldajal on õigus teatada Tellijale täiendavate tööde ja kulutuste vajadusest seoses tehnosüsteemide
+korrashoiu tagamisega.
+4.2 Hooldajal on õigus Tööde teostamiseks kasutada alltöövõtjaid, jäädes ise täielikult vastutavaks
+Tööde teostamise kvaliteedi eest.
+4.3 Hooldajal on õigus keelduda Tööde teostamisest, kui Tellija ei suuda tagada võimalust pääseda ligi
+objekti sees paiknevatele hooldatavatele süsteemidele.
+4.4 Hooldajal on õigus peatada Tööde teostamine, kui Tellija ei ole Hooldajale alusetult tasunud kahe
+eelneva kuu Korraliste Hooldustööde eest.
+5 TELLIJA KOHUSTUSED
+Tellija on kohustatud:
+5.1 Andma akti alusel Hooldajale üle Tellija sisekorra eeskirjad ja turva- ning läbipääsurežiimi regulee-
+rivad eeskirjad, hooldatavate tehnosüsteemide ja seadmete projektdokumentatsiooni koos lisade,
+muudatuste ning hooldusjuhenditega.
+5.2 Tegema Hooldaja kontaktisikule sisekorra eeskirjade ja tavade sissejuhatava juhendamise.
+5.3 Tagama Hooldajale võimaluse pääseda operatiivselt juurde kõikidele Lepingu Lisas 1 toodud objek-
+tidele ja hooldatavatele tehnosüsteemidele ning mitte seadma takistusi Lepingu tingimuste täitmi-
+seks.
+5.4 Mitte viivitama põhjendamatult aktide ja arvete kooskõlastamisega.
+5.5 Varustama Hooldajat omal kulul objektil Lepinguliste kohustuste täitmiseks vajaliku elektriener-
+giaga, sooja ja külma veega.
+5.6 Vaatama läbi Hooldaja poolt esitatud hooldus- ja remonttööde ettepanekud 5 tööpäeva jooksul ja
+andma kas kooskõlastuse või keelduma sellest.
+<<<PAGE 5>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+5
+5.7 Mitte võimaldama kõrvalistel isikutel juurdepääsu hoolduse all olevatesse tehnokeskustesse ja lü-
+litusarmatuuri juurde ilma hooldaja nõusolekuta.
+5.8 Mitte sõlmima Korraliste Hooldustööde osas lepinguid teiste füüsiliste või juriidiliste isikutega tin-
+gimusel, et Hooldaja on täitnud oma kohustusi nõuete kohaselt.
+5.9 Jagama statistilist informatsiooni (elektrinäidud, veenäidud vms), mis on vajalikud tehnosüsteemide
+paremaks häälestamiseks.
+6 TELLIJA ÕIGUSED
+Tellijal on õigus:
+6.1 Kontrollida Hooldaja poolt esitatud arvete, kalkulatsioonide ja muude kulutuste õigsust ja vastavust
+tegelikkusele.
+6.2 Jooksvalt kontrollida Tööde tegemise käiku vastavalt Lepingule.
+6.3 Tellida Hooldajalt Lepingu Lisas 4 toodud hindadega lisatöid ja materjale, mida Hooldaja ei pea
+tegema ja tarnima Korraliste Hooldustööde raames, kuid mis on vajalikud Lepingu Lisas 1 nimetatud
+objekti(de) häireteta töö tagamiseks.
+6.4 Muuta Lisas 1 toodud objektide koosseisu ja tööde mahtusid, teatades sellest Hooldajale vähemalt 2
+(kaks) kuu ette.
+7 TÖÖDE ÜLEANDMINE JA VASTUVÕTMINE
+7.1 Hooldaja annab Tööd Tellijale üle peale konkreetse etapi tööde teostamist, esitades selle kohta Tööde
+teostamise akti.
+7.2 Tööd loetakse vastuvõetuks ka juhul, kui Tellija alusetult ei võta valmis Lepingule vastavat Tööd
+vastu talle selleks Hooldaja poolt antud mõistliku tähtaja jooksul.
+7.3 Tööde üleandmise kohta vormistatakse üleandmis-vastuvõtuaktid, kus on muuhulgas loetelu tehtud
+toimingute ja selleks kulunud aja kohta, kasutatud materjalide ja varuosade loetelu koos maksumu-
+sega objektide lõikes ning Tööde eest maksmisele kuuluva tasu täpne arvestus.
+7.4 Hooldaja esitab arvestuskuul teostatud Tööde üleandmis-vastuvõtmisakti enne igakuise koondarve
+esitamist, kui ei lepita kokku teisiti. Tellija on kohustatud Lepingule vastavad Tööd vastu võtma 2
+(kahe) tööpäeva jooksul alates Tööde üleandmis-vastuvõtmisakti saamisest või esitama põhjendatud
+keeldumise.
+8 TÖÖDE MITTEVASTAVUS LEPINGUTINGIMUSTELE
+8.1 Tellija peab teatama Tööde Lepingutingimustele mittevastavusest Hooldajale mõistliku aja jooksul
+pärast seda, kui ta sai sellest teada või pidi teada saama. Mõistlik aeg ei ole ühelgi juhul pikem, kui
+<<<PAGE 6>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+6
+5 (viis) tööpäeva. Tellija on Tööde Lepingutingimustele mittevastavust kirjeldanud piisavalt täpselt,
+kui ta esitab niisuguse omapoolse üldise seisukoha mittevastavuse kohta, mida on võimalik antud
+asjaoludel esmase ülevaatuse põhjal ilma täiendava uurimiseta esitada.
+8.2 Kui Tööd ei vasta Lepingutingimustele, võib Tellija nõuda Hooldajalt Tööde parandamist või uuesti
+tegemist.
+8.3 Tellija ei või vähendada Hooldajale maksmisele kuuluvat tasu, kui Tööde üleandmise-vastuvõtmise
+aktis on ära toodud Hooldajale nõue viia Tööd vastavusse Lepingu tingimustega ja Hooldaja täidab
+selle nõude aktis toodud tähtaja jooksul.
+8.4 Hooldaja ei vastuta Töö Lepingutingimustele mittevastavuse eest, mis tulenes Tellija juhistest, Tel-
+lija poolt hangitud materjali puudustest või kolmandate isikute eeltöödest.
+9 TASU JA MAKSETINGIMUSED
+9.1 Lepingus toodud Korraliste Hooldustööde hind on fikseeritud iga objekti osas eraldi Lisas 1.
+9.2 Kõikidele Lepingus toodud hindadele lisandub käibemaks.
+9.3 Lepingu Lisas 1 toodud Korraliste Hooldustööde hinna sisse kuuluvad kõik Korraliste Hooldustööde
+teostamiseks vajalikud kulutused, välja arvatud Lepingu punktis 9.4 sätestatud kulutused. Muuhulgas
+kuuluvad Lepingu Lisas 1 toodud Korraliste Hooldustööde hinna sisse:
+ Tellijale antavad konsultatsioonid hooldatavate tehnosüsteemide kasutamise ja hoolduse
+kohta.
+9.4 Lepingu Lisas 1 toodud Korraliste Hooldustööde hinna sisse ei kuulu järgmised kulutused:
+ kulumaterjalid (valgusallikad, filtrid, jm);
+ kulutused täiendavalt kokku lepitud ekspertiisidele ja töödele;
+ kulutused täiendavalt kokku lepitud toimingutele, mida Lepingu kohaselt ei tule teha Kor-
+raliste Hooldustööde raames;
+ kulutused, mis on tingitud lõhkumisest, vargusest või muul põhjusel purunemisest, mis ei
+ole tingitud hooldamatusest.
+9.5 Hooldaja esitab jooksva kuu kuutasu arve Lepingu järgi teostatavate Korraliste Hooldustööde eest
+(üks) kord kuus 05. kuupäeval.
+9.6 Tellija maksab Hooldajale korralise hoolduse tasu Hooldaja poolt esitatud ja Lepingule vastava arve
+alusel neljateistkümne (14) päeva jooksul arve esitamisest alates.
+9.7 Tasu maksmisega viivitamisel peab Tellija maksma Hooldajale iga maksmisega viivitatud päeva eest
+viivist 0,01 % tasumisele kuuluvast summast.
+9.8 Objektil kasutatud kulumaterjalide, varuosade ja muude materjalide ning teostatud lisatöö tundide
+eest esitatakse koos arvega aruanne 1 (üks) kord kuus peale hooldustööde teostamist. Varuosad ja
+<<<PAGE 7>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+7
+materjalid maksumusega kuni 300 (kolmsada) eurot (ei sisalda käibemaksu) esitatakse Tellijale jä-
+relaktsepteerimiseks, suurema maksumusega materjalide/varuosade hankele ja töödele antakse Tel-
+lija poolt eel aktsept.
+9.9 Tellija maksab Hooldajale Lisas 1 ja 2 loetletud tööde eest tasu Hooldaja poolt esitatud ja Lepingule
+vastava arve alusel neljateistkümne (14) päeva jooksul arve esitamisest alates.
+9.10 Rikete, avariide või muude eriväljakutsete korral tasutakse vastavalt Lisas 4 toodud hinnakirjale.
+9.11 Tellija poolt tellitavate muude tööde tunnihind ei sisalda Tööde käigus kulutatud materjalide hinda
+ega väljakutse tasu. Kui tööd ei teostata eelnevalt kokkulepitud hinnapakkumise alusel, siis iga ob-
+jektile väljasõidu eest arvestatakse väljakutse tasu vastavalt Lepingu Lisa 4’le. Iga objektile välja-
+sõidu järel teostatud Tööde eest esitatakse Tellijale arve minimaalselt 1 (ühe) tunni eest, millele on
+lisatud ka väljasõidu tasu. Iga järgneva töötunni kestvust alates 30 (kolmekümnest) minutist loetakse
+täistunniks.
+9.12 Lepingus toodud hinnad vaadatakse üle 1 (üks) kord kalendriaasta jooksul.
+9.13 Tellija poolt tellitavate lisatööde maksumus fikseeritakse kahepoolse kokkuleppega (hinnapakku-
+mine ja selle kinnitus taasesitamist võimaldavas vormis) enne vastavate lisatööde tegemise alusta-
+mist.
+10 KONFIDENTSIAALSUSE NÕUE
+10.1 Pooled kohustuvad Lepingu sisu mitte avaldama ega muul viisil kolmandatele isikutele kättesaada-
+vaks tegema ilma teise poole sellekohase eelneva kirjaliku nõusolekuta. Lepingu sisu on konfident-
+siaalne, välja arvatud sellise informatsiooni ulatuses, mille avaldamine on ette nähtud seadustes või
+muudes õigusaktides. Käesolevas punktis sätestatu kehtib ka informatsiooni kohta, mida pool on
+teise poole kohta teada saanud seoses käesoleva Lepingu täitmisega.
+11 GARANTIID
+11.1 Kasutatud materjalidele annab Hooldaja garantii vastavalt materjali valmistaja garantiitingimustele.
+11.2 Hooldaja annab ehitus/remont-asendus töödele 2 aastase garantii. Nende tegemisel kasutatud mater-
+jalidele ja paigaldatud seadmetele annab Hooldaja garantii, mille pikkus on vastavuses valmistajate-
+hase antud garantiiga. Garantii alguseks loetakse vastavate Tööde lõpetamist ja vastavasisulise akti
+esitamist Tellijale.
+12 VASTUTUS JA VÄÄRAMATU JÕUD
+12.1 Lepingust tulenevate kohustuste täitmata jätmist või mittekohast täitmist ei loeta Lepingu rikkumi-
+seks, kui selle põhjuseks on vääramatu jõud, mille all Pooled mõistavad tulekahju, loodusõnnetusi,
+<<<PAGE 8>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+8
+sõjategevust, blokaadi või muid Lepingu Pooltest sõltumatuid asjaolusid, mis teevad võimatuks Le-
+pingut kas osaliselt või täielikult täita. Vääramatu jõud muudab Lepingus näidatud kohustuste täit-
+mise tähtaegu vastava aja võrra, millal eelnimetatud asjaolud kestavad. Käesolev säte ei vabasta
+Lepingu Pooli jõupingutuste rakendamisest selliste põhjuste kõrvaldamiseks ning kumbki Pool
+peab maksimaalse kiirusega oma lepinguliste kohustuste täitmist jätkama niipea, kui sellised takis-
+tused on kõrvaldatud, kui Pooled ei lepi kokku teisiti.
+12.2 Hooldaja vastutab Tööde Lepingule vastavuse eest ning selle eest, et Tööde tulem, sh paigaldatud
+seadmed ja teostatud tööd, vastaksid eesmärgile ning funktsioneeriksid. Hooldaja vastutab tema
+poolt koostatud ja edastatava info õigsuse eest ning vastavuse eest õigusaktidele ja Lepingule.
+12.3 Mõlemad Lepingu pooled on täielikult vastutavad teisele poolele Lepingu rikkumisega tekitatud ot-
+sese kahju eest summas, mis ei ületa käesoleva lepinguga kokkulepitud ühe aastast tasu.
+13 LEPINGU MUUTMINE, LÕPPEMINE JA LÕPETAMINE
+13.1 Leping hakkab kehtima alates 01.06.2023.a. ja on tähtajatu.
+13.2 Lepingut võib muuta üksnes poolte kokkuleppel kirjalikult.
+13.3 Pooltel on õigus Leping üles öelda kahekuulise etteteatamisega.
+13.4 Lepingu lõppemisel annab Hooldaja kõik Lepingu objektiks olevad süsteemid ja samuti Hooldus-
+päevikud ning Lepingu punktis 5.1 nimetatud dokumendid üle Tellijale või tema poolt valitud
+uuele hooldajale.
+14 MUUD SÄTTED
+14.1 Informatsioonilist teadet, mis ei too kaasa endaga õiguslikke tagajärgi, võib edastada poolte vahel
+lihtkirjalikus vormis, samuti telefoni, elektronposti jms kaudu.
+14.2 Kõik Lepingu ja selle täitmisega seotud tahteavaldused loetakse kooskõlas Lepinguga esitatuks, kui
+need tahteavalduse on antud teisele poolele üle allkirja vastu, edastatud kirja või elektronposti teel
+Lepingus nimetatud aadressidel.
+14.3 Leping jõustub punkt nr 13 märgitud hetkest.
+14.4 Käesolevast Lepingust tulenevad vaidlused lahendatakse läbirääkimiste teel. Kokkuleppe mittesaa-
+vutamisel lahendatakse vaidlus ühe Lepinguosalise taotlusel kohtu kaudu.
+14.5 Leping on koostatud ja allkirjastatud digitaalselt Tellija ja Hooldaja poolt.
+<<<PAGE 9>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+9
+LISA 1 – OBJEKTID JA TÖÖVÕTU PIIRID
+HOOLDUSLEPINGULE NR. H5.08
+Hooldaja võtab hooldada alljärgnevad objektid ja nendes asuvad tehnosüsteemid. Korraliste Hooldustööde
+mahud on määratud Lepingu Lisas 2.
+Tehnosüsteemi all mõeldakse eraldi igat kogu hoonesse paigaldatud vastavat tehnosüsteemi koos kõigi oma
+seadmete ja nende osadega (kaablid, torud jne), kui ei ole määratud teisiti.
+Seadmetele ligipääsu tagab hoone omanik ja see lepitakse vajadusel kokku enne teostatavat hooldust.
+Hooldustööd ei sisalda kulumaterjalide (filtrid, akud, valgusallikad) ega muude tarvikute hinda. Nende
+kohta tehakse eraldi hinnapakkumine.
+Juhul, kui vajalike hooldustoimingute mahud erinevad lepingust, tehakse täiendavad hooldustoimingud
+kokkulepitava lisatasu eest.
+Tehnosüsteemide hooldus objektil – Taevavärava tee 6b, Lehmja Harju maakond
+Hooldustööde hind kokku 1104 €/kuus
+Hinnad ei sisalda käibemaksu
+SÜSTEEMID Sagedus
+aastas
+Hind KUUS
+Ventilatsiooniseadmete tehnohooldus SV1, V0.1, V0.2, VL1…VL30 (kokku 33
+seadet (üks sisse- väljapuhke seade ja 32 väljatõmbeventilaatorit)
+2 70 eur
+Ventilatsiooni tuletõkkeklappide kontroll 1 40 eur
+Vee- ja kanalisatsioonisüsteemide tehnohooldus 2 20 eur
+Gaasikatla ja kõttesõlme tehnohooldus (4 katelt) 4 110 eur
+Gaasipaigaldise järelevaataja teenus Pidev 45 eur
+Õhkkütteseadmete tehnohooldus 1 80 eur
+Kliimaseadmete tehnohooldus KK1..12-JK1...12, KK13.1-3-JK13.1-3, KK14.1-3 -
+JK14.1-3, KK15,16,19- JK15,16,19, KK18.1,2- JK18.1,2, KK17-JK17 (kokku 24
+süsteemi)
+2 115 eur
+Automaatse tulekahjusignalisatsiooni tehnohooldus 4 154 eur
+Evakuatsiooni ja tuletõkkeuste tehnohooldus 4 30 eur
+Tuletõkkesektsioonide terviklikkuse kontroll 1 25 eur
+Valve- ja läbipääsusüsteemi tehnohooldus 2 55 eur
+Suitsueemaldussüsteemide tehnohooldus 4 40 eur
+Elektripaigaldise käit madalpingel (sh piksekaitse visuaalne vaatlus 1x aastas) 12 130 eur
+Evakuatsioonivalgustuse tehnohooldus 12 50 eur
+Tehnikajuhi teenus Pidev 70 eur
+Käidujuhi teenus Pidev 70 eur
+24/7 avariiteenus, kuni 4 h reageerimine (hind vastavalt kehtivale Caverion
+Eesti AS hinnakirjale (soodustus hinnakirjast 25%)
+Pidev Vastavalt Lisa 4 hin-
+nakirjale
+<<<PAGE 10>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+10
+LISA 2 – HOOLDUSTÖÖDE SPETSIFIKATSIOONID
+HOOLDUSLEPINGULE NR. H5.08
+Hooldaja teostab kõiki hooldustöid vastavalt kehtivale seadusandlusele, tehnilistele normidele ja standardi-
+tele.
+Tööde kokkulepitud mahud on toodud järgnevalt:
+Ventilatsioonisüsteemi hooldus
+TÖÖD SAGEDUS
+Seadmete ülevaatus ja filtrite kontroll. 2x aastas
+Pöörlevate osade kontroll 2x aastas
+Elektriseadmete kontroll ja kaabliühenduste pingutamine 1x aastas
+Seadmete automaatika kontroll ja vajadusel häälestus 2x aastas
+Soojusvaheti töö kontroll 2x aastas
+Ventilatsiooniseadmete seesmine kuivpuhastus (ei sisalda rasvakanalite
+puhastust).
+1x aastas
+Ventiilide ja ventiiliajamite kontroll ja testimine 2x aastas
+Pumbasõlmede kontroll 2x aastas
+Survete kontroll 2x aastas
+Lekete kontroll 2x aastas
+Muud tööd/kontrollid sõltuvalt hooajast ja vajadusest. Vajadusel/Tellimisel
+(ei kuulu hoolduslepingu
+hinna sisse)
+Filtrite vahetus, filtrid tellimisel (ei kuulu hoolduslepingu hinna sisse) 1x aastas
+Jahutussüsteemi hooldus
+TÖÖD SAGEDUS
+Seadmete ülevaatus 2x aastas
+Elektriseadmete kontroll ja kaabliühenduste pingutamine. 1x aastas
+Seadmete automaatika kontroll ja vajadusel häälestus 2x aastas
+Kõikide jahutusventilaatorite kontroll 1x aastas
+Külmaaine lekkekontroll Vastavalt seadu-
+sele
+Fan-coilide filtrite puhastus 1x aastas
+Muud tööd/kontrollid sõltuvalt hooajast ja vajadusest. Vajadusel/Telli-
+misel (ei kuulu
+hoolduslepingu
+hinna sisse)
+Küttesõlme hooldus
+TÖÖD SAGEDUS
+Tööd vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele normile
+Seadmete ülevaatus 4x aastas
+Süsteemi rõhkude kontroll 4x aastas
+Paisupaakide eelrõhkude kontroll 1x aastas
+<<<PAGE 11>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+11
+Mudafiltrite puhastus 1x aastas/vajadusel
+Soojusvahetajate kontroll 1x aastas
+Lekete kontroll ja survetest (vajadusel kütte müüja esindajaga) 1x aastas
+Pumpade ja pumbasõlmede kontroll 4x aastas
+Juhtautomaatika ja graafikute kontroll 1x aastas
+Hoone radiaatorite pisteline kontroll 1x aastas
+Erinevate taatlust vajavate seadete taatlemiste organiseerimine Vajadusel/Tellimisel (ei
+kuulu hoolduslepingu
+hinna sisse)
+Muud tööd/kontrollid sõltuvalt hooajast ja vajadusest Vajadusel/Tellimisel (ei
+kuulu hoolduslepingu
+hinna sisse)
+Õhkkütteseadmete hooldus
+TÖÖD SAGEDUS
+Tööd vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele normile
+Ventilaatorite kontroll ja seadme välimine kuivpuhastus 1x aastas
+Gaasikatla hooldus
+Gaasikatla ja katlaveeringi hooldus
+SAGEDUS
+Seadmete ülevaatus 4xaastas
+Katlaringi süsteemi rõhkude kontroll 4xaastas
+Katlaringi paisupaakide eelrõhkude kontroll 2xaastas
+Katlaringi mudafiltrite puhastus 1xaastas
+Katlaringi pumpade ja pumbasõlmede kontroll 4xaastas
+Katla juhtautomaatika ja graafikute kontroll 1xaastas
+Katla põleti puhastamine 1xaastas
+Katla kaitse- ja reguleerimisseadmete kontroll 1xaastas
+Küttekatla ja põlemiskambri (kolde) kontroll 1xaastas
+Mõõtmisprotokollide koostamine, s.h. suitsugaasi CO, O2, CO2 analüüs vajadusel
+Elektripaigaldise hooldus
+TÖÖD SAGEDUS
+Tööd vastavalt paigaldaja poolt väljastatud juhendile, tehnilisele normile ja seadusandlusele
+Kilpide visuaalne ülevaatus 12x aastas
+RVK testimine 1x aastas
+Valguspaigaldise kontroll ja remont Vajadusel/Tellimisel (ei
+kuulu hooldusle-pingu
+hinna sisse)
+Programmkellade ja hämaralülitite töö kontroll 2x aastas
+Kilpide puhastamine 1x aastas
+Kilbi kontaktide pingutamine 1x aastas
+Kilbi jooniste kontroll 1x aastas
+Maanduspaigaldise kontroll 1x aastas
+Piksekaitse kontroll 1xaastas
+RLA ja teiste automaatsete lülituste kontroll 1x aastas
+<<<PAGE 12>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+12
+Muud tööd/kontrollid sõltuvalt hooajast ja vajadusest Vajadusel/Tellimisel (ei
+kuulu hoolduslepingu
+hinna sisse)
+Elektripaigaldise käit kuni 1000V
+TÖÖD SAGEDUS
+Tööd vastavalt paigaldaja poolt väljastatud juhendile, tehnilisele normile ja seadusandlusele
+Hooldusgraafikute koostamine (Käidujuhi teenus) 1x aastas
+Hooldusgraafikute täitmise jälgimine (Käidujuhi teenus) 12x aastas
+Paigaldise jooniste vastavuse kontroll 1x aastas
+Vajaminevate mõõtmiste ja seadusandlusest tulenevate kolmandate osa-
+poolte kontrolltoimingute organiseerimine (Käidujuhi teenus)
+Vastavalt seadusele
+Elektri käidukorraldaja objekti külastus (Käidujuhi teenus) Min 1 x aastas
+Tellija esindamine kuni 1000V käidu küsimustes (Käidujuhi teenus) Vajadusel/Tellimisel (ei
+kuulu hoolduslepingu
+hinna sisse)
+Muud tööd/kontrollid sõltuvalt vajadusest Vajadusel/Tellimisel (ei
+kuulu hoolduslepingu
+hinna sisse)
+Evakuatsioonivalgustuse hooldus
+TÖÖD SAGEDUS
+Tööd vastavalt paigaldaja poolt väljastatud juhendile, tehnilisele normile ja seadusandlusele
+Evakuatsioonivalgustuse ja akuvalgustite töö testimine ja kontroll 12x aastas
+Akuvalgustite mahtuvuse testimine 1x aastas
+Paigaldise jooniste vastavuse kontroll 1x aastas
+Muud tööd/kontrollid sõltuvalt vajadusest Vajadusel/Tellimi-
+sel (ei kuulu hool-
+duslepingu hinna
+sisse)
+Evakuatsioonivalgustuse käit
+Tööd vastavalt paigaldaja ja seadusandlusest tulenevatele nõuetele
+TÖÖD SAGEDUS
+Hooldusgraafikute koostamine (Käidujuhi teenus) 1x aastas
+Hooldusgraafikute täitmise jälgimine (Käidujuhi teenus) 12x aastas
+Paigaldise jooniste vastavuse kontroll 1x aastas
+Vajaminevate mõõtmiste ja seadusandlusest tulenevate kolmandate osapoolte kont-
+rolltoimingute organiseerimine
+Vastavalt seadu-
+sele
+Elektri käidukorraldaja objekti külastus (Käidujuhi teenus) 1x aastas
+Tellija esindamine turvavalgustuse käidu küsimustes (Käidujuhi teenus) Vajadusel/Telli-
+misel (ei kuulu
+hoolduslepingu
+hinna sisse)
+Muud tööd/kontrollid sõltuvalt vajadusest Vajadusel/Telli-
+misel (ei kuulu
+hoolduslepingu
+hinna sisse)
+Vee- ja kanalisatsioonisüsteemi hooldus
+TÖÖD SAGEDUS
+<<<PAGE 13>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+13
+Hooldus vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele normile (ei
+sisalda kaevude tühjendamist ja purgimisega seonduvaid kulutusi).
+2x aastas
+Tuletõkkeklappide (TTK) kontroll
+TÖÖD SAGEDUS
+Kontroll vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele normile 1x aastas
+Evakuatsiooniuste kontroll ja hooldus
+TÖÖD SAGEDUS
+Kontroll ja hooldus vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele
+normile
+4x aastas
+Tuletõkkeuste kontroll ja hooldus
+TÖÖD SAGEDUS
+Kontroll ja hooldus vastavalt paigaldaja poolt väljastatud juhendile ja tehnilisele
+normile
+4x aastas
+Piksekaitse visuaalne kontroll
+TÖÖD SAGEDUS
+Piksekaitse visuaalne kontroll − I ja II kaitsetase 1x kahe aasta jook-
+sul
+Piksekaitse visuaalne kontroll − III ja IV kaitsetase 1x aastas
+Piksekaitse täielik kontroll (mõõtmised) ja kriitilised juhtumid Vajadusel/Tellimi-
+sel (ei kuulu hool-
+duslepingu hinna
+sisse)
+Tehnikajuhi teenus
+Kliendi esindamine tehnilistes küsimustes Pidev
+Objektile hooldusgraafiku koostamine, selle jälgimine, hoolduste korraldamine ja
+dokumenteerimine
+1x aastas
+Energiakulude optimeerimine (Hoonesse paigaldatud süsteemide võimaluste piires) Pidev
+Tehnosüsteemide õige juhtimine Pidev
+Objektile vajaduspõhiste eelarvete koostamine ja tellijale esitamine 1x aastas
+Objektil toimuvaga pidevalt kursis (Tellija või Tellija esindaja annab infot erine-
+vatest toimuvatest ehitustöödest)
+Pidev
+2x aastas objekti tehniliste ruumide külastamine 2x aastas
+Tehnosüsteemide audit hoone vastuvõtmisel 1 x hoone vastu-
+võtmisel
+ATS hooldus
+TÖÖD Sagedus
+Kontrollida kõiki tehtud sissekandeid päevikusse ja tegutseda vastavalt nendele 1x kvartalis
+Kontrollida reservtoite akude mahtuvust 1x kvartalis
+Kontrollida keskseadme häire-, rikke- ja abifunktsioone 1x kvartalis
+Kontrollida visuaalselt automaatse tulekahju-signalisatsioonisüsteemi seadmeid ja
+märke niiskuse sattumisest keskseadmesse
+1x kvartalis
+<<<PAGE 14>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+14
+Viia läbi kõik ahelate kontrollid ja katsetused, mis on määratletud paigaldaja, tarnija
+või tootja poolt
+1x kvartalis
+Hinnata süsteemi toimimise terviklikkust ja teavitada valdajat inventari paigutusest
+ja hoone kasutusviisist tingitud süsteemi töö häiretest.
+1x kvartalis
+Kontrollida iga anduri, teatenupu ja alarmseadme tööd vastavalt tootja soovitustele 1x aastas
+Kontrollida visuaalselt, et kõik kaablite ühendused ja seadmed on korras, kahjustus-
+teta ja korralikult kaitstud
+1x aastas
+Kontrollida akude seisukorda 1x aastas
+Iga-aastase hoolduse ja katsetuse tulemuste kohta koostab hooldaja akti, mis antakse automaatse tulekahju-
+signalisatsioonisüsteemi eest vastutavale isikule.
+Suitsueemaldus
+TÖÖD Sagedus
+Seadmete ülevaatus ja kontroll. 4xaastas
+Liikuvate osade kontroll 4xaastas
+Elektriseadmete kontroll ja kaabliühenduste pingutamine. 4xaastas
+Akude mahtuvuse testimine 4xaastas
+Süsteemi kõikide sõlmede testimine 4xaastas
+Häirefunktsioonide testimine 4xaastas
+Seadmete automaatika kontroll ja vajadusel häälestus 4xaastas
+Valve- ja läbipääsusüsteemi tehnohooldus
+TÖÖD Sagedus
+Tööd vastavalt tootja ja paigaldaja juhenditele 2xaastas
+<<<PAGE 15>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+15
+LISA 3 – AVARII JA LISATÖÖDE VÄLJAKUTSETE KORD
+HOOLDUSLEPINGULE NR. H5.08
+1. Avariitööde ja rikete likvideerimise tööde väljakutseid võib esitada järgnevatel kontaktandmetel:
+• Kirjalikult mitte avariilased tööd!!!
+e-mail: hooldus@caverion.com või määratud tehnikajuhile (kontaktandmed lisas nr. 5)
+• Avariilised tööd telefoni teel
+5346 0000
+2. Avarii on tehnosüsteemi rikke erijuhtum, millega kaasneb oht eludele või suurele materiaalsele
+kahjule.
+3. Hooldaja reageerib avariiväljakutsele ja alustab Tööde teostamist lühima võimaliku aja jooksul
+(kuid mitte vähem, kui 4 (nelja) tunni jooksul tööpäevadel ja 8 (kaheksa) tunni jooksul töövälisel
+ajal).
+4. Täiendavate lisatööde teostamise aja lepivad pooled kokku tellimuse esitamisel.
+5. Avariiolukordades on Hooldaja kohustatud:
+• sulgema või organiseerima avariilise tehnosüsteemi osa sulgemise nii, et kahjud oleksid mini-
+maalsed;
+• kooskõlastama Tellija esindajaga kõik avarii likvideerimiseks vajaminevad materjali maksu-
+mused;
+• avariist teada saades informeerima avariisituatsioonist ja iseloomust Tellija esindajat ning esi-
+tama suuliselt või elektrooniliselt orienteeruva avarii likvideerimiseks vajalike tööde ja mater-
+jalide mahu ning maksumuse.
+6. Avarii- ja remonditööde väljakutseid volitab Tellija tegema järgnevaid isikuid lisaks kontaktisiku-
+tele:
+NIMI:
+:
+<<<PAGE 16>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+16
+LISA 4 – HOOLDUS-, LISATÖÖDE JA VÄLJAKUTSETE HINNAKIRI
+HOOLDUSLEPINGULE NR. H5.08
+Tellijale kehtib 25 % hinnasoodustus Caverion Eesti AS lisatööde ja väljakutsete hinnakirjast.
+Tehniku väljakutse tööpäevadel 08.00-17.00 60,00 EUR
+Tehniku töötund tööpäevadel 08.00-17.00 55,00 EUR
+Tehniku väljakutse tööpäevadel/puhkepäevadel 17.00-08.00 60,00 EUR
+Tehniku töötund puhkepäevadel 17.00-08.00 75,00 EUR
+Inseneri töötund 80,00 EUR
+Dokumentide korrastamise töötund (joonised, juhendid) 85,00 EUR
+Transport objektile: Tallinnas/Tartus tasuta, mujal rakendub hinna-
+kirjas toodud hind
+0,70 EUR/km x2
+Ventilatsioonisüsteemi puhtuse hinnang (video/pilt) al. 95,00 EUR
+Tuleohutuse ülevaatus Hinnastamine kokkuleppel
+Hoone tehnoülevaatus (TDD) Hinnastamine kokkuleppel
+<<<PAGE 17>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+17
+LISA 5 – POOLTE KONTAKTISIKUD JA KONTAKTANDMED
+HOOLDUSLEPINGULE NR. H5.08
+Hooldaja:
+Caverion Eesti AS
+Mustamäe tee 16, 10617, Tallinn
+Telefon: 5346 0000
+e-mail: hooldus@caverion.com
+Kontaktisikud:
+Tehnikajuht
+• Alger Jõras
+• alger.joras@caverion.com
+• +372 56910682
+Väljakutseid esitatakse telefonil 24/7:
+• +372 5346 0000
+Tellija:
+Taevavärava OÜ
+Harju maakond, Tallinn, Lasnamäe linnaosa, Valukoja tn 8/1, 11415
+Telefon: 5034135
+e-mail: varne@futureinvest.info
+Lepingulised küsimused: Varne Mälksoo
+Kontaktisikud: Maili Kivirähk, telef + e-mail
+Arved saata: arved@futureinvest.info
+PS. Igakuised, fikseeritud summaga arved saata arved@futreinvest.info Vahearved, hooldusarved,
+remondi ared – need palun meile saata peale Maili Kivirähk kinnitust.
+<<<PAGE 18>>>
+Hooldusleping H5.08
+Tehnosüsteemide hooldusleping
+18
+<<<PAGE 19>>>
+

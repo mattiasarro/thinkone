@@ -9,6 +9,42 @@
 (function () { // IIFE: hoiab const-id lokaalsena (klassikalised <script>-id jagavad globaalset skoopi)
 const VAT_RATE = 0.24; // Eesti standardmäär alates 01.07.2025
 
+/* --- DEMO AEG (v408): „täna" on PÄRIS tänane kuupäev, mitte fikseeritud 10.06.2026. -----------------
+   Seeme on kirjutatud ankru SEED_ANCHOR järgi; laadimisel nihutatakse LOO-kuupäevad (pakkumused, audit,
+   impordi kinnitamine, pakkumuse võtmekuupäev, seemne lepingud) ankrust tänasesse (shiftStoryDates).
+   PÄRIS imporditud lepingute kuupäevad (sõlmitud 2023, tähtajad 2027–2030, THI) jäävad paika.
+   Salvestatud seis (localStorage) ei nihku enam — demo elab edasi päris ajas; „Lähtesta demo" seemendab
+   tänasest uuesti. Uued kirjed: loodud = TODAY_EE (kuupäev), aeg = NOW_EE() (kuupäev + kellaaeg). */
+const SEED_ANCHOR = new Date(2026, 5, 10);
+const DEMO_TODAY = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); })();
+const SEED_SHIFT_DAYS = Math.round((DEMO_TODAY - SEED_ANCHOR) / 86400000);
+const pad2 = (n) => String(n).padStart(2, "0");
+function fmtEE(d) { return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`; }
+function fmtISO(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+const TODAY_EE = fmtEE(DEMO_TODAY);
+function NOW_EE() { const n = new Date(); return `${fmtEE(n)} ${pad2(n.getHours())}:${pad2(n.getMinutes())}`; }
+/* nihutab stringis KÕIK dd.mm.yyyy ja yyyy-mm-dd kuupäevad N päeva (kellaaeg jääb) */
+function shiftDates(str, days) {
+  if (!days || typeof str !== "string") return str;
+  return str.replace(/\b(\d{2})\.(\d{2})\.(\d{4})\b/g, (m, d, mo, y) => fmtEE(new Date(+y, +mo - 1, +d + days)))
+            .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (m, y, mo, d) => fmtISO(new Date(+y, +mo - 1, +d + days)));
+}
+function shiftDeep(v, days) {
+  if (typeof v === "string") return shiftDates(v, days);
+  if (Array.isArray(v)) { for (let i = 0; i < v.length; i++) v[i] = shiftDeep(v[i], days); return v; }
+  if (v && typeof v === "object") { for (const k of Object.keys(v)) v[k] = shiftDeep(v[k], days); return v; }
+  return v;
+}
+function shiftStoryDates() {
+  const d = SEED_SHIFT_DAYS; if (!d) return;
+  OFFERS.forEach(o => shiftDeep(o, d));
+  LEASES.forEach(l => shiftDeep(l, d));
+  TLEPINGUD.forEach(t => shiftDeep(t, d));
+  AUDIT.forEach(a => shiftDeep(a, d));
+  KEY_DATES.forEach(k => { if (!/imporditud/i.test(k.objekt || "")) shiftDeep(k, d); });
+  IMPORDITUD.forEach(x => { if (x.kinnitatud) x.kinnitatud = shiftDates(x.kinnitatud, d); }); /* ainult impordi kinnitamise päev */
+}
+
 /* --- Mitu ettevõtet ühe konto all (spets etapp 01) --------------------------
    Aktiivne ettevõte valitakse külgribalt; valik püsib localStorage'is ja
    andmestik laetakse lehe taaslaadimisel vastava ettevõtte seemnest. */
@@ -85,25 +121,27 @@ const TAITUVUS_AJALUGU = [31, 31, 35, 35, 35, 38, 42, 42, 40, 38, 38];
    hind on €/m² üüripinna kohta, kuus.
    jaotus = pinna osad (ladu/kontor/…) üüripinna m²-tes; osade summa = yyripind. */
 const SPACES = [
-  { id: "p1",  nr: 1,  nimi: "Pind 1",  tyyp: "Ladu + müügisaal", neto: 502.0, yyripind: 538.4, koef: 1.04, hind: 8.50, elekter: 63, parkimine: 6, plaan: "Lisa1_pind1.pdf", staatus: "Üüritud",        tenant: "Baltic Logistics OÜ",
+  { id: "p1",  nr: 1,  nimi: "Pind 1",  tyyp: "Ladu + müügisaal", neto: 502.0, yyripind: 538.4, koef: 1.04, hind: 8.50, elekter: 63, parkimine: 6, plaan: "Lisa1_pind1.pdf", staatus: "Pakkumusel",     tenant: "Baltic Logistics OÜ",
     jaotus: [{ osa: "Ladu", m2: 420.0 }, { osa: "Müügisaal", m2: 118.4 }] },
   { id: "p2",  nr: 2,  nimi: "Pind 2",  tyyp: "Ladu",             neto: 172.0, yyripind: 184.2, koef: 1.05, hind: 7.80, elekter: 32, parkimine: 2, plaan: "Lisa1_pind2.pdf", staatus: "Vaba",           tenant: null },
   { id: "p3",  nr: 3,  nimi: "Pind 3",  tyyp: "Ladu",             neto: 180.1, yyripind: 192.5, koef: 1.04, hind: 7.80, elekter: 32, parkimine: 2, plaan: "Lisa1_pind3.pdf", staatus: "Pakkumusel",     tenant: "Roheline Ladu OÜ" },
-  { id: "p4",  nr: 4,  nimi: "Pind 4",  tyyp: "Ladu + kontor",    neto: 333.5, yyripind: 357.2, koef: 1.05, hind: 8.20, elekter: 40, parkimine: 4, plaan: "Lisa1_pind4.pdf", staatus: "Lepingus",       tenant: "Nordproff OÜ",
+  { id: "p4",  nr: 4,  nimi: "Pind 4",  tyyp: "Ladu + kontor",    neto: 333.5, yyripind: 357.2, koef: 1.05, hind: 8.20, elekter: 40, parkimine: 4, plaan: "Lisa1_pind4.pdf", staatus: "Pakkumusel",     tenant: "Nordproff OÜ",
     jaotus: [{ osa: "Ladu", m2: 268.4 }, { osa: "Kontor", m2: 88.8 }] },
   { id: "p5",  nr: 5,  nimi: "Pind 5",  tyyp: "Ladu + kontor",    neto: 340.2, yyripind: 364.0, koef: 1.05, hind: 8.20, elekter: 40, parkimine: 4, plaan: "Lisa1_pind5.pdf", staatus: "Reserveeritud",  tenant: "Mikrotehnika AS",
     jaotus: [{ osa: "Ladu", m2: 274.0 }, { osa: "Kontor", m2: 90.0 }] },
   { id: "p6",  nr: 6,  nimi: "Pind 6",  tyyp: "Ladu + kontor",    neto: 349.0, yyripind: 373.6, koef: 1.05, hind: 8.40, elekter: 40, parkimine: 4, plaan: "Lisa1_pind6.pdf", staatus: "Pakkumusel",     tenant: "Mikrotehnika AS",
     jaotus: [{ osa: "Ladu", m2: 281.6 }, { osa: "Kontor", m2: 92.0 }] },
-  { id: "p7",  nr: 7,  nimi: "Pind 7",  tyyp: "Ladu + kontor",    neto: 333.4, yyripind: 357.0, koef: 1.05, hind: 8.30, elekter: 40, parkimine: 3, plaan: "Lisa1_pind7.pdf", staatus: "Üüritud",        tenant: "Estplast OÜ",
+  { id: "p7",  nr: 7,  nimi: "Pind 7",  tyyp: "Ladu + kontor",    neto: 333.4, yyripind: 357.0, koef: 1.05, hind: 8.30, elekter: 40, parkimine: 3, plaan: "Lisa1_pind7.pdf", staatus: "Vaba",           tenant: null,
     jaotus: [{ osa: "Ladu", m2: 268.0 }, { osa: "Kontor", m2: 89.0 }] },
   { id: "p8",  nr: 8,  nimi: "Pind 8",  tyyp: "Ladu + kontor",    neto: 333.5, yyripind: 357.1, koef: 1.05, hind: 8.30, elekter: 40, parkimine: 3, plaan: "Lisa1_pind8.pdf", staatus: "Vaba",           tenant: null,
     jaotus: [{ osa: "Ladu", m2: 268.1 }, { osa: "Kontor", m2: 89.0 }] },
   { id: "p9",  nr: 9,  nimi: "Pind 9",  tyyp: "Ladu",             neto: 170.0, yyripind: 181.9, koef: 1.05, hind: 7.80, elekter: 32, parkimine: 2, plaan: "Lisa1_pind9.pdf", staatus: "Vaba",           tenant: null },
-  { id: "p10", nr: 10, nimi: "Pind 10", tyyp: "Ladu",             neto: 101.6, yyripind: 108.7, koef: 1.07, hind: 8.00, elekter: 25, parkimine: 1, plaan: "Lisa1_pind10.pdf", staatus: "Üüritud",       tenant: "Käsitöö Koda OÜ" },
+  { id: "p10", nr: 10, nimi: "Pind 10", tyyp: "Ladu",             neto: 101.6, yyripind: 108.7, koef: 1.07, hind: 8.00, elekter: 25, parkimine: 1, plaan: "Lisa1_pind10.pdf", staatus: "Vaba",          tenant: null },
   { id: "p11", nr: 11, nimi: "Pind 11", tyyp: "Büroo",            neto: 94.7,  yyripind: 103.2, koef: 1.09, hind: 12.50, elekter: 20, parkimine: 2, plaan: "Lisa1_pind11.pdf", staatus: "Vaba",          tenant: null },
   { id: "p12", nr: 12, nimi: "Pind 12", tyyp: "Ladu + kontor",    neto: 297.0, yyripind: 318.0, koef: 1.07, hind: 8.60, elekter: 40, parkimine: 4, plaan: "Lisa1_pind12.pdf", staatus: "Vaba",          tenant: null,
     jaotus: [{ osa: "Ladu", m2: 234.0 }, { osa: "Kontor", m2: 84.0 }] },
+  /* PÄRIS pind imporditud üürilepingust (LEP-2023-029, AS Maru Ehitus): 174,8 m², 7,60 €/m², 63 A, 2 kohta */
+  { id: "p29", nr: 29, nimi: "Pind 29", tyyp: "Ladu / tootmine",  neto: 166.5, yyripind: 174.8, koef: 1.05, hind: 7.60, elekter: 63, parkimine: 2, plaan: "T6B_pind_29_plaan.pdf", staatus: "Üüritud",       tenant: "AS Maru Ehitus" },
 ];
 
 /* --- Töölepingute vertikaal: osakond (konteiner) + ametikohad (üksused) -----
@@ -111,86 +149,15 @@ const SPACES = [
    Hõive (mitu kohta täidetud) EI OLE käsitsi väli — arvutatakse TLEPINGUD-ist. */
 const OSAKOND = { id: "os-haldus", nimi: "Haldus ja hooldus", ettevote: "Taevavärava OÜ" };
 
-const AMETIKOHAD = [
-  { id: "a1", nimi: "Objektihaldur",       kvoot: 1, tasu: 2400, katseaeg: "4 kuud",
-    ylesanded: "Objekti igapäevane haldus, üürnikusuhtlus, lepingute täitmise jälgimine",
-    ametijuhend: "Ametijuhend_objektihaldur.pdf" },
-  { id: "a2", nimi: "Hooldustehnik",       kvoot: 2, tasu: 1900, katseaeg: "4 kuud",
-    ylesanded: "Tehnosüsteemide hooldus, rikete kõrvaldamine, hooajatööd (sh libedustõrje)",
-    ametijuhend: "Ametijuhend_hooldustehnik.pdf" },
-  { id: "a3", nimi: "Müügi- ja rendijuht", kvoot: 1, tasu: 2800, katseaeg: "4 kuud",
-    ylesanded: "Vabade pindade turundus, pakkumused ja läbirääkimised, kliendisuhted",
-    ametijuhend: "Ametijuhend_rendijuht.pdf" },
-];
+/* MVP 1. etapp: töölepingute vertikaal on VÄLJAS — seemned tühjad, mudel ja
+   mootor (helperid, View.tooleping, wizardi haru) jäävad koodi uinuma.
+   Varasemad seemned (3 ametikohta + 3 töölepingut) on git-ajaloos (v=292 seis). */
+const AMETIKOHAD = [];
 
 /* --- Töölepingud (teine lepingutüüp SAMAL mootoril) ------------------------
    Sama klauslimudel: üld (lukus) / põhi (andmed) / eri (Lisa 3, kirjutab üle).
    Tööleping = hõive ametikoha peal; katseaeg ja palgaülevaatus = võtmekuupäevad. */
-const TLEPINGUD = [
-  {
-    id: "TL-2026-002", isik: "Karl Mets", roll: "töötaja", ametikohtId: "a1",
-    staatus: "Kehtiv", algus: "01.03.2026", tahtaeg: "Tähtajatu", allkirjastatud: "25.02.2026",
-    katseaegLopp: "30.06.2026", palgaylevaatus: "01.03.2027",
-    pohi: [
-      { ref: "Pooled", vaartus: "Taevavärava OÜ (tööandja) ⋅ Karl Mets (töötaja)" },
-      { ref: "Ametikoht", vaartus: "Objektihaldur · osakond Haldus ja hooldus" },
-      { ref: "Tööülesanded", vaartus: "Ametijuhendi järgi (Lisa 1): objekti haldus, üürnikusuhtlus, lepingute täitmise jälgimine" },
-      { ref: "Töötasu", vaartus: "2 400 € kuus (bruto) · makstakse kuu viimasel tööpäeval" },
-      { ref: "Töö tegemise koht", vaartus: "Hoone T6B · Taevavärava tee 6b, Rae vald", muudetud: true },
-      { ref: "Tööaeg", vaartus: "Täistööaeg · 40 tundi nädalas" },
-      { ref: "Algus ja tähtaeg", vaartus: "01.03.2026 · tähtajatu" },
-      { ref: "Katseaeg", vaartus: "4 kuud · kuni 30.06.2026 (läbitud)" },
-      { ref: "Palgaülevaatus", vaartus: "Kord aastas · järgmine 01.03.2027" },
-    ],
-    eri: [
-      { ref: "Lisa 3 · p1", tekst: "Töötajal on õigus teha kaugtööd kuni 2 päeva nädalas, kooskõlastades ajad vahetu juhiga.", kirjutabYle: "Põhi · Töö tegemise koht", staatus: "Aktsepteeritud" },
-    ],
-    lisad: [{ nr: 1, nimi: "Ametijuhend (objektihaldur)", fail: "— eseme manus —" }],
-    allkirjad: [
-      { pool: "Taevavärava OÜ", isik: "Margus Varne", meetod: "Smart-ID", aeg: "25.02.2026 10:12" },
-      { pool: "Töötaja", isik: "Karl Mets", meetod: "Smart-ID", aeg: "25.02.2026 11:47" },
-    ],
-  },
-  {
-    id: "TL-2026-004", isik: "Marten Kivi", roll: "töötaja", ametikohtId: "a2",
-    staatus: "Kehtiv", algus: "01.06.2026", tahtaeg: "Tähtajatu", allkirjastatud: "27.05.2026",
-    katseaegLopp: "30.09.2026", palgaylevaatus: "01.06.2027",
-    pohi: [
-      { ref: "Pooled", vaartus: "Taevavärava OÜ (tööandja) ⋅ Marten Kivi (töötaja)" },
-      { ref: "Ametikoht", vaartus: "Hooldustehnik · osakond Haldus ja hooldus (kvoot 2 kohta)" },
-      { ref: "Tööülesanded", vaartus: "Ametijuhendi järgi (Lisa 1): tehnosüsteemide hooldus, rikete kõrvaldamine, hooajatööd" },
-      { ref: "Töötasu", vaartus: "1 900 € kuus (bruto)" },
-      { ref: "Töö tegemise koht", vaartus: "Hoone T6B · Taevavärava tee 6b, Rae vald" },
-      { ref: "Tööaeg", vaartus: "Täistööaeg · 40 tundi nädalas" },
-      { ref: "Algus ja tähtaeg", vaartus: "01.06.2026 · tähtajatu" },
-      { ref: "Katseaeg", vaartus: "4 kuud · kuni 30.09.2026" },
-    ],
-    eri: [],
-    lisad: [{ nr: 1, nimi: "Ametijuhend (hooldustehnik)", fail: "— eseme manus —" }],
-    allkirjad: [
-      { pool: "Taevavärava OÜ", isik: "Margus Varne", meetod: "Smart-ID", aeg: "27.05.2026 09:30" },
-      { pool: "Töötaja", isik: "Marten Kivi", meetod: "Mobile-ID", aeg: "27.05.2026 13:02" },
-    ],
-  },
-  {
-    id: "TL-2026-005", isik: "Anna Kask", roll: "kandidaat", ametikohtId: "a3",
-    staatus: "Saadetud", algus: "01.08.2026 (plaanitud)", tahtaeg: "Tähtajatu",
-    allkirjastatud: null, katseaegLopp: "30.11.2026 (plaanitud)", palgaylevaatus: "01.08.2027",
-    pohi: [
-      { ref: "Pooled", vaartus: "Taevavärava OÜ (tööandja) ⋅ Anna Kask (kandidaat)" },
-      { ref: "Ametikoht", vaartus: "Müügi- ja rendijuht · osakond Haldus ja hooldus" },
-      { ref: "Tööülesanded", vaartus: "Ametijuhendi järgi (Lisa 1): vabade pindade turundus, pakkumused, läbirääkimised" },
-      { ref: "Töötasu", vaartus: "2 800 € kuus (bruto) + tulemustasu kokkuleppel" },
-      { ref: "Töö tegemise koht", vaartus: "Hoone T6B · Taevavärava tee 6b, Rae vald" },
-      { ref: "Tööaeg", vaartus: "Täistööaeg · 40 tundi nädalas" },
-      { ref: "Algus ja tähtaeg", vaartus: "01.08.2026 (plaanitud) · tähtajatu" },
-      { ref: "Katseaeg", vaartus: "4 kuud · kuni 30.11.2026" },
-    ],
-    eri: [],
-    lisad: [{ nr: 1, nimi: "Ametijuhend (müügi- ja rendijuht)", fail: "— eseme manus —" }],
-    allkirjad: [],
-  },
-];
+const TLEPINGUD = [];
 
 /* --- Töölepingu üldtingimused (mallist, lukus — näidispunktid) -------------- */
 const TL_ULD = [
@@ -204,27 +171,79 @@ const TL_ULD = [
    Loetud (AI-toega) samasse klauslimudelisse. Õiguslik tõde = allkirjastatud
    lähtedokument; struktuur on selle indeks ja lähendus. Ei osale muudatuste
    voos (etapp 08); osaleb otsingus, Q&A-s, võtmekuupäevades ja aruandluses. */
+/* Imporditud lepingud — PÄRIS dokumendid kaustast importitud/ (v361): faktid loetud lepingutest
+   endist, failid demo/lisad/importitud/ all avatavad. Parameetrite VÕTMED loeb kood:
+   „Periood" = „dd.mm.yyyy – dd.mm.yyyy (…)" (portfelli rida), „Üür"/„Tasu" = AINULT kuusumma
+   (impKuutasu parsib arvu), „Tagatisraha" = „summa (…)", „Indekseerimine" THI → kalendri indekseerimisloogika. */
 const IMPORDITUD = [
-  { id: "LEP-2025-014", liik: "Üürileping", pool: "Estplast OÜ", ese: "Pind 7 · Hoone T6B",
-    punkte: 96, kinnitatud: "Tarmo Sepp · 12.05.2026", fail: "Uurileping_Estplast_2025 (originaal)",
-    parameetrid: [["Periood", "01.01.2025 – 31.12.2029 (60 kuud)"], ["Üür", "2 892,00 €/kuus (neto)"],
-      ["Indekseerimine", "Statistikaameti THI · iga 12 kuu"], ["Tagatisraha", "8 676,00 € (3 kuu üür)"]],
-    tahtajad: ["01.07.2026 · indekseerimine", "31.12.2029 · lepingu lõpp"] },
-  { id: "LEP-2024-022", liik: "Üürileping", pool: "Käsitöö Koda OÜ", ese: "Pind 10 · Hoone T6B",
-    punkte: 88, kinnitatud: "Tarmo Sepp · 12.05.2026", fail: "Uurileping_KasitooKoda_2024 (originaal)",
-    parameetrid: [["Periood", "01.08.2024 – 31.07.2027 (36 kuud)"], ["Üür", "869,60 €/kuus (neto)"],
-      ["Indekseerimine", "Fikseeritud 3% · iga 12 kuu"], ["Tagatisraha", "1 739,20 € (2 kuu üür)"]],
-    tahtajad: ["01.08.2026 · indekseerimine", "31.07.2027 · lepingu lõpp"] },
-  { id: "HAL-2023-01", liik: "Haldusleping", pool: "Propert Haldus OÜ", ese: "Hoone T6B",
-    punkte: 41, kinnitatud: "Tarmo Sepp · 14.05.2026", fail: "Haldusleping_2023 (originaal)",
-    parameetrid: [["Tasu", "1 450,00 €/kuus (neto)"], ["Etteteatamine", "3 kuud"],
-      ["Reageerimisaeg", "Avariitööd 4 h · muud tööd 48 h"]],
-    tahtajad: ["31.12.2026 · automaatse pikenemise otsustuskoht"] },
-  { id: "KIN-2026-07", liik: "Kindlustusleping", pool: "If P&C Insurance AS", ese: "Hoone T6B · varakindlustus",
-    punkte: 37, kinnitatud: "Tarmo Sepp · 14.05.2026", fail: "Poliis_KIN-2026-07 (originaal)",
-    parameetrid: [["Kindlustussumma", "4 200 000 €"], ["Preemia", "3 840 €/aastas"],
-      ["Omavastutus", "1 000 € juhtumi kohta"]],
-    tahtajad: ["31.01.2027 · poliisi lõpp"] },
+  { id: "LEP-2023-029", liik: "Üürileping", pool: "AS Maru Ehitus", ese: "Pind 29 · Hoone T6B",
+    punkte: 112, kinnitatud: "Tarmo Sepp · 12.05.2026", fail: "Üürileping P_29 MARU Ehitus.pdf",
+    solmitud: "25.11.2023", allkirjad: "Varne Mälksoo (üürileandja) · Andres Jakobi (üürnik) · digitaalselt",
+    /* parameetrid = põhitingimused (kood loeb võtmeid Periood/Üür/Tagatisraha/Indekseerimine);
+       Lisa 3 kokkulepped elavad eraldi `lisad[].punktid` all — vaates omaette plokk */
+    parameetrid: [
+      ["Periood", "25.11.2023 – 25.11.2030 (7 aastat)"],
+      ["Üleandmine", "Hiljemalt 02.01.2024"],
+      ["Üüripind", "174,8 m²"],
+      ["Kasutusotstarve", "Ladu- või tootmispind"],
+      ["Üürihind", "7,60 €/m² + km"],
+      ["Üür", "1 328,48 €/kuus (neto)"],
+      ["Parkimine", "2 kohta · nr 65 ja 101 · sisaldub üüris"],
+      ["Tagatisraha", "3 985,44 € (3 kuu üür + km)"],
+      ["Indekseerimine", "Statistikaameti THI · iga 12 kuu · esimene 01.01.2025"],
+      ["Maksetähtaeg", "Kuu 10. kuupäevaks"],
+      ["Kõrvalkulud", "Arvestite ja üürileandja arvete järgi"],
+      ["Elekter", "63 A · 220/360 V"]],
+    lisad: [
+      { nr: 1, nimi: "Üüripinna plaan", sisu: "P_29 asukoht ja piirid hoones", fail: "lisad/importitud/T6B_pind_29_plaan.pdf" },
+      { nr: 2, nimi: "Parkimiskohtade plaan", sisu: "Kohad nr 65 ja 101", fail: "lisad/importitud/P29_parkimine.pdf" },
+      { nr: 3, nimi: "Eritingimused", fail: "lisad/importitud/MARU_uurileping_P29_lisa3.pdf", allkirjastatud: "25.11.2023",
+        punktid: [
+          { muudab: "ÜT p 3.2 → uus 3.2.2", pealkiri: "Pikendusõigus", tekst: "Lepinguperiood 7 aastat. Üürnikul on õigus pikendada lepingut 5 aasta järel samadel tingimustel veel 5 aastaks, kui ta on lepingut korrektselt täitnud." },
+          { muudab: "ÜT p 5.2", pealkiri: "Indekseerimine THI järgi", tekst: "Üür tõuseb iga 12 kuu möödumisel üleandmisest automaatselt Statistikaameti THI aastamuutuse võrra (üldtingimuste fikseeritud 3 % asemel). Esimene indekseerimine 01.01.2025." },
+          { muudab: "ÜT p 6.3", pealkiri: "Tagatise korrigeerimine", tekst: "Tagatis viiakse 02.01.2029 vastavusse selleks hetkeks indekseeritud üüriga." },
+          { muudab: "ÜT p 12.5 kehtetu", pealkiri: "Ülesütlemine ilma põhjuseta välistatud", tekst: "Kummalgi poolel ei ole õigust lepingut mõjuva põhjuseta 1-aastase etteteatamisega üles öelda." },
+          { muudab: "ÜT p 8.2", pealkiri: "Reklaam fassaadil", tekst: "Üürnik võib paigaldada hoone välisfassaadile oma logo. Teostab üürileandja valitud agentuur, kulud kannab üürnik; reklaam jääb üürniku omandiks, hooldus üürniku kulul." }] }],
+    tahtajad: ["01.01.2027 · indekseerimine (THI)", "25.11.2028 · pikendusõiguse otsustuskoht (5 a täitub)",
+      "02.01.2029 · tagatise korrigeerimine", "25.11.2030 · lepingu lõpp"],
+    failid: [
+      { nimi: "Üürileping P_29 · põhitingimused + üldtingimused", fail: "lisad/importitud/MARU_uurileping_P29.pdf", silt: "8 lk · allkirjastatud" },
+      { nimi: "Lisa 1 · Üüripinna plaan (P_29)", fail: "lisad/importitud/T6B_pind_29_plaan.pdf", silt: "PDF" },
+      { nimi: "Lisa 2 · Parkimiskohtade plaan (kohad 65, 101)", fail: "lisad/importitud/P29_parkimine.pdf", silt: "PDF" },
+      { nimi: "Lisa 3 · Eritingimused", fail: "lisad/importitud/MARU_uurileping_P29_lisa3.pdf", silt: "1 lk · allkirjastatud" }],
+    kontaktid: [
+      { pool: "Üürileandja · Taevavärava OÜ", read: ["Varne Mälksoo · lepingulised küsimused · +372 503 4135 · varne@futureinvest.info",
+        "Marek Andres (Newsec) · halduskorraldus · +372 524 0998", "Kristi Mõtte · arveldused · +372 5647 3887"] },
+      { pool: "Üürnik · AS Maru Ehitus", read: ["Andres Jakobi · lepingulised küsimused · +372 657 5850 · ehitus@maru.ee",
+        "Erko Alto · tehnilised küsimused · 533 456 686", "Arved: arved-ehitus@maru.ee"] }] },
+  { id: "HOO-2023-H508", liik: "Hooldusleping", pool: "Caverion Eesti AS", ese: "Hoone T6B · tehnosüsteemid",
+    punkte: 78, kinnitatud: "Tarmo Sepp · 14.05.2026", fail: "HOOLDUSLEPING Nr H5.08.docx",
+    solmitud: "01.06.2023", allkirjad: "Varne Mälksoo (tellija) · Mart Kivi (Caverion, juhatuse liige) · digitaalselt",
+    parameetrid: [
+      ["Periood", "01.06.2023 – tähtajatu"],
+      ["Tasu", "1 104,00 €/kuus (neto)"],
+      ["Etteteatamine", "2 kuud · kumbki pool"],
+      ["Reageerimisaeg", "24/7 avarii · kuni 4 h"],
+      ["Arveldus", "Arve kuu 5. kuupäeval"],
+      ["Viivis", "0,01 % päevas"],
+      ["Hinnad", "Ülevaatus 1× kalendriaastas"],
+      ["Garantii", "Remont-/asendustööd 2 aastat"],
+      ["Vastutus", "Kuni ühe aasta tasu ulatuses"]],
+    lisad: [
+      { nr: 1, nimi: "Objektid, töövõtu piirid ja maksumused", sisu: "Taevavärava tee 6b tehnosüsteemid · 1 104 €/kuus: ventilatsioon (33 seadet), tuletõkkeklapid, vesi ja kanalisatsioon, gaasikatlad (4) + gaasipaigaldise järelevaataja, õhkküte, kliimaseadmed (24 süsteemi), ATS, evakuatsiooni- ja tuletõkkeuksed, tuletõkkesektsioonid, valve ja läbipääs, suitsueemaldus, elektripaigaldise käit, evakuatsioonivalgustus, tehnikajuhi ja käidujuhi teenus" },
+      { nr: 2, nimi: "Hooldustööde spetsifikatsioonid", sisu: "Korraliste hooldustööde mahud süsteemide kaupa" },
+      { nr: 3, nimi: "Avarii ja lisatööde väljakutsete kord", sisu: "24/7 väljakutse +372 5346 0000 · reageerimine kuni 4 h" },
+      { nr: 4, nimi: "Hooldus-, lisatööde ja väljakutsete hinnakiri", sisu: "Caverioni hinnakiri −25 % · tunnihind + väljasõit · varuosad kuni 300 € ilma kooskõlastuseta" },
+      { nr: 5, nimi: "Poolte kontaktisikud", sisu: "Alger Jõras (tehnikajuht) · Varne Mälksoo · Maili Kivirähk" }],
+    tahtajad: ["01.06.2027 · lepinguaasta täitub · hindade ülevaatus", "Tähtajatu · ülesütlemine 2 kuu etteteatamisega"],
+    failid: [
+      { nimi: "Hooldusleping H5.08 · leping + Lisad 1–5", fail: "lisad/importitud/Hooldusleping_H5-08.pdf", silt: "18 lk · PDF (docx-ist)" },
+      { nimi: "Originaal · Word (docx)", fail: "lisad/importitud/Hooldusleping_H5-08.docx", silt: "docx · laadi alla", download: true }],
+    kontaktid: [
+      { pool: "Hooldaja · Caverion Eesti AS", read: ["Alger Jõras · tehnikajuht · +372 5691 0682 · alger.joras@caverion.com",
+        "Väljakutsed 24/7 · +372 5346 0000 · hooldus@caverion.com"] },
+      { pool: "Tellija · Taevavärava OÜ", read: ["Varne Mälksoo · lepingulised küsimused · varne@futureinvest.info",
+        "Maili Kivirähk · kontaktisik · kinnitab vahe- ja remondiarved", "Arved: arved@futureinvest.info"] }] },
 ];
 
 /* --- Kliendid -------------------------------------------------------------- */
@@ -233,6 +252,7 @@ const CLIENTS = [
   { id: "c-baltic", nimi: "Baltic Logistics OÜ", tyyp: "Eesti firma", registrikood: "11457820", kmkr: "EE100774521", aadress: "Suur-Sõjamäe 10a, Tallinn, 11415", kontakt: "Tarmo Kask", epost: "tarmo@balticlog.ee", tel: "+372 511 2233", risk: { skoor: "MADAL", kuupaev: "14.01.2026" } },
   { id: "c-nord",   nimi: "Nordproff OÜ", tyyp: "Eesti firma", registrikood: "12998341", kmkr: "EE101552398", aadress: "Laki 25, Tallinn, 12915", kontakt: "Liis Tamm", epost: "liis@nordproff.ee", tel: "+372 522 9081", risk: { skoor: "KESKMINE", kuupaev: "02.03.2026" } },
   { id: "c-mikro",  nimi: "Mikrotehnika AS", tyyp: "Eesti firma", registrikood: "10334521", kmkr: "EE100221984", aadress: "Mustamäe tee 5, Tallinn, 10616", kontakt: "Andres Lepik", epost: "andres@mikrotehnika.ee", tel: "+372 5648 2913", risk: { skoor: "MADAL", kuupaev: "20.05.2026" } },
+  { id: "c-maru",   nimi: "AS Maru Ehitus", tyyp: "Eesti firma", registrikood: "10714568", kmkr: "EE100659856", aadress: "Järvevana tee 5, Tallinn, 10112", kontakt: "Andres Jakobi", epost: "ehitus@maru.ee", tel: "+372 657 5850", risk: { skoor: "MADAL", kuupaev: "12.05.2026" } },
   { id: "c-rohe",   nimi: "Roheline Ladu OÜ", tyyp: "Eesti firma", registrikood: "16720145", kmkr: null, aadress: "Tehnika 12, Saku, 75501", kontakt: "Kati Org", epost: "kati@roheline.ee", tel: "+372 5390 1447", risk: { skoor: "KÕRGE", kuupaev: "27.05.2026" } },
 ];
 
@@ -274,14 +294,14 @@ const OFFERS = [
   {
     id: "PAK-2026-007", clientId: "c-nord", spaceIds: ["p4"], pikkusKuud: 60,
     staatus: "Aktsepteeritud", kehtivKuni: "20.05.2026", loodud: "06.05.2026", looja: "Tarmo Sepp",
-    kommerts: "Nordproff OÜ-le pakume Pind 4.", eritingimused: [],
-    seotudLeping: "LEP-2026-008",
+    kommerts: "Nordproff OÜ-le pakume Pind 4.", eritingimused: [
+      { id: "e1", tekst: "Üürivaba sisseseadeperiood 2 kuud alates üleandmispäevast.", kirjutabYle: "§5 Üür ja kõrvalkulud" },
+    ],
   },
   {
     id: "PAK-2026-003", clientId: "c-baltic", spaceIds: ["p1"], pikkusKuud: 60,
-    staatus: "Aktsepteeritud", kehtivKuni: "30.03.2026", loodud: "12.03.2026", looja: "Tarmo Sepp",
+    staatus: "Aktsepteeritud", kehtivKuni: "30.06.2026", loodud: "12.05.2026", looja: "Tarmo Sepp",
     kommerts: "Baltic Logistics OÜ-le pakume Pind 1.", eritingimused: [],
-    seotudLeping: "LEP-2026-005",
   },
   {
     id: "PAK-2026-001", clientId: "c-rohe", spaceIds: ["p9"], pikkusKuud: 12,
@@ -303,101 +323,27 @@ const ULD_CLAUSES = [
 ];
 
 /* --- Lepingud -------------------------------------------------------------- */
-const LEASES = [
-  {
-    id: "LEP-2026-005", clientId: "c-baltic", spaceId: "p1", pakkumus: "PAK-2026-003",
-    staatus: "Kehtiv", pikkusKuud: 60,
-    algus: "01.04.2026", lopp: "31.03.2031", allkirjastatud: "28.03.2026",
-    indeks: { meetod: "Fikseeritud %", maar: "3%", sagedus: "iga 12 kuu", jargmine: "01.04.2027" },
-    /* põhitingimused originaalmalli struktuuris — sektsioonid + täislaused (vt app.js pohiTehing) */
-    pohi: [
-      { sec: "1. Pooled", ref: "P 1.1", pealkiri: "Üürileandja", vaartus: "Taevavärava OÜ · reg 16333502 · KMKR EE102420203 · Taevavärava tee 6b, Lehmja küla, Rae vald, 75306 · varne@futureinvest.info · +372 503 4135 · AS LHV Pank, EE267700771004561239" },
-      { ref: "P 1.2", pealkiri: "Üürnik", vaartus: "Baltic Logistics OÜ · reg 11457820 · KMKR EE100774521 · Suur-Sõjamäe 10a, Tallinn, 11415 · tarmo@balticlog.ee · +372 511 2233" },
-      { sec: "2. Üüripind", ref: "P 2.1", pealkiri: "Üüripind", vaartus: "Lepingu esemeks on aadressil Taevavärava tee 6b, Lehmja küla, Rae vald asuvas hoones (Hoone) paiknev Pind 1 üldpinnaga 538,4 m² (Üüripind) — Ladu + müügisaal —, mille asukoht ja piirid on näidatud Lepingu lisas nr 1 toodud plaanil." },
-      { ref: "P 2.2", pealkiri: "Parkimiskohad", vaartus: "6 parkimiskohta. Parkimiskohtade kasutustasu sisaldub Üüris." },
-      { ref: "P 2.3", pealkiri: "Üüripinna üleandmine", vaartus: "Üleandmispäev on 01.04.2026. Üüripind antakse Üürniku valdusesse kahepoolse üleandmis-vastuvõtmisakti alusel." },
-      { ref: "P 2.4", pealkiri: "Kasutusotstarve", vaartus: "Üüripinda võib kasutada üksnes büroo-, lao- ja tootmispinnana." },
-      { sec: "3. Üür", ref: "P 3.1", pealkiri: "Üür", vaartus: "EUR 8,50 Üüripinna ühe ruutmeetri kohta kuus — kokku 4 576,40 €/kuus (neto), millele lisandub käibemaks õigusaktides kehtestatud suuruses. Parkimiskohtade kasutustasu sisaldub Üüris." },
-      { ref: "P 3.2", pealkiri: "Kõrvalkulud", vaartus: "Üürnik kohustub tasuma Üürileandja esitatud kommunaal-, haldus- ja lisateenuste arved Üldtingimustes sätestatud korras." },
-      { sec: "4. Tagatis", ref: "P 4.1", pealkiri: "Tagatise summa", vaartus: "Üürnik tasub Lepingu allkirjastamisel arve alusel tagatisraha 3 kuu Üüri ulatuses — 13 729,20 € (lisandub käibemaks)." },
-      { sec: "5. Tähtaeg", ref: "P 5.1", pealkiri: "Lepingu tähtaeg", vaartus: "Leping on sõlmitud tähtajaliselt 5 aastaks alates Üleandmispäevast: 01.04.2026 – 31.03.2031 (60 kuud)." },
-      { ref: "P 5.2", pealkiri: "Tähtaja erisused", vaartus: "Puuduvad." },
-      { sec: "6. Poolte esindajad", ref: "P 6.1", pealkiri: "Üürileandja esindajad", vaartus: "Lepingulistes küsimustes: varne@futureinvest.info · Halduskorralduses: haldus@futureinvest.info · Arveldustes: arved@futureinvest.info" },
-      { ref: "P 6.2", pealkiri: "Üürniku esindajad", vaartus: "Lepingulistes, tehnilistes küsimustes ja arveldustes: Tarmo Kask · tarmo@balticlog.ee · +372 511 2233" },
-    ],
-    eri: [],
-    lisad: [
-      { nr: 1, nimi: "Pinnaplaan (Pind 1)", fail: "lisad/T6B_pinnaplaan.pdf" },
-      { nr: 2, nimi: "Asendiplaan + parkimisskeem", fail: "lisad/T6B_parkimisskeem.pdf" },
-    ],
-    allkirjad: [
-      { pool: "Taevavärava OÜ", isik: "Margus Varne", meetod: "SmartID", aeg: "28.03.2026 14:21" },
-      { pool: "Baltic Logistics OÜ", isik: "Tarmo Kask", meetod: "Mobile-ID", aeg: "28.03.2026 16:05" },
-    ],
-  },
-  {
-    id: "LEP-2026-008", clientId: "c-nord", spaceId: "p4", pakkumus: "PAK-2026-007",
-    staatus: "Saadetud", pikkusKuud: 60,
-    algus: "01.07.2026", lopp: "30.06.2031", allkirjastatud: null, versioon: "Mustand V2",
-    indeks: { meetod: "Statistikaameti indeks", maar: "THI (tarbijahinnaindeks)", sagedus: "iga 12 kuu", jargmine: "01.07.2027" },
-    pohi: [
-      { sec: "1. Pooled", ref: "P 1.1", pealkiri: "Üürileandja", vaartus: "Taevavärava OÜ · reg 16333502 · KMKR EE102420203 · Taevavärava tee 6b, Lehmja küla, Rae vald, 75306 · varne@futureinvest.info · +372 503 4135 · AS LHV Pank, EE267700771004561239" },
-      { ref: "P 1.2", pealkiri: "Üürnik", vaartus: "Nordproff OÜ · reg 12998341 · KMKR EE101552398 · Laki 25, Tallinn, 12915 · liis@nordproff.ee · +372 522 9081" },
-      { sec: "2. Üüripind", ref: "P 2.1", pealkiri: "Üüripind", vaartus: "Lepingu esemeks on aadressil Taevavärava tee 6b, Lehmja küla, Rae vald asuvas hoones (Hoone) paiknev Pind 4 üldpinnaga 357,2 m² (Üüripind) — Ladu + kontor —, mille asukoht ja piirid on näidatud Lepingu lisas nr 1 toodud plaanil." },
-      { ref: "P 2.2", pealkiri: "Parkimiskohad", vaartus: "4 parkimiskohta. Parkimiskohtade kasutustasu sisaldub Üüris." },
-      { ref: "P 2.3", pealkiri: "Üüripinna üleandmine", vaartus: "Üleandmispäev on 01.07.2026. Üüripind antakse Üürniku valdusesse kahepoolse üleandmis-vastuvõtmisakti alusel." },
-      { ref: "P 2.4", pealkiri: "Kasutusotstarve", vaartus: "Üüripinda võib kasutada üksnes büroo-, lao- ja tootmispinnana." },
-      { sec: "3. Üür", ref: "P 3.1", pealkiri: "Üür", vaartus: "EUR 8,20 Üüripinna ühe ruutmeetri kohta kuus — kokku 2 929,04 €/kuus (neto), millele lisandub käibemaks õigusaktides kehtestatud suuruses. Parkimiskohtade kasutustasu sisaldub Üüris.", muudetud: true },
-      { ref: "P 3.2", pealkiri: "Kõrvalkulud", vaartus: "Üürnik kohustub tasuma Üürileandja esitatud kommunaal-, haldus- ja lisateenuste arved Üldtingimustes sätestatud korras." },
-      { sec: "4. Tagatis", ref: "P 4.1", pealkiri: "Tagatise summa", vaartus: "Üürnik tasub Lepingu allkirjastamisel arve alusel tagatisraha 3 kuu Üüri ulatuses — 8 787,12 € (lisandub käibemaks)." },
-      { sec: "5. Tähtaeg", ref: "P 5.1", pealkiri: "Lepingu tähtaeg", vaartus: "Leping on sõlmitud tähtajaliselt 5 aastaks alates Üleandmispäevast: 01.07.2026 – 30.06.2031 (60 kuud)." },
-      { ref: "P 5.2", pealkiri: "Tähtaja erisused", vaartus: "Puuduvad." },
-      { sec: "6. Poolte esindajad", ref: "P 6.1", pealkiri: "Üürileandja esindajad", vaartus: "Lepingulistes küsimustes: varne@futureinvest.info · Halduskorralduses: haldus@futureinvest.info · Arveldustes: arved@futureinvest.info" },
-      { ref: "P 6.2", pealkiri: "Üürniku esindajad", vaartus: "Lepingulistes, tehnilistes küsimustes ja arveldustes: Liis Tamm · liis@nordproff.ee · +372 522 9081" },
-    ],
-    eri: [
-      { ref: "Lisa 3 · p1", tekst: "Üürivaba sisseseadeperiood 2 kuud alates üleandmispäevast.", kirjutabYle: "§5 Üür ja kõrvalkulud", staatus: "Aktsepteeritud" },
-      { ref: "Lisa 3 · p2", tekst: "Indekseerimismeetodiks lepitakse Statistikaameti tarbijahinnaindeks fikseeritud 3% asemel.", kirjutabYle: "Üld · p 5.2 (indekseerimine 3%)", staatus: "Aktsepteeritud" },
-    ],
-    kommentaarid: [
-      { clauseRef: "P 3.1", autor: "Liis Tamm (üürnik)", aeg: "06.06.2026 11:12", tekst: "Kas üüri saaks siduda THI-ga fikseeritud % asemel? Soovime ennustatavust pikemas plaanis.", staatus: "Aktsepteeritud", vastus: "Aktsepteeritud — vormistatud Lisa 3 punktina, põhitingimus märgitud muudetuks." },
-      { clauseRef: "§5", autor: "Liis Tamm (üürnik)", aeg: "06.06.2026 11:18", tekst: "Palume sisseseadeperioodiks 2 kuud 1 asemel — vajame ehituslubasid.", staatus: "Aktsepteeritud", vastus: "Aktsepteeritud — lisatud Lisa 3 punktina (ülimuslik §5 suhtes)." },
-      { clauseRef: "P 4.1", autor: "Liis Tamm (üürnik)", aeg: "06.06.2026 11:25", tekst: "Kas tagatis saaks olla 2 kuu üür?", staatus: "Ootel", vastus: null,
-        /* arutelu ei otsusta — punkt jääb Ootel, kuni operaator aktsepteerib/lükkab tagasi */
-        arutelu: [
-          { roll: "operaator", autor: "Tarmo Sepp", aeg: "07.06.2026 09:40", tekst: "Saame 2 kuud kaaluda, kui lisandub emaettevõtte garantii või tähtaeg pikeneb 6 aastale. Kumb variant teile sobiks?" },
-          { roll: "klient", autor: "Liis Tamm (üürnik)", aeg: "07.06.2026 12:05", tekst: "Garantii on võimalik — saadan garantiikirja mustandi järgmise nädala alguseks." },
-        ] },
-    ],
-    lisad: [
-      { nr: 1, nimi: "Pinnaplaan (Pind 4)", fail: "lisad/T6B_pinnaplaan.pdf" },
-      { nr: 2, nimi: "Asendiplaan + parkimisskeem", fail: "lisad/T6B_parkimisskeem.pdf" },
-      { nr: 3, nimi: "Eritingimused", fail: "— genereeritud —" },
-    ],
-    allkirjad: [],
-  },
-];
+/* MVP demo algab PUHTA lepinguportfelliga: platvormis loodud üürilepinguid pole —
+   need sünnivad demo käigus pakkumustest (2 aktsepteeritud pakkumust on teisendamiseks
+   valmis) või wizardist. Varasemad seemned (LEP-2026-005 Kehtiv + LEP-2026-008
+   läbirääkimistel) on git-ajaloos (v=294 seis). Imporditud portfell (IMPORDITUD) jääb. */
+const LEASES = [];
 
 /* --- Võtmekuupäevad -------------------------------------------------------- */
 const KEY_DATES = [
   { kuupaev: "2026-06-16", tyyp: "Pakkumuse kehtivus", objekt: "PAK-2026-011 · Mikrotehnika AS", margis: "amber", info: "Pakkumus aegub 7 päeva pärast" },
-  { kuupaev: "2026-07-01", tyyp: "Lepingu algus", objekt: "LEP-2026-008 · Nordproff OÜ", margis: "blue", info: "Üleandmispäev · Pind 4" },
-  { kuupaev: "2026-07-01", tyyp: "Indekseerimine", objekt: "LEP-2025-014 · Estplast OÜ (imporditud)", margis: "accent", info: "Statistikaameti THI · automaatne, lisa ei teki" },
-  { kuupaev: "2026-08-01", tyyp: "Indekseerimine", objekt: "LEP-2024-022 · Käsitöö Koda OÜ (imporditud)", margis: "accent", info: "Fikseeritud 3% · automaatne" },
-  { kuupaev: "2026-09-30", tyyp: "Katseaja lõpp", objekt: "TL-2026-004 · Marten Kivi · Hooldustehnik", margis: "amber", info: "Töölepingute vertikaal · teavitus 14 päeva ette" },
-  { kuupaev: "2027-01-31", tyyp: "Lepingu lõpp", objekt: "KIN-2026-07 · If P&C · kindlustus (imporditud)", margis: "grey", info: "Imporditud leping osaleb võtmekuupäevades · teavitus 90 päeva ette" },
-  { kuupaev: "2027-03-01", tyyp: "Palgaülevaatus", objekt: "TL-2026-002 · Karl Mets · Objektihaldur", margis: "blue", info: "Kokku lepitud töölepingus · võtmekuupäev" },
-  { kuupaev: "2027-04-01", tyyp: "Indekseerimine", objekt: "LEP-2026-005 · Baltic Logistics OÜ", margis: "accent", info: "Fikseeritud 3% · esimene indekseerimine" },
-  { kuupaev: "2029-12-31", tyyp: "Lepingu lõpp", objekt: "LEP-2025-014 · Estplast OÜ (imporditud)", margis: "grey", info: "Tähtaja lõpp → automaatne üleminek · teavitus 90 päeva ette (operaator + klient)" },
+  { kuupaev: "2027-01-01", tyyp: "Indekseerimine", objekt: "LEP-2023-029 · AS Maru Ehitus (imporditud)", margis: "accent", info: "Statistikaameti THI, eelmise aasta muutus · automaatne, lisa ei teki (Lisa 3 p 5.2)" },
+  { kuupaev: "2027-06-01", tyyp: "Hindade ülevaatus", objekt: "HOO-2023-H508 · Caverion Eesti AS (imporditud)", margis: "amber", info: "Hooldustasu vaadatakse üle 1× kalendriaastas (p 9.12) · 1 104 €/kuus" },
+  { kuupaev: "2028-11-25", tyyp: "Pikendusõigus", objekt: "LEP-2023-029 · AS Maru Ehitus (imporditud)", margis: "amber", info: "5 aastat täitub → üürnikul õigus pikendada 5 aastaks samadel tingimustel (Lisa 3)" },
+  { kuupaev: "2029-01-02", tyyp: "Tagatise korrigeerimine", objekt: "LEP-2023-029 · AS Maru Ehitus (imporditud)", margis: "grey", info: "Tagatis viiakse vastavusse indekseeritud üüriga (Lisa 3, ÜT 6.3)" },
+  { kuupaev: "2030-11-25", tyyp: "Lepingu lõpp", objekt: "LEP-2023-029 · AS Maru Ehitus (imporditud)", margis: "grey", info: "7-aastane tähtaeg · ei pikene automaatselt (ÜT 3.2) · teavitus 90 päeva ette" },
 ];
 
 /* --- Audit trail / otsuste mälu (näidis) ----------------------------------- */
 const AUDIT = [
   { aeg: "09.06.2026 09:14", autor: "AI-agent", tegevus: "Pakkumuse mustand PAK-2026-014 loodud operaatori korraldusel (Future Invest OÜ · Pind 12)." },
   { aeg: "08.06.2026 16:40", autor: "Tarmo Sepp", tegevus: "Riskiraport tellitud: Future Invest OÜ → koondskoor MADAL." },
-  { aeg: "06.06.2026 11:25", autor: "Liis Tamm (üürnik)", tegevus: "Kommentaar lisatud LEP-2026-008 punktile „Tagatisraha (p 4.1)\"." },
-  { aeg: "06.06.2026 09:02", autor: "Tarmo Sepp", tegevus: "LEP-2026-008 mustand V2 saadetud üürnikule." },
-  { aeg: "28.03.2026 16:05", autor: "Tarmo Kask (üürnik)", tegevus: "LEP-2026-005 allkirjastatud (Mobile-ID). Leping arhiveeritud." },
+  { aeg: "12.05.2026 10:10", autor: "Tarmo Sepp", tegevus: "Pakkumus PAK-2026-003 (Baltic Logistics OÜ · Pind 1) aktsepteeritud — valmis lepinguks teisendamiseks." },
 ];
 
 /* --- B11G OÜ — konto teine ettevõte ----------------------------------------
@@ -427,6 +373,9 @@ if (COMPANY_ID === "b11g") {
     failid: { pinnaplaan: null, parkimine: null },
     mallid: { uldtingimused: "Äriruumide üürilepingu üldtingimused v3.2 (lukus)",
       eritingimused: "Eritingimuste põhi v1.4", pakkumus: "Pakkumuse põhi v2.0" },
+    /* objekti oma täituvuse ajalugu (11 kuud) — Ülevaate objekti-skoobi graafik;
+       ettevõtte koond (TAITUVUS_AJALUGU) on m²-kaalult sisuliselt sama kõver */
+    taituvusAjalugu: [45, 45, 43, 43, 43, 40, 40, 39, 39, 39, 39],
   });
   OBJEKTID.push({
     id: "obj-b11g-ss", nimi: "Self Storage",
@@ -440,6 +389,7 @@ if (COMPANY_ID === "b11g") {
     failid: { pinnaplaan: null, parkimine: null },
     mallid: { uldtingimused: "Laoboksi üürilepingu üldtingimused v1.0 (lukus)",
       eritingimused: "Eritingimuste põhi v1.4", pakkumus: "Pakkumuse põhi v2.0" },
+    taituvusAjalugu: [55, 55, 50, 50, 50, 45, 45, 41, 41, 41, 41],
   });
   SPACES.length = 0;
   SPACES.push(
@@ -520,10 +470,11 @@ function objektOf(space) { return (space && space.objektId && objektById(space.o
 
 function rent(space) { return space.yyripind * space.hind; }
 function spaceParts(space) { return (space.jaotus && space.jaotus.length) ? space.jaotus : [{ osa: space.tyyp, m2: space.yyripind }]; }
-function kkWinter(space) { return space.yyripind * objektOf(space).korvalkulu.talvine; }
-function kkSummer(space) { return space.yyripind * objektOf(space).korvalkulu.suvine; }
+function kkWinter(space) { const k = objektOf(space).korvalkulu.talvine; return k == null ? NaN : space.yyripind * k; }
+function kkSummer(space) { const k = objektOf(space).korvalkulu.suvine; return k == null ? NaN : space.yyripind * k; }
 
 function eur(n, frac = 2) {
+  if (n == null || !Number.isFinite(n)) return "määramata";
   return n.toLocaleString("et-EE", { minimumFractionDigits: frac, maximumFractionDigits: frac });
 }
 function withVat(n) { return n * (1 + VAT_RATE); }
@@ -531,16 +482,33 @@ function withVat(n) { return n * (1 + VAT_RATE); }
 /* --- püsisalvestus (localStorage): sisendid elavad üle lehe sulgemise ------
    Võti on ettevõttepõhine — kummagi ettevõtte sisestused püsivad eraldi. */
 const LS_KEY = COMPANY_ID === "taeva" ? "thinkone_demo_v1" : "thinkone_demo_v1_" + COMPANY_ID;
+/* imporditud lepingu tähtajad („dd.mm.yyyy · tekst“) → võtmekuupäevad (kalender, avaleht, ülevaade) — v431 */
+function impKeyDates(x) {
+  return (x.tahtajad || []).map(td => { const d = td.slice(0, 10), t = td.slice(13); if (!/^\d\d\.\d\d\.\d{4}$/.test(d)) return null;
+    const q = t.toLowerCase();
+    const tyyp = /piken|otsustus/.test(q) ? "Pikendusõigus" : /indeks/.test(q) ? "Indekseerimine" : /makse/.test(q) ? "Maksetähtaeg" : /ülevaat/.test(q) ? "Hindade ülevaatus" : /lõpp/.test(q) ? "Lepingu lõpp" : "Tähtaeg";
+    const margis = tyyp === "Lepingu lõpp" ? "grey" : tyyp === "Indekseerimine" ? "accent" : "amber";
+    const p = d.split(".");
+    return { kuupaev: `${p[2]}-${p[1]}-${p[0]}`, tyyp, objekt: `${x.id} · ${x.pool} (imporditud)`, margis, info: t.charAt(0).toUpperCase() + t.slice(1) }; }).filter(Boolean);
+}
 function save() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ spaces: SPACES, offers: OFFERS, leases: LEASES, tlepingud: TLEPINGUD, audit: AUDIT }));
-  } catch (e) { /* file:// piirangud vms — demo jätkab mälus */ }
+    localStorage.setItem(LS_KEY, JSON.stringify({ objects: OBJEKTID, spaces: SPACES, offers: OFFERS, leases: LEASES, tlepingud: TLEPINGUD, audit: AUDIT,
+      imports: IMPORDITUD.filter(x => x.lisatud) })); /* v431: impordi kaudu lisatud lepingud (seeme jääb koodist) */
+    return true;
+  } catch (e) { return false; }
 }
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return;
     const d = JSON.parse(raw);
+    if (Array.isArray(d.objects)) {
+      d.objects.filter(o => o && o.id && o.ehr && o.korvalkulu && o.mallid).forEach(o => {
+        const existing = OBJEKTID.find(x => x.id === o.id);
+        if (existing) Object.assign(existing, o); else OBJEKTID.push(o);
+      });
+    }
     if (d.spaces) { // varasem salvestus ei pruugi jaotust/objektId-d/uusi pindu sisaldada → täienda seemnest
       const seed = SPACES.slice();
       const seedById = new Map(seed.map(s => [s.id, s]));
@@ -555,6 +523,8 @@ function load() {
     if (d.leases) { LEASES.length = 0; LEASES.push(...d.leases.filter(l => clientById(l.clientId) && spaceById(l.spaceId))); }
     if (d.tlepingud) { TLEPINGUD.length = 0; TLEPINGUD.push(...d.tlepingud.filter(t => ametikohtById(t.ametikohtId))); } // vanem salvestus: võti puudub → seeme jääb
     if (d.audit)  { AUDIT.length = 0;  AUDIT.push(...d.audit); }
+    if (Array.isArray(d.imports)) { d.imports.forEach(x => { if (x && x.id && !IMPORDITUD.some(y => y.id === x.id)) { IMPORDITUD.push(x); KEY_DATES.push(...impKeyDates(x)); } });
+      KEY_DATES.sort((a, b) => a.kuupaev.localeCompare(b.kuupaev)); }
     /* v192 migratsioon: allkirjastatud lepingu staatus „Arhiveeritud" → „Kehtiv" */
     LEASES.concat(TLEPINGUD).forEach(x => { if (x.staatus === "Arhiveeritud") x.staatus = "Kehtiv"; });
   } catch (e) { /* rikutud salvestus → kasuta seemneandmeid */ }
@@ -566,6 +536,7 @@ function reset() {
   } catch (e) {}
   location.reload();
 }
+shiftStoryDates(); /* v408: seeme ankrust tänasesse — enne salvestatud seisu laadimist */
 load();
 
 window.DB = {
@@ -573,7 +544,8 @@ window.DB = {
   OBJEKTID, objektById, objektOf, TAITUVUS_AJALUGU,
   VAT_RATE, ACCOUNT, OBJEKT, SPACES, CLIENTS, RISK_SOURCES, OFFERS, LEASES,
   OSAKOND, AMETIKOHAD, TLEPINGUD, TL_ULD, IMPORDITUD,
-  ULD_CLAUSES, KEY_DATES, AUDIT,
+  ULD_CLAUSES, KEY_DATES, AUDIT, impKeyDates,
+  DEMO_TODAY, TODAY_EE, NOW_EE, fmtEE, fmtISO, SEED_ANCHOR, SEED_SHIFT_DAYS,
   spaceById, clientById, offerById, leaseById,
   ametikohtById, tlepingById, impById, ametikohtHoive,
   rent, spaceParts, kkWinter, kkSummer, eur, withVat,

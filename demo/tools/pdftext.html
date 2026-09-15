@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>pdftext</title></head><body><pre id="out"></pre>
+<script type="module">
+import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.mjs";
+const f = new URLSearchParams(location.search).get("f");
+window.done = (async () => {
+  const pdf = await pdfjsLib.getDocument(f).promise;
+  let out = "";
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p); const tc = await page.getTextContent();
+    let line = "", lastY = null, lastX = null, lastW = 0;
+    for (const it of tc.items) {
+      if (!it.str) continue;
+      const x = it.transform[4], y = Math.round(it.transform[5]);
+      if (lastY !== null && Math.abs(y - lastY) > 2) { out += line.trim() + "\n"; line = ""; lastX = null; }
+      else if (lastX !== null) {
+        const gap = x - (lastX + lastW);
+        /* tühik ainult siis, kui geomeetriline vahe on tühiku laiune; muidu on see sama sõna (fondivahetus) */
+        if (gap > 1.2 && !line.endsWith(" ") && !it.str.startsWith(" ")) line += " ";
+      }
+      line += it.str; lastY = y; lastX = x; lastW = it.width;
+    }
+    out += line.trim() + "\n<<<PAGE " + p + ">>>\n";
+  }
+  document.getElementById("out").textContent = out; return out.length;
+})();
+</script></body></html>
