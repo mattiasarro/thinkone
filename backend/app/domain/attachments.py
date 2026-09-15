@@ -16,7 +16,7 @@ from app.infra.settings import get_settings
 from app.models.core import Attachment
 
 SUBJECT_TYPES = {"asset", "company", "contract", "template"}
-ROLES = {"floor_plan", "site_plan", "logo", "generic", "annex"}
+ROLES = {"floor_plan", "site_plan", "parking_plan", "logo", "generic", "annex"}
 
 # canonical content type by extension; used to normalise browser-supplied types
 EXTENSION_TYPES = {

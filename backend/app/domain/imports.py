@@ -148,6 +148,7 @@ async def source_pages(job: ImportJob, doc: SourceDocument) -> list[dict[str, An
 async def commit_import(
     session: AsyncSession, actor: Actor, job_id: uuid.UUID, *, company_id: uuid.UUID | None = None, asset_id: uuid.UUID | None = None,
     allocation_kind: str | None = None, party_id: uuid.UUID | None = None, category: str | None = None, checked: list[str] | None = None,
+    party_override: dict[str, Any] | None = None,
 ) -> Contract:
     job = await get_job(session, job_id)
     if job.status != "review":
@@ -169,6 +170,10 @@ async def commit_import(
         party = await session.get(Party, party_id)
         if not party:
             raise NotFound("Osapoolt ei leitud")
+    elif party_override and party_override.get("name"):
+        party = await find_or_create_party(session, actor, name=party_override["name"], registry_code=party_override.get("registry_code") or None,
+                                           role=_party_role(cat, party_override.get("role") or "other"), address=party_override.get("address"),
+                                           email=party_override.get("email"))
     else:
         cp = _counterparty(prop)
         if cp:

@@ -161,6 +161,9 @@ def heuristic_structure(user: str) -> dict[str, Any]:
             continue
         in_toc = in_toc and (bool(re.search(r"\.{3,}", ln)) or ln.lower() == "sisukord")
         m = CLAUSE_RE.match(ln)
+        # a bare top-level number needs a trailing dot or an UPPERCASE heading ("2 parkimiskohta" is prose, "2 LEPINGU ESE" is not)
+        if m and "." not in m.group("num") and not re.match(r"^\d{1,2}\.\s", ln) and not m.group("text")[:3].isupper():
+            m = None
         if m and not re.search(r"\.{4,}", ln):
             num = m.group("num")
             body = m.group("text").strip()
