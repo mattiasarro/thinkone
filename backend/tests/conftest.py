@@ -44,11 +44,10 @@ def _migrate() -> None:
     import sys
 
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True, cwd=os.path.dirname(os.path.dirname(__file__)))
+    import procrastinate
     from procrastinate import SyncPsycopgConnector
 
     from app.infra.settings import get_settings as gs
-
-    import procrastinate
 
     app = procrastinate.App(connector=SyncPsycopgConnector(conninfo=gs().sync_database_url()))
     with app.open():
@@ -76,8 +75,8 @@ def event_loop():
 async def _clean_db():
     from sqlalchemy import text
 
-    from app.infra.db import dispose, sessionmaker
     from app.domain.seed import seed_globals
+    from app.infra.db import dispose, sessionmaker
     from app.models.base import TENANT_TABLES
 
     yield

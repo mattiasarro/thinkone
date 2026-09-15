@@ -7,7 +7,15 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import Principal, clear_session_cookie, current_principal, db, db_no_tenant, read_session_id, set_session_cookie
+from app.api.deps import (
+    Principal,
+    clear_session_cookie,
+    current_principal,
+    db,
+    db_no_tenant,
+    read_session_id,
+    set_session_cookie,
+)
 from app.domain import auth as auth_domain
 from app.domain.errors import Forbidden
 from app.models.core import Account, Membership

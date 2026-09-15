@@ -72,6 +72,8 @@ class CommitOut(BaseModel):
 
 
 async def _out(session: AsyncSession, job: ImportJob) -> ImportJobOut:
+    await session.flush()
+    await session.refresh(job)  # updated_at is expired after an UPDATE flush; load it eagerly (no lazy IO in async)
     doc = await session.get(SourceDocument, job.source_document_id)
     from app.ingest.schema import Proposal
 

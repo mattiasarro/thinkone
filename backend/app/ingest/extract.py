@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from dataclasses import dataclass, field
 
-MIN_CHARS_PER_PAGE = 40  # below this on average → image-only PDF
+MIN_WORDS_PER_PAGE = 25  # fewer real words per page on average → image-only (or a drawing) → no text layer
 
 
 @dataclass
@@ -75,8 +75,7 @@ def extract_pdf(data: bytes) -> Extraction:
             text = _normalize(text) + "\n"
             ex.pages.append(Page(page=i, text=text, char_start=offset))
             offset += len(text)
-    total = sum(len(p.text.strip()) for p in ex.pages)
-    ex.has_text_layer = bool(ex.pages) and total / max(len(ex.pages), 1) >= MIN_CHARS_PER_PAGE
+    ex.has_text_layer = _has_text_layer(ex)
     return ex
 
 
@@ -90,8 +89,15 @@ def extract_docx(data: bytes) -> Extraction:
             parts.append(_normalize(block))
     text = "\n".join(parts) + "\n"
     ex = Extraction(format="docx", pages=[Page(page=1, text=text, char_start=0)])
-    ex.has_text_layer = len(text.strip()) >= MIN_CHARS_PER_PAGE
+    ex.has_text_layer = _has_text_layer(ex)
     return ex
+
+
+def _has_text_layer(ex: Extraction) -> bool:
+    import re
+
+    words = re.findall(r"[a-zõäöüšž]{4,}", ex.text)  # prose has lowercase words; drawings/scans do not
+    return bool(ex.pages) and len(words) / max(len(ex.pages), 1) >= MIN_WORDS_PER_PAGE
 
 
 def _iter_blocks(doc):

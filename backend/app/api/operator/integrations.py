@@ -1,0 +1,43 @@
+"""Thin lookups over external registries (äriregister, EHR) — fakes in tests/dev."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+
+from app.api.deps import current_principal
+from app.integrations.ariregister import ariregister
+from app.integrations.ehr import ehr
+
+router = APIRouter(prefix="/integrations", tags=["integrations"], dependencies=[Depends(current_principal)])
+
+
+class CompanyLookupOut(BaseModel):
+    name: str
+    registry_code: str
+    address: str | None = None
+    vat_number: str | None = None
+    status: str | None = None
+
+
+class BuildingLookupOut(BaseModel):
+    ehr_code: str
+    address: str
+    use_type: str | None = None
+    footprint_m2: float | None = None
+    net_area_m2: float | None = None
+    floors: int | None = None
+    build_year: int | None = None
+
+
+@router.get("/ariregister", response_model=list[CompanyLookupOut])
+async def lookup_ariregister(q: str = Query(min_length=2, max_length=100)) -> list[CompanyLookupOut]:
+    rows = await ariregister().lookup(q)
+    return [CompanyLookupOut(name=r.name, registry_code=r.registry_code, address=r.address, vat_number=r.vat_number, status=r.status) for r in rows]
+
+
+@router.get("/ehr", response_model=list[BuildingLookupOut])
+async def lookup_ehr(q: str = Query(min_length=2, max_length=200)) -> list[BuildingLookupOut]:
+    rows = await ehr().lookup(q)
+    return [BuildingLookupOut(ehr_code=r.ehr_code, address=r.address, use_type=r.use_type, footprint_m2=r.footprint_m2,
+                              net_area_m2=r.net_area_m2, floors=r.floors, build_year=r.build_year) for r in rows]

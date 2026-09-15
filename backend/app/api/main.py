@@ -14,8 +14,8 @@ from app.infra.settings import get_settings
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
-    from app.infra.db import dispose, sessionmaker
     from app.domain.seed import seed_globals
+    from app.infra.db import dispose, sessionmaker
 
     async with sessionmaker()() as s:
         async with s.begin():

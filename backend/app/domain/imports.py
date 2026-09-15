@@ -279,10 +279,12 @@ async def _next_number(session: AsyncSession, category: str) -> str:
 
 
 async def _clear_structure(session: AsyncSession, contract: Contract) -> None:
+    from sqlalchemy import delete as sql_delete
+
     from app.models.contracts import Clause, KeyDate
 
-    for c in (await session.execute(select(Clause).where(Clause.contract_id == contract.id).order_by(Clause.ordinal.desc()))).scalars():
-        await session.delete(c)
+    # one statement: the self-referential FK is checked at statement end, so parents and children go together
+    await session.execute(sql_delete(Clause).where(Clause.contract_id == contract.id))
     for f in (await session.execute(select(ContractFact).where(ContractFact.contract_id == contract.id))).scalars():
         f.valid_to = date.today()
     for kd in (await session.execute(select(KeyDate).where(KeyDate.subject_id == contract.id, KeyDate.deleted_at.is_(None)))).scalars():
