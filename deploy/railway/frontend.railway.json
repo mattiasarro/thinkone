@@ -3,7 +3,7 @@
   "build": { "builder": "DOCKERFILE", "dockerfilePath": "frontend/Dockerfile" },
   "deploy": {
     "startCommand": "node server.js",
-    "healthcheckPath": "/",
+    "healthcheckPath": "/login",
     "restartPolicyType": "ON_FAILURE"
   }
 }

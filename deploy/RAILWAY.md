@@ -72,8 +72,8 @@ forms. Use the **private** URL (`DATABASE_URL`, host `postgres.railway.internal`
 **frontend**:
 
 ```
-API_INTERNAL_URL=http://api.railway.internal:8000    # private networking; browser calls stay same-origin via Next rewrites
-PORT=3000
+API_INTERNAL_URL=http://api.railway.internal:8000    # private networking; the browser calls same-origin /api/*, a runtime
+PORT=3000                                             # route-handler proxy forwards to this URL (read per request, no build arg)
 ```
 
 ## 4. Deploy order and first run
