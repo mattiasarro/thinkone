@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from tests.conftest import new_email
 
@@ -43,10 +44,12 @@ async def test_invite_and_accept(client: AsyncClient, admin: dict):
 
 async def test_rls_isolates_accounts(client: AsyncClient, admin: dict):
     """Two accounts: rows written under one tenant are invisible under the other."""
+    import uuid
+
+    from sqlalchemy import select
+
     from app.infra.db import tenant_session
     from app.models.core import Party
-    from sqlalchemy import select
-    import uuid
 
     a1 = uuid.UUID(admin["account"]["id"])
     await client.post("/api/v1/auth/logout")
@@ -59,5 +62,5 @@ async def test_rls_isolates_accounts(client: AsyncClient, admin: dict):
         assert names == []
         # cross-tenant write is rejected by the policy's WITH CHECK
         s.add(Party(account_id=a1, kind="ee_company", name="Sisse murdmine", roles=["client"]))
-        with pytest.raises(Exception):
+        with pytest.raises(DBAPIError):
             await s.flush()

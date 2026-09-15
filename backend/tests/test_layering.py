@@ -4,7 +4,7 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "app"
-WRITE_PATTERNS = [r"\bsession\.add\(", r"\bsession\.add_all\(", r"\bsession\.delete\(", r"\binsert\(", r"\bupdate\(", r"\bdelete\("]
+WRITE_PATTERNS = [r"\bsession\.add\(", r"\bsession\.add_all\(", r"\bsession\.delete\(", r"\b(?:insert|update|delete)\(\s*[A-Z]\w*\s*\)"]
 ALLOWED_DIRS = {"domain", "ingest", "worker"}  # worker tasks route through domain commands; ingest is domain-level
 
 

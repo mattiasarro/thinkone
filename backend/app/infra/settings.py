@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     upload_max_bytes: int = 25 * 1024 * 1024
+
+    @field_validator("database_url")
+    @classmethod
+    def _asyncpg_scheme(cls, v: str) -> str:
+        # Railway hands out postgresql://…; SQLAlchemy async needs the asyncpg driver in the scheme.
+        if v.startswith("postgres://"):
+            v = "postgresql://" + v[len("postgres://"):]
+        if v.startswith("postgresql://"):
+            v = "postgresql+asyncpg://" + v[len("postgresql://"):]
+        return v
 
     def sync_database_url(self) -> str:
         """psycopg URL for Alembic / Procrastinate."""
