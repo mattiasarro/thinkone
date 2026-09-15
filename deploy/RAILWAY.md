@@ -33,8 +33,8 @@ In the Railway dashboard: **New → GitHub Repo** three times (or `railway add -
 | `frontend` | `/`            | `deploy/railway/frontend.railway.json`             | yes (generate a domain) |
 
 `api` and `worker` build the same `backend/Dockerfile`; the config files only differ in the start command. The api start
-command runs `alembic upgrade head` and `procrastinate … schema --apply` before `uvicorn`, so migrations run on every
-deploy (idempotent). The worker starts `procrastinate worker` (queues: default, email, import; daily key-date cron).
+command runs `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`,
+so migrations run on every deploy (idempotent). The worker starts `procrastinate worker` (queues: default, email, import; daily key-date cron).
 
 ## 3. Environment variables
 
@@ -102,7 +102,7 @@ PORT=3000
 ```bash
 docker compose -f deploy/compose.dev.yml up -d        # postgres :55433, minio :9000 (console :9001)
 cd backend && cp .env.example .env && uv sync
-uv run alembic upgrade head && uv run procrastinate --app app.worker.tasks.app schema --apply
+uv run python scripts/migrate.py                        # alembic + procrastinate schema
 uv run uvicorn app.api.main:app --reload --port 8000  # API  → http://localhost:8000/api/docs
 uv run procrastinate --app app.worker.tasks.app worker  # worker (second terminal)
 cd ../frontend && pnpm install && pnpm dev              # http://localhost:3000

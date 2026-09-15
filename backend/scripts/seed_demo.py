@@ -25,7 +25,7 @@ SPACES = [  # from demo/demo/data.js (Hoone T6B, real m²)
 
 def main() -> None:
     c = httpx.Client(base_url=BASE, timeout=60)
-    email = f"demo+{int(time.time())}@thinkone.local"
+    email = f"demo+{int(time.time())}@example.com"
     r = c.post("/api/v1/auth/register", json={"account_name": "Taevavärava OÜ", "email": email, "name": "Tarmo Sepp", "password": "demo-parool-123"})
     r.raise_for_status()
     print("account:", r.json()["account"]["name"], "login:", email, "/ demo-parool-123")
