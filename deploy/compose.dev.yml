@@ -1,0 +1,21 @@
+# Local dev: postgres + minio. Run the api/worker/frontend from source (see README).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: thinkone
+      POSTGRES_PASSWORD: thinkone
+      POSTGRES_DB: thinkone
+    ports: ["55433:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["miniodata:/data"]
+volumes:
+  pgdata:
+  miniodata:

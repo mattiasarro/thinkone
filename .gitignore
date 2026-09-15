@@ -1,2 +1,11 @@
 .DS_Store
 tmp.txt
+backend/.venv/
+backend/.env
+backend/__pycache__/
+**/__pycache__/
+.pytest_cache/
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+tmp.txt
