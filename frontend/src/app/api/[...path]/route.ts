@@ -29,7 +29,9 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
     cache: "no-store",
   });
   const out = new Headers();
-  upstream.headers.forEach((v, k) => { if (!HOP_BY_HOP.has(k.toLowerCase())) out.append(k, v); });
+  // fetch() has already decoded the body, so the upstream content-encoding/length no longer describe it
+  const STRIP = new Set([...HOP_BY_HOP, "content-encoding", "content-length"]);
+  upstream.headers.forEach((v, k) => { if (!STRIP.has(k.toLowerCase())) out.append(k, v); });
   // fetch collapses multiple Set-Cookie headers; re-expand them
   const cookies = (upstream.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
   if (cookies.length) { out.delete("set-cookie"); for (const c of cookies) out.append("set-cookie", c); }
