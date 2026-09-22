@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     s3_key: str | None = "minio"
     s3_secret: str | None = "minio12345"
     s3_region: str = "auto"
+    s3_addressing: Literal["path", "virtual"] = "path"  # MinIO = path; Railway buckets / R2 = virtual
 
     # LLM — Anthropic API behind the ChatModel seam
     anthropic_api_key: str | None = None

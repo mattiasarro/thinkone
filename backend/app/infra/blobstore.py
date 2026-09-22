@@ -33,7 +33,7 @@ class S3BlobStore:
             aws_access_key_id=s.s3_key,
             aws_secret_access_key=s.s3_secret,
             region_name=s.s3_region,
-            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+            config=Config(signature_version="s3v4", s3={"addressing_style": s.s3_addressing}),
         )
 
     def ensure_bucket(self) -> None:

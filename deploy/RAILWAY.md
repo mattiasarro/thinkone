@@ -1,7 +1,7 @@
 # ThinkOne on Railway — setup
 
-One Railway project, four services: **postgres** (managed), **api**, **worker**, **frontend**. Object storage is
-**Cloudflare R2** (S3 API, EU jurisdiction). Everything environment-specific is an env var (architecture §9).
+One Railway project, four services: **postgres** (managed), **api**, **worker**, **frontend**. Object storage is a
+**Railway bucket** in the EU-West (ams) region (S3 API); Cloudflare R2 works the same way behind the S3 seam. Everything environment-specific is an env var (architecture §9).
 
 ## 0. Prerequisites
 
@@ -48,11 +48,12 @@ DB_APP_ROLE=thinkone_app                         # NOBYPASSRLS role the first mi
 PUBLIC_URL=https://<frontend-domain>
 API_PUBLIC_URL=https://<api-domain>
 CORS_ORIGINS=https://<frontend-domain>
-S3_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
-S3_BUCKET=thinkone-prod
-S3_KEY=<R2 access key id>
-S3_SECRET=<R2 secret access key>
+S3_ENDPOINT=<bucket endpoint>          # Railway bucket (railway bucket credentials --bucket thinkone-files) or R2
+S3_BUCKET=<bucket name>
+S3_KEY=<access key id>
+S3_SECRET=<secret access key>
 S3_REGION=auto
+S3_ADDRESSING=virtual                 # Railway buckets and R2 use virtual-host URLs; MinIO uses path
 LLM_MODE=live
 ANTHROPIC_API_KEY=<key>
 LLM_MODEL=claude-opus-5
