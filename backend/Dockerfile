@@ -11,4 +11,4 @@ RUN uv sync --frozen --no-dev
 ENV PATH="/srv/.venv/bin:$PATH" PORT=8000
 EXPOSE 8000
 # api (default). Worker overrides the command: ["procrastinate", "--app", "app.worker.tasks.app", "worker"]
-CMD ["sh", "-c", "python scripts/migrate.py && uvicorn app.api.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "python scripts/migrate.py && uvicorn app.api.main:app --host :: --port ${PORT}"]
