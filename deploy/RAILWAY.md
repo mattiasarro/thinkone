@@ -6,7 +6,7 @@ One Railway project, four services: **postgres** (managed), **api**, **worker**,
 ## 0. Prerequisites
 
 - Railway account + the Railway CLI (`npm i -g @railway/cli`, then `railway login`).
-- Cloudflare account with R2 enabled; one bucket (e.g. `thinkone-prod`) and an R2 API token (Object Read & Write).
+- Object storage: a Railway bucket (created below) — or a Cloudflare R2 bucket + API token if you prefer R2.
 - Anthropic API key (Console → API keys). Prompts reach Anthropic under DPA; nothing is used for training.
 - Postmark server token + a verified sending domain (SPF/DKIM/DMARC records) — optional at first
   (`EMAIL_PROVIDER=fake` logs emails instead of sending).
@@ -24,17 +24,23 @@ reference variable so it never gets copied by hand (step 3).
 
 ## 2. Create the three app services from the repo
 
-In the Railway dashboard: **New → GitHub Repo** three times (or `railway add --service api` etc.), one service each:
+Railway's JSON config-as-code is deprecated, so build and start settings live on the service (dashboard → Settings, or
+`railway environment edit --service-config`). Create three empty services (`railway add --service api` etc., or the MCP
+`create-service`), connect each to the GitHub repo (branch `main`), and set:
 
-| Service    | Root directory | Config file (set under Settings → Config-as-code) | Public networking |
-| ---------- | -------------- | -------------------------------------------------- | ----------------- |
-| `api`      | `/`            | `deploy/railway/api.railway.json`                  | yes (generate a domain) |
-| `worker`   | `/`            | `deploy/railway/worker.railway.json`               | no                |
-| `frontend` | `/`            | `deploy/railway/frontend.railway.json`             | yes (generate a domain) |
+| Service    | Root directory | Builder / Dockerfile | Start command | Health check | Restart | Watch paths |
+| ---------- | -------------- | -------------------- | ------------- | ------------ | ------- | ----------- |
+| `api`      | `/backend`     | Dockerfile `Dockerfile` | `sh -c 'python scripts/migrate.py && uvicorn app.api.main:app --host :: --port $PORT'` | `/api/health`, timeout 180 s | ON_FAILURE ×5 | `/backend/**` |
+| `worker`   | `/backend`     | Dockerfile `Dockerfile` | `procrastinate --app app.worker.tasks.app worker --concurrency 4` | none | ALWAYS | `/backend/**` |
+| `frontend` | `/frontend`    | Dockerfile `Dockerfile` | `node server.js` | `/login` | ON_FAILURE | `/frontend/**` |
 
-`api` and `worker` build the same `backend/Dockerfile`; the config files only differ in the start command. The api start
-command runs `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`,
-so migrations run on every deploy (idempotent). The worker starts `procrastinate worker` (queues: default, email, import; daily key-date cron).
+Generate a public domain for `api` (target port 8000) and `frontend` (target port 3000); the worker stays private.
+`api` and `worker` build the same image; only the start command differs. The api start command runs
+`python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`, so
+migrations run on every deploy (idempotent). Both apps bind `::` — Railway's private network and proxy are IPv6.
+
+Object storage: `railway bucket create thinkone-files --region ams --environment production` (EU West), then
+`railway bucket credentials --bucket <name> --environment production --json` gives endpoint, bucket name and keys.
 
 ## 3. Environment variables
 
@@ -69,6 +75,9 @@ LOG_LEVEL=INFO
 The Postgres URL Railway gives is `postgresql://`; `app/infra/settings.py` accepts it and derives the asyncpg / psycopg
 forms. Use the **private** URL (`DATABASE_URL`, host `postgres.railway.internal`) — the app needs a direct connection
 (LISTEN/NOTIFY, no transaction pooler).
+
+Also set `PORT=8000` on `api` so the public domain's target port and uvicorn agree (Railway otherwise assigns a
+random port). The frontend gets `PORT=3000`.
 
 **frontend**:
 
