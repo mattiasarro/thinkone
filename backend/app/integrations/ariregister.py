@@ -44,10 +44,16 @@ class LiveAriregister:
     URL = "https://ariregister.rik.ee/est/api/autocomplete"
 
     async def lookup(self, query: str) -> list[CompanyRecord]:
-        async with httpx.AsyncClient(timeout=15) as c:
-            r = await c.get(self.URL, params={"q": query.strip()})
-            r.raise_for_status()
-            data = r.json().get("data", [])
+        import structlog
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as c:
+                r = await c.get(self.URL, params={"q": query.strip()})
+                r.raise_for_status()
+                data = r.json().get("data", [])
+        except (httpx.HTTPError, ValueError) as e:
+            structlog.get_logger().warning("ariregister_lookup_failed", query=query, error=str(e)[:200])
+            return []
         out = []
         for row in data:
             out.append(CompanyRecord(name=row.get("name", ""), registry_code=str(row.get("reg_code", "")),

@@ -43,12 +43,21 @@ class LiveEHR:
     URL = "https://livekluster.ehr.ee/api/building/v2/buildingsData"
 
     async def lookup(self, query: str) -> list[BuildingRecord]:
+        """Best effort: the public EHR API contract is unconfirmed, so any failure degrades to "no results"
+        and the operator enters the building manually (spec 02 allows manual correction)."""
+        import structlog
+
         q = query.strip()
         params = {"ehr_code": q} if q.isdigit() else {"address": q}
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(self.URL, params=params)
-            r.raise_for_status()
-            rows = r.json() if isinstance(r.json(), list) else [r.json()]
+        try:
+            async with httpx.AsyncClient(timeout=20) as c:
+                r = await c.get(self.URL, params=params)
+                r.raise_for_status()
+                data = r.json()
+                rows = data if isinstance(data, list) else [data]
+        except (httpx.HTTPError, ValueError) as e:
+            structlog.get_logger().warning("ehr_lookup_failed", query=q, error=str(e)[:200])
+            return []
         out = []
         for row in rows:
             out.append(BuildingRecord(
