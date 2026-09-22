@@ -30,14 +30,16 @@ Railway's JSON config-as-code is deprecated, so build and start settings live on
 
 | Service    | Root directory | Builder / Dockerfile | Start command | Health check | Restart | Watch paths |
 | ---------- | -------------- | -------------------- | ------------- | ------------ | ------- | ----------- |
-| `api`      | `/backend`     | Dockerfile `Dockerfile` | `sh -c 'python scripts/migrate.py && uvicorn app.api.main:app --host :: --port $PORT'` | `/api/health`, timeout 180 s | ON_FAILURE ×5 | `/backend/**` |
+| `api`      | `/backend`     | Dockerfile `Dockerfile` | `sh -c 'python scripts/migrate.py && uvicorn app.api.main:app --host 0.0.0.0 --port $PORT'` | `/api/health`, timeout 180 s | ON_FAILURE ×5 | `/backend/**` |
 | `worker`   | `/backend`     | Dockerfile `Dockerfile` | `procrastinate --app app.worker.tasks.app worker --concurrency 4` | none | ALWAYS | `/backend/**` |
 | `frontend` | `/frontend`    | Dockerfile `Dockerfile` | `node server.js` | `/login` | ON_FAILURE | `/frontend/**` |
 
 Generate a public domain for `api` (target port 8000) and `frontend` (target port 3000); the worker stays private.
 `api` and `worker` build the same image; only the start command differs. The api start command runs
 `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`, so
-migrations run on every deploy (idempotent). Both apps bind `::` — Railway's private network and proxy are IPv6.
+migrations run on every deploy (idempotent). Both apps bind IPv4 (`0.0.0.0`): Railway's health check and public proxy reach the container over IPv4, and a
+uvicorn bound to `::` failed its health check. The frontend therefore proxies to the api's **public** URL rather than
+the IPv6-only private hostname.
 
 Object storage: `railway bucket create thinkone-files --region ams --environment production` (EU West), then
 `railway bucket credentials --bucket <name> --environment production --json` gives endpoint, bucket name and keys.
@@ -82,8 +84,9 @@ random port). The frontend gets `PORT=3000`.
 **frontend**:
 
 ```
-API_INTERNAL_URL=http://api.railway.internal:8000    # private networking; the browser calls same-origin /api/*, a runtime
-PORT=3000                                             # route-handler proxy forwards to this URL (read per request, no build arg)
+API_INTERNAL_URL=https://<api-domain>   # the browser calls same-origin /api/*; a runtime route-handler proxy forwards
+PORT=3000                                #   to this URL (read per request). Private http://api.railway.internal:8000 is
+HOSTNAME=0.0.0.0                         #   IPv6-only and needs an IPv6-bound api — see §2.
 ```
 
 ## 4. Deploy order and first run
