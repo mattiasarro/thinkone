@@ -18,6 +18,8 @@ os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://thinkone:thinkone@localhost:55433/thinkone_test")
 os.environ.setdefault("LLM_MODE", "fake")
 os.environ.setdefault("INTEGRATIONS_MODE", "fake")
+os.environ.setdefault("ARIREGISTER_MODE", "fake")  # a developer .env may switch these live; tests never touch the registries
+os.environ.setdefault("EHR_MODE", "fake")
 os.environ.setdefault("EMAIL_PROVIDER", "fake")
 os.environ.setdefault("S3_ENDPOINT", "")
 
