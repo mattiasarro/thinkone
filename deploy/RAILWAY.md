@@ -65,9 +65,11 @@ S3_ADDRESSING=virtual                 # Railway buckets and R2 use virtual-host 
 LLM_MODE=live
 ANTHROPIC_API_KEY=<key>
 LLM_MODEL=claude-opus-5
-INTEGRATIONS_MODE=fake            # per-adapter overrides; both public registries need no credentials:
+INTEGRATIONS_MODE=fake            # per-adapter overrides:
 ARIREGISTER_MODE=live
-EHR_MODE=live                     # Buildings Actual Data API (livekluster.ehr.ee/api/building)
+ARIREGISTER_USER=<RIK XML service user>       # Äriregistri XML-teenus (ariregxmlv6.rik.ee) — VAT number, contacts, board;
+ARIREGISTER_PASSWORD=<RIK XML service password> #   without these live mode falls back to the public autocomplete (basics only)
+EHR_MODE=live                     # Buildings Actual Data API (livekluster.ehr.ee/api/building), no credentials
 EMAIL_PROVIDER=postmark           # or fake
 POSTMARK_TOKEN=<server token>
 POSTMARK_WEBHOOK_SECRET=<random>  # sent by Postmark as X-Webhook-Secret header (configure in Postmark webhook URL headers)
@@ -109,7 +111,8 @@ HOSTNAME=0.0.0.0                         #   IPv6-only and needs an IPv6-bound a
   compare row counts (a scheduled job for this is Phase 4 hardening).
 - **Scaling**: api and worker are stateless; add replicas in Railway. Worker concurrency via the start command
   (`--concurrency N`).
-- **Live adapters**: äriregister and EHR are live and need no credentials. Moderan, Statistikaamet, risk sources and Dokobit
+- **Live adapters**: äriregister (RIK XML service with `ARIREGISTER_USER`/`ARIREGISTER_PASSWORD`; each `lihtandmed`/`detailandmed`
+  query is billed by RIK per the contract) and EHR (public, no credentials). Moderan, Statistikaamet, risk sources and Dokobit
   arrive with Phases 3–4.
 
 ## Local development
