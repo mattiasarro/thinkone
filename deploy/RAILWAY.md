@@ -65,7 +65,9 @@ S3_ADDRESSING=virtual                 # Railway buckets and R2 use virtual-host 
 LLM_MODE=live
 ANTHROPIC_API_KEY=<key>
 LLM_MODEL=claude-opus-5
-INTEGRATIONS_MODE=fake            # flip per adapter when credentials arrive: ARIREGISTER_MODE=live, EHR_MODE=live
+INTEGRATIONS_MODE=fake            # per-adapter overrides; both public registries need no credentials:
+ARIREGISTER_MODE=live
+EHR_MODE=live                     # Buildings Actual Data API (livekluster.ehr.ee/api/building)
 EMAIL_PROVIDER=postmark           # or fake
 POSTMARK_TOKEN=<server token>
 POSTMARK_WEBHOOK_SECRET=<random>  # sent by Postmark as X-Webhook-Secret header (configure in Postmark webhook URL headers)
@@ -107,8 +109,8 @@ HOSTNAME=0.0.0.0                         #   IPv6-only and needs an IPv6-bound a
   compare row counts (a scheduled job for this is Phase 4 hardening).
 - **Scaling**: api and worker are stateless; add replicas in Railway. Worker concurrency via the start command
   (`--concurrency N`).
-- **Credentials that unlock live adapters**: äriregister (open data needs none — set `ARIREGISTER_MODE=live`),
-  EHR public API (`EHR_MODE=live`). Moderan, Statistikaamet, risk sources, Dokobit arrive with Phases 3–4.
+- **Live adapters**: äriregister and EHR are live and need no credentials. Moderan, Statistikaamet, risk sources and Dokobit
+  arrive with Phases 3–4.
 
 ## Local development
 

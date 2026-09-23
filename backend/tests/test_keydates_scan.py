@@ -21,7 +21,7 @@ async def test_scan_fires_once_and_health_flags_dates(client: AsyncClient, admin
     async with tenant_session(aid) as s:
         soon = await create_contract(s, actor, type_code="generic", title="Lõpeb varsti", number="HOO-2026-001", status="active", origin="imported",
                                      category="maintenance", start_date=today - timedelta(days=300), end_date=today + timedelta(days=60))
-        late = await create_contract(s, actor, type_code="generic", title="Juba läbi", number="HOO-2026-002", status="active", origin="imported",
+        await create_contract(s, actor, type_code="generic", title="Juba läbi", number="HOO-2026-002", status="active", origin="imported",
                                      category="maintenance", end_date=today - timedelta(days=3))
         far = await create_contract(s, actor, type_code="lease", title="Kaugel", number="LEP-2026-003", status="active", origin="imported",
                                     category="lease", end_date=today + timedelta(days=400))

@@ -28,6 +28,7 @@ class BuildingLookupOut(BaseModel):
     net_area_m2: float | None = None
     floors: int | None = None
     build_year: int | None = None
+    ehr_payload: dict | None = None
 
 
 @router.get("/ariregister", response_model=list[CompanyLookupOut])
@@ -40,4 +41,4 @@ async def lookup_ariregister(q: str = Query(min_length=2, max_length=100)) -> li
 async def lookup_ehr(q: str = Query(min_length=2, max_length=200)) -> list[BuildingLookupOut]:
     rows = await ehr().lookup(q)
     return [BuildingLookupOut(ehr_code=r.ehr_code, address=r.address, use_type=r.use_type, footprint_m2=r.footprint_m2,
-                              net_area_m2=r.net_area_m2, floors=r.floors, build_year=r.build_year) for r in rows]
+                              net_area_m2=r.net_area_m2, floors=r.floors, build_year=r.build_year, ehr_payload=r.raw or None) for r in rows]

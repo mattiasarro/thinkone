@@ -20,6 +20,7 @@ class PropertyAttributes(BaseModel):
     utility_cost_summer: float | None = Field(default=None, ge=0, description="€/m² per month, Apr–Sep average")
     utility_source: str | None = None  # moderan | manual
     ehr_source: str | None = None  # ehr | manual
+    ehr_payload: dict | None = None  # trimmed raw register payload (architecture §7: adapters snapshot responses)
 
 
 class SpaceAttributes(BaseModel):

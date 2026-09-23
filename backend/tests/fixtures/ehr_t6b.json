@@ -1,0 +1,420 @@
+{
+ "search": [
+  {
+   "ehrCode": "221390899",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b"
+   ],
+   "buildingId": 29929537,
+   "buildingName": "Tuletõrjeveemahuti",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "",
+   "underArea": "62.5",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "221423860",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 24",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1"
+   ],
+   "buildingId": 30563500,
+   "buildingName": "Kinnistusisene gaasitorustik",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "2023",
+   "underArea": "",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "291656131",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1"
+   ],
+   "buildingId": 30235274,
+   "buildingName": "Kanalisatsioonitorustik",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "2022",
+   "underArea": "3.2",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "220551644",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 4a",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6a",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6c",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 4b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 5"
+   ],
+   "buildingId": 31338764,
+   "buildingName": "ELEKTRI MAAKAABELLIIN",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "2008",
+   "underArea": "110.0",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_VALLAS",
+    "value": "vallasasi"
+   },
+   "purposeOfUse": {
+    "code": "22243",
+    "value": "Elektri maakaabelliin"
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "121378008",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b"
+   ],
+   "buildingId": 31714391,
+   "buildingName": "Büroo- ja laohoone",
+   "buildingType": {
+    "code": "H",
+    "value": "hoone"
+   },
+   "firstUseDate": "2023",
+   "underArea": "6852.5",
+   "floorCount": "2",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": "30045",
+    "value": "Muu laohoone"
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "221390890",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6a",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6c"
+   ],
+   "buildingId": 30563499,
+   "buildingName": "Piirdeaed",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "",
+   "underArea": "",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "291662427",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee lõik L1"
+   ],
+   "buildingId": 30236197,
+   "buildingName": "Sademeveekanalisatsiooni torustik",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "2022",
+   "underArea": "",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_VALLAS",
+    "value": "vallasasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_OLEMA",
+    "value": "Olemas"
+   }
+  },
+  {
+   "ehrCode": "221396900",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 7",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 22",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 10",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6a",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6c",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 2",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L1",
+    "Harju maakond, Rae vald, Lehmja küla, Kütte tee",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee",
+    "Harju maakond, Rae vald, Lehmja küla, Kalevi tee L1",
+    "Harju maakond, Rae vald, Lehmja küla, Kuremetsa",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L1",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L2",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L3",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 11",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 9",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 20",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L2",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 11a",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L3",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 14",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi"
+   ],
+   "buildingId": 31741541,
+   "buildingName": "Teed",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "",
+   "underArea": "",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_PYSTI",
+    "value": "Püstitamisel"
+   }
+  },
+  {
+   "ehrCode": "221396905",
+   "buildingAddress": [
+    "Harju maakond, Rae vald, Lehmja küla, Kalevi tee 2",
+    "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+    "Harju maakond, Rae vald, Lehmja küla, Kalevi tee L1",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L3",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 22",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 11",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L2",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L3",
+    "Harju maakond, Rae vald, Lehmja küla, Pärnoja tee L1",
+    "Harju maakond, Rae vald, Rae küla, Rae tee 40",
+    "Harju maakond, Rae vald, Lehmja küla, Kuremetsa",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi",
+    "Harju maakond, Rae vald, Lehmja küla, Lüüsi tee L1",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L2",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 12",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 26",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee 24",
+    "Harju maakond, Rae vald, Lehmja küla, Kurekivi tee L4"
+   ],
+   "buildingId": 31751427,
+   "buildingName": "Kaugkütte torustik",
+   "buildingType": {
+    "code": "R",
+    "value": "rajatis"
+   },
+   "firstUseDate": "",
+   "underArea": "",
+   "floorCount": "",
+   "heritage": null,
+   "ownershipType": {
+    "code": "EHITIS_OMANDI_LIIK_KINNIS",
+    "value": "kinnisasi"
+   },
+   "purposeOfUse": {
+    "code": null,
+    "value": null
+   },
+   "buildingState": {
+    "code": "EHITIS_SEISUND_PYSTI",
+    "value": "Püstitamisel"
+   }
+  }
+ ],
+ "detail_121378008": {
+  "ehitis": {
+   "ehitisePohiandmed": {
+    "lift": "0",
+    "maht": "59520.0",
+    "laius": "50.0",
+    "korgus": "9.4",
+    "pikkus": "142.1",
+    "maakond": "37",
+    "sygavus": "0.0",
+    "kinavald": null,
+    "ehAlustKp": null,
+    "mahtBruto": "59520.0",
+    "oletuslik": "0",
+    "abs0Korgus": "55.4",
+    "koetavPind": "7765.8",
+    "omandiLiik": "EHITIS_OMANDI_LIIK_KINNIS",
+    "omavalitsus": "653",
+    "kavKasutusKp": null,
+    "toatemp_pind": "7671.2",
+    "omandiLiikTxt": "kinnisasi",
+    "vetteEhitatud": null,
+    "yldkasut_pind": "322.6",
+    "abiruumidePind": "94.6",
+    "ajehKasutalgKp": null,
+    "maxKorrusteArv": "2",
+    "ajehKasutloppKp": null,
+    "ehitisalunePind": "6852.5",
+    "suletud_netopind": "7765.8",
+    "soltumatuVallasAsi": null,
+    "maaalusteKorrusteArv": "0",
+    "ehitisaluneMaapealnePind": "6852.5"
+   },
+   "ehitiseKasutusotstarbed": {
+    "kasutusotstarve": [
+     {
+      "oper": "A",
+      "kaosId": "30045",
+      "ehos_id": null,
+      "kaosKood": "12529",
+      "kaosIdTxt": "Muu laohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": "6365.0"
+     },
+     {
+      "oper": "A",
+      "kaosId": "12201",
+      "ehos_id": null,
+      "kaosKood": "12201",
+      "kaosIdTxt": "Büroohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": "983.6"
+     },
+     {
+      "oper": "A",
+      "kaosId": "30045",
+      "ehos_id": "29517353",
+      "kaosKood": "12529",
+      "kaosIdTxt": "Muu laohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": null
+     },
+     {
+      "oper": "A",
+      "kaosId": "30045",
+      "ehos_id": "29517354",
+      "kaosKood": "12529",
+      "kaosIdTxt": "Muu laohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": null
+     },
+     {
+      "oper": "A",
+      "kaosId": "30045",
+      "ehos_id": "29517355",
+      "kaosKood": "12529",
+      "kaosIdTxt": "Muu laohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": null
+     },
+     {
+      "oper": "A",
+      "kaosId": "12201",
+      "ehos_id": "29517356",
+      "kaosKood": "12201",
+      "kaosIdTxt": "Büroohoone",
+      "eluruumidePind": null,
+      "mitteeluruumidePind": null
+     }
+    ]
+   },
+   "ehitiseAadressid": {
+    "aadress": [
+     {
+      "oper": "A",
+      "adrId": "1596465",
+      "olekviit": {
+       "olek": "K",
+       "olekTxt": "kehtiv"
+      },
+      "koodaadress": "37653420800000KFF0000889100000000",
+      "lahiaadress": "Taevavärava tee 6b",
+      "taisaadress": "Harju maakond, Rae vald, Lehmja küla, Taevavärava tee 6b",
+      "aadressTekstina": null
+     }
+    ]
+   }
+  }
+ }
+}

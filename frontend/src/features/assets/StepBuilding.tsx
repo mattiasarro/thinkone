@@ -48,14 +48,17 @@ export function StepBuilding({ property, onSaved }: { property?: AssetDetail | n
     if (!property && companies.data?.length === 1) setValue("company_id", companies.data[0].id);
   }, [companies.data, property, setValue]);
 
+  const [ehrPayload, setEhrPayload] = useState<Record<string, unknown> | null>(attrs.ehr_payload ?? null);
   const pick = (h: EhrHit) => {
+    setEhrPayload(h.ehr_payload ?? null);
     setValue("address", h.address); setValue("ehr_code", h.ehr_code); setValue("use_type", h.use_type ?? "");
     setValue("footprint_m2", h.footprint_m2 ?? undefined); setValue("net_area_m2", h.net_area_m2 ?? undefined); setValue("floors", h.floors ?? undefined); setValue("build_year", h.build_year ?? undefined);
     setMore(true); setQ("");
   };
 
   const onSubmit = handleSubmit(async (v) => {
-    const attributes: PropertyAttributes = { ...attrs, address: v.address, ehr_code: v.ehr_code || null, use_type: v.use_type || null, footprint_m2: v.footprint_m2 ?? null, net_area_m2: v.net_area_m2 ?? null, floors: v.floors ?? null, build_year: v.build_year ?? null };
+    const attributes: PropertyAttributes = { ...attrs, address: v.address, ehr_code: v.ehr_code || null, use_type: v.use_type || null, footprint_m2: v.footprint_m2 ?? null, net_area_m2: v.net_area_m2 ?? null, floors: v.floors ?? null, build_year: v.build_year ?? null,
+      ehr_source: v.ehr_code ? (ehrPayload ? "ehr" : attrs.ehr_source ?? "manual") : "manual", ehr_payload: v.ehr_code ? ehrPayload : null };
     try {
       if (property) { await update.mutateAsync({ id: property.id, name: v.name, company_id: v.company_id || null, attributes: attributes as Record<string, unknown> }); onSaved(property.id); }
       else { const a = await create.mutateAsync({ type_code: "property", name: v.name, company_id: v.company_id || null, attributes: attributes as Record<string, unknown> }); onSaved(a.id); }

@@ -17,7 +17,7 @@ export interface Company { id: UUID; name: string; registry_code: string | null;
 export type CompanyInput = Omit<Company, "id" | "logo_attachment_id">;
 
 export interface AriregisterHit { name: string; registry_code: string; address: string | null; vat_number: string | null; status: string | null }
-export interface EhrHit { ehr_code: string; address: string; use_type: string | null; footprint_m2: number | null; net_area_m2: number | null; floors: number | null; build_year: number | null }
+export interface EhrHit { ehr_code: string; address: string; use_type: string | null; footprint_m2: number | null; net_area_m2: number | null; floors: number | null; build_year: number | null; ehr_payload?: Record<string, unknown> | null }
 
 export type PartyKind = "ee_company" | "foreign_company" | "person";
 export interface Party { id: UUID; kind: PartyKind; name: string; registry_code: string | null; personal_code: string | null; vat_number: string | null; address: string | null; contact_name: string | null; email: string | null; phone: string | null; roles: string[] }
@@ -25,7 +25,7 @@ export type PartyInput = Omit<Party, "id">;
 
 export type AssetType = "property" | "space" | "department" | "position";
 export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata";
-export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null }
+export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; ehr_source?: string | null; ehr_payload?: Record<string, unknown> | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null }
 export interface SpaceAttributes { type?: string | null; net_area_m2?: number | null; rentable_area_m2: number; coefficient?: number | null; price_per_m2?: number | null; electrical_capacity_kw?: number | null; parking_spots?: number | null }
 export interface Asset { id: UUID; type_code: AssetType; name: string; company_id: UUID | null; parent_id: UUID | null; attributes: Record<string, unknown>; capacity: number | null; status: AssetStatus | null; children_count?: number }
 export interface AssetInput { type_code: AssetType; name: string; company_id?: UUID | null; parent_id?: UUID | null; attributes: Record<string, unknown>; capacity?: number | null }
