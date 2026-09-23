@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # integrations: one switch, per-adapter overrides
     integrations_mode: Literal["fake", "live"] = "fake"
     ariregister_mode: Literal["fake", "live"] | None = None
+    # RIK XML service (ariregxmlv6) account; without it live mode uses the public autocomplete (basics only)
+    ariregister_user: str | None = None
+    ariregister_password: str | None = None
+    ariregister_url: str = "https://ariregxmlv6.rik.ee/"
     ehr_mode: Literal["fake", "live"] | None = None
 
     # email
