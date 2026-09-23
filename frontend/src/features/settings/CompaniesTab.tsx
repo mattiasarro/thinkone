@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { t } from "@/i18n";
-import { useAriregister, useCompanies, useDeleteCompany, useSaveCompany, useUploadLogo, openAttachment } from "@/lib/queries/settings";
+import { fetchAriregisterDetail, useAriregister, useCompanies, useDeleteCompany, useSaveCompany, useUploadLogo, openAttachment } from "@/lib/queries/settings";
 import { useDebounced } from "@/lib/hooks";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -77,7 +77,18 @@ function CompanyModal({ open, onClose, initial }: { open: boolean; onClose: () =
     setQ("");
     reset({ name: initial?.name ?? "", registry_code: initial?.registry_code ?? "", vat_number: initial?.vat_number ?? "", address: initial?.address ?? "", email: initial?.email ?? "", phone: initial?.phone ?? "", accent_color: initial?.accent_color ?? "#1F5EFF" });
   }, [open, initial, reset]);
-  const pick = (h: AriregisterHit) => { setValue("name", h.name); setValue("registry_code", h.registry_code); setValue("address", h.address ?? ""); setValue("vat_number", h.vat_number ?? ""); setQ(""); };
+  const [enriching, setEnriching] = useState(false);
+  const pick = async (h: AriregisterHit) => {
+    setValue("name", h.name); setValue("registry_code", h.registry_code); setValue("address", h.address ?? ""); setValue("vat_number", h.vat_number ?? ""); setQ("");
+    setEnriching(true);
+    const d = await fetchAriregisterDetail(h.registry_code); // VAT number + contacts live on the company card, not in search results
+    setEnriching(false);
+    if (!d) return;
+    if (d.vat_number) setValue("vat_number", d.vat_number);
+    if (d.address) setValue("address", d.address);
+    if (d.email) setValue("email", d.email);
+    if (d.phone) setValue("phone", d.phone);
+  };
   const onSubmit = handleSubmit(async (v) => {
     try {
       await save.mutateAsync({ id: initial?.id, name: v.name, registry_code: v.registry_code || null, vat_number: v.vat_number || null, address: v.address || null, email: v.email || null, phone: v.phone || null, accent_color: v.accent_color || null });
@@ -90,12 +101,12 @@ function CompanyModal({ open, onClose, initial }: { open: boolean; onClose: () =
         {!initial && (
           <div className="field">
             <label htmlFor="ar-q">{t("settings.companies.searchRegistry")}</label>
-            <div className="flex items-center gap-2 fld"><IconSearch width={16} height={16} className="text-muted flex-none" /><input id="ar-q" value={q} onChange={(e) => setQ(e.target.value)} className="flex-1 min-w-0 bg-transparent outline-none" placeholder={t("settings.companies.registryHint")} />{reg.isFetching && <Spinner />}</div>
+            <div className="flex items-center gap-2 fld"><IconSearch width={16} height={16} className="text-muted flex-none" /><input id="ar-q" value={q} onChange={(e) => setQ(e.target.value)} className="flex-1 min-w-0 bg-transparent outline-none" placeholder={t("settings.companies.registryHint")} />{(reg.isFetching || enriching) && <Spinner />}</div>
             {dq.length >= 2 && !reg.isLoading && (
               <div className="mt-2 grid gap-1">
                 {(reg.data ?? []).length === 0 ? <p className="text-sm text-muted">{t("common.noResults")}</p> : (reg.data ?? []).slice(0, 6).map((h) => (
                   <button key={h.registry_code} type="button" className="drop-item border" style={{ borderColor: "var(--line)" }} onClick={() => pick(h)}>
-                    <span className="min-w-0"><span className="block font-semibold text-sm truncate">{h.name}</span><span className="block text-xs text-muted">{h.registry_code}{h.address ? ` · ${h.address}` : ""}{h.status ? ` · ${h.status}` : ""}</span></span>
+                    <span className="min-w-0"><span className="block font-semibold text-sm truncate">{h.name}</span><span className="block text-xs text-muted">{h.registry_code}{h.legal_form ? ` · ${h.legal_form}` : ""}{h.address ? ` · ${h.address}` : ""}{h.status ? ` · ${h.status}` : ""}</span></span>
                   </button>
                 ))}
               </div>

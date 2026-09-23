@@ -16,7 +16,8 @@ export interface Account { id: UUID; name: string; settings: { notify_days: Noti
 export interface Company { id: UUID; name: string; registry_code: string | null; vat_number: string | null; address: string | null; email: string | null; phone: string | null; accent_color: string | null; logo_attachment_id: UUID | null }
 export type CompanyInput = Omit<Company, "id" | "logo_attachment_id">;
 
-export interface AriregisterHit { name: string; registry_code: string; address: string | null; vat_number: string | null; status: string | null }
+export interface AriregisterRepresentative { name: string; role: string; role_code: string | null; since: string | null }
+export interface AriregisterHit { name: string; registry_code: string; address: string | null; vat_number: string | null; status: string | null; legal_form: string | null; email: string | null; phone: string | null; representatives: AriregisterRepresentative[] }
 export interface EhrHit { ehr_code: string; address: string; use_type: string | null; footprint_m2: number | null; net_area_m2: number | null; floors: number | null; build_year: number | null; ehr_payload?: Record<string, unknown> | null }
 
 export type PartyKind = "ee_company" | "foreign_company" | "person";

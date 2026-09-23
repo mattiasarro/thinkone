@@ -33,6 +33,11 @@ export function useUploadLogo() {
 export function useAriregister(q: string) {
   return useQuery({ queryKey: ["ariregister", q], queryFn: ({ signal }) => api.get<AriregisterHit[]>("/integrations/ariregister", { q }, signal), enabled: q.trim().length >= 2, staleTime: 60_000 });
 }
+
+/** Full company card (VAT number, contacts, board) — one call when a search hit is picked. Fails soft: null when the registry has no card. */
+export async function fetchAriregisterDetail(registryCode: string): Promise<AriregisterHit | null> {
+  try { return await api.get<AriregisterHit>(`/integrations/ariregister/${encodeURIComponent(registryCode)}`); } catch { return null; }
+}
 export function useEhr(q: string) {
   return useQuery({ queryKey: ["ehr", q], queryFn: ({ signal }) => api.get<EhrHit[]>("/integrations/ehr", { q }, signal), enabled: q.trim().length >= 2, staleTime: 60_000 });
 }
