@@ -35,12 +35,16 @@ async def create_company(session: AsyncSession, actor: Actor, **fields: Any) -> 
     data = {k: _clean(fields.get(k)) for k in EDITABLE}
     payload = None
     if data["registry_code"] and (not data["name"] or not data["address"]):
-        matches = await ariregister().lookup(data["registry_code"])
-        rec = next((m for m in matches if m.registry_code == data["registry_code"]), None)
+        reg = ariregister()
+        rec = await reg.detail(data["registry_code"])
+        if rec is None:
+            rec = next((m for m in await reg.lookup(data["registry_code"]) if m.registry_code == data["registry_code"]), None)
         if rec:
             data["name"] = data["name"] or rec.name
             data["address"] = data["address"] or rec.address
             data["vat_number"] = data["vat_number"] or rec.vat_number
+            data["email"] = data["email"] or rec.email
+            data["phone"] = data["phone"] or rec.phone
             payload = rec.raw or {"name": rec.name, "registry_code": rec.registry_code, "address": rec.address,
                                   "vat_number": rec.vat_number, "status": rec.status}
     if not data["name"]:
