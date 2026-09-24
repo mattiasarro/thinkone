@@ -30,8 +30,10 @@ export function LoginForm() {
     <form onSubmit={onSubmit} noValidate>
       <h1 className="text-xl mb-1">{t("auth.loginTitle")}</h1>
       <p className="text-muted text-sm mb-6">{t("auth.loginSub")}</p>
+      {params.get("reset") === "1" && !err && <div className="note success mb-4" role="status">{t("auth.passwordChanged")}</div>}
       <Input label={t("auth.email")} type="email" autoComplete="email" autoFocus error={errors.email?.message} {...register("email")} />
       <Input label={t("auth.password")} type="password" autoComplete="current-password" error={errors.password?.message} {...register("password")} />
+      <p className="text-right text-sm -mt-2 mb-4"><Link href="/forgot-password" className="text-primary font-semibold">{t("auth.forgotPassword")}</Link></p>
       {err && <div className="note error mb-4" role="alert">{err}</div>}
       <Button type="submit" variant="primary" className="w-full" busy={login.isPending}>{t("auth.login")}</Button>
       <p className="text-center text-sm text-muted mt-5">{t("auth.noAccount")} <Link href="/register" className="text-primary font-semibold">{t("auth.register")}</Link></p>

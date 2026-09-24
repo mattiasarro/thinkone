@@ -30,6 +30,14 @@ export function useAcceptInvite() {
     onSuccess: (me) => qc.setQueryData(meKey, me),
   });
 }
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (body: { email: string }) => api.post<void>("/auth/password/forgot", body) });
+}
+export function useResetPassword() {
+  const qc = useQueryClient();
+  // the backend revokes every session of the user, this one included
+  return useMutation({ mutationFn: (body: { token: string; password: string }) => api.post<void>("/auth/password/reset", body), onSuccess: () => qc.clear() });
+}
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: () => api.post<void>("/auth/logout"), onSettled: () => qc.clear() });

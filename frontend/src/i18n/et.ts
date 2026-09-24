@@ -33,6 +33,10 @@ const et = {
     noAccount: "Pole veel kontot?", hasAccount: "On juba konto?", invalidCredentials: "Vale e-post või parool",
     inviteTitle: "Kutse vastuvõtmine", inviteSub: "Sea oma nimi ja parool, et kontoga liituda.", acceptInvite: "Liitu kontoga", inviteInvalid: "Kutse on aegunud või vigane",
     passwordHint: "Vähemalt 8 märki", loggingIn: "Login sisse…",
+    forgotPassword: "Unustasid parooli?", forgotTitle: "Parooli lähtestamine", forgotSub: "Sisesta oma e-post ja saadame lingi uue parooli seadmiseks.",
+    sendResetLink: "Saada link", resetSent: "Kui selle e-postiga kasutaja on olemas, saatsime sinna lingi. Link kehtib ühe tunni.", backToLogin: "Tagasi sisselogimisse",
+    resetTitle: "Uue parooli seadmine", resetSub: "Vali uus parool. Seejärel logitakse sind kõigis seadmetes välja.", newPassword: "Uus parool", setPassword: "Salvesta parool",
+    resetInvalid: "Link on aegunud või juba kasutatud.", requestNewLink: "Küsi uus link", passwordChanged: "Parool on muudetud. Logi sisse uue parooliga.",
   },
   home: {
     greetingMorning: "Tere hommikust, {name}", greetingDay: "Tere päevast, {name}", greetingEvening: "Tere õhtust, {name}",
