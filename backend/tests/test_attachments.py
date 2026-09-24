@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from app.domain.attachments import resolve_content_type
 from app.infra.blobstore import blobstore
-from tests.helpers import make_company, make_property
+from tests.helpers import make_company, make_property, make_space
 
 
 async def test_attachment_upload_list_url_delete(client: AsyncClient, admin: dict):
@@ -36,6 +36,25 @@ async def test_attachment_upload_list_url_delete(client: AsyncClient, admin: dic
     assert (await client.request("DELETE", f"/api/v1/attachments/{att['id']}")).status_code == 204
     assert (await client.get(f"/api/v1/attachments/{att['id']}")).status_code == 404
     assert len((await client.get("/api/v1/attachments", params={"subject_type": "asset", "subject_id": prop["id"]})).json()) == 1
+
+
+async def test_property_detail_includes_space_floor_plans(client: AsyncClient, admin: dict):
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    a101 = await make_space(client, prop["id"], "A-101")
+    await make_space(client, prop["id"], "A-102")
+    r = await client.post("/api/v1/attachments", data={"subject_type": "asset", "subject_id": a101["id"], "role": "floor_plan"},
+                          files={"file": ("pinnaplaan_A-101.pdf", b"%PDF-1.4 pind", "application/pdf")})
+    assert r.status_code == 201, r.text
+    detail = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
+    assert detail["attachments"] == []
+    by_name = {c["name"]: c["attachments"] for c in detail["children"]}
+    assert [(x["role"], x["filename"]) for x in by_name["A-101"]] == [("floor_plan", "pinnaplaan_A-101.pdf")]
+    assert by_name["A-101"][0]["created_at"] and by_name["A-102"] == []
+
+    assert (await client.request("DELETE", f"/api/v1/attachments/{r.json()['id']}")).status_code == 204
+    detail = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
+    assert all(c["attachments"] == [] for c in detail["children"])
 
 
 async def test_attachment_validation(client: AsyncClient, admin: dict):

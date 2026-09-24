@@ -49,6 +49,7 @@ class AttachmentSummaryOut(BaseModel):
     filename: str
     content_type: str
     size: int
+    created_at: datetime
 
 
 class AllocationContractOut(BaseModel):
@@ -71,8 +72,12 @@ class AllocationOut(BaseModel):
     contract: AllocationContractOut
 
 
+class AssetChildOut(AssetOut):
+    attachments: list[AttachmentSummaryOut]  # e.g. a space's floor plan, shown on the parent property
+
+
 class AssetDetailOut(AssetOut):
-    children: list[AssetOut]
+    children: list[AssetChildOut]
     attachments: list[AttachmentSummaryOut]
     allocations: list[AllocationOut]
 
@@ -151,9 +156,13 @@ async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) ->
     a = await assets_domain.get_asset(session, asset_id)
     base = (await _outs(session, [a]))[0]
     children = await _outs(session, await assets_domain.children_of(session, a.id))
+    child_atts: dict[uuid.UUID, list[AttachmentSummaryOut]] = {c.id: [] for c in children}
+    for x in await attachments_domain.list_attachments(session, subject_type="asset", subject_ids=list(child_atts)):
+        child_atts[x.subject_id].append(AttachmentSummaryOut.model_validate(x))
     atts = await attachments_domain.list_attachments(session, subject_type="asset", subject_id=a.id)
     allocs = await assets_domain.list_allocations(session, asset_id=a.id)
-    return AssetDetailOut(**base.model_dump(), children=children, attachments=[AttachmentSummaryOut.model_validate(x) for x in atts],
+    return AssetDetailOut(**base.model_dump(), children=[AssetChildOut(**c.model_dump(), attachments=child_atts[c.id]) for c in children],
+                          attachments=[AttachmentSummaryOut.model_validate(x) for x in atts],
                           allocations=[_alloc_out(al, c) for al, c in allocs])
 
 

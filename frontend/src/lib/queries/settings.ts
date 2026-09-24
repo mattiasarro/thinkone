@@ -49,7 +49,7 @@ export function useUploadAttachment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (a: { subject_type: AttachmentSubject; subject_id: string; role: AttachmentRole | string; file: File }) => api.upload<Attachment>("/attachments", a),
-    onSuccess: (_r, v) => { qc.invalidateQueries({ queryKey: ["attachments", v.subject_type, v.subject_id] }); qc.invalidateQueries({ queryKey: ["asset", v.subject_id] }); qc.invalidateQueries({ queryKey: ["contract", v.subject_id] }); },
+    onSuccess: (_r, v) => { qc.invalidateQueries({ queryKey: ["attachments", v.subject_type, v.subject_id] }); qc.invalidateQueries({ queryKey: v.subject_type === "asset" ? ["asset"] : ["asset", v.subject_id] }); qc.invalidateQueries({ queryKey: ["contract", v.subject_id] }); },
   });
 }
 export function useDeleteAttachment() {

@@ -66,12 +66,15 @@ export function StepSettings({ property, onBack, onFinish }: { property: AssetDe
           <h3 className="text-base mb-3">{t("assets.floorPlan")}</h3>
           <ul className="divide-y" style={{ borderColor: "var(--line)" }}>
             {spaces.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 py-2 flex-wrap">
-                <span className="font-medium text-sm flex-1 min-w-[160px]">{s.name}</span>
-                <label className="btn btn-ghost btn-sm cursor-pointer" aria-busy={busyRole === `${s.id}:floor_plan` || undefined}>
-                  <IconUpload width={14} height={14} />{t("assets.floorPlan")}
-                  <input type="file" className="sr-only" aria-label={`${t("assets.floorPlan")} — ${s.name}`} accept=".pdf,application/pdf,image/*" onChange={(e) => { up(s.id, "floor_plan", e.target.files?.[0]); e.target.value = ""; }} />
-                </label>
+              <li key={s.id} className="py-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-medium text-sm flex-1 min-w-[160px]">{s.name}</span>
+                  <label className="btn btn-ghost btn-sm cursor-pointer" aria-busy={busyRole === `${s.id}:floor_plan` || undefined}>
+                    <IconUpload width={14} height={14} />{t("assets.floorPlan")}
+                    <input type="file" className="sr-only" aria-label={`${t("assets.floorPlan")} — ${s.name}`} accept=".pdf,application/pdf,image/*" onChange={(e) => { up(s.id, "floor_plan", e.target.files?.[0]); e.target.value = ""; }} />
+                  </label>
+                </div>
+                {s.attachments.length > 0 && <AttachmentsList items={s.attachments} subjectType="asset" subjectId={s.id} allowUpload={false} compact />}
               </li>
             ))}
           </ul>

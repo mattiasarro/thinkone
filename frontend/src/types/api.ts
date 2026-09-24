@@ -31,7 +31,8 @@ export interface SpaceAttributes { type?: string | null; net_area_m2?: number | 
 export interface Asset { id: UUID; type_code: AssetType; name: string; company_id: UUID | null; parent_id: UUID | null; attributes: Record<string, unknown>; capacity: number | null; status: AssetStatus | null; children_count?: number }
 export interface AssetInput { type_code: AssetType; name: string; company_id?: UUID | null; parent_id?: UUID | null; attributes: Record<string, unknown>; capacity?: number | null }
 export interface Allocation { id: UUID; kind: "exclusive" | "coverage" | string; contract?: { id: UUID; number: string | null; title: string; party_name?: string | null } | null; asset?: { id: UUID; name: string; type_code: AssetType }; valid_from?: ISODate | null; valid_to?: ISODate | null }
-export interface AssetDetail extends Asset { children: Asset[]; attachments: Attachment[]; allocations: Allocation[] }
+export interface AssetChild extends Asset { attachments: Attachment[] }
+export interface AssetDetail extends Asset { children: AssetChild[]; attachments: Attachment[]; allocations: Allocation[] }
 
 export interface SpaceImportRow { row: number; ok: boolean; errors: string[]; data: Record<string, unknown> }
 export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; updated: number }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { useAsset, useDeleteAsset } from "@/lib/queries/portfolio";
-import { useCompanies } from "@/lib/queries/settings";
+import { openAttachment, useCompanies } from "@/lib/queries/settings";
 import { Card, CardHeader, CardBody, PageHead } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
@@ -12,11 +12,11 @@ import { EmptyState, ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
-import { IconChevronLeft, IconEdit, IconPlus, IconTrash } from "@/components/ui/Icons";
+import { IconChevronLeft, IconEdit, IconFile, IconPlus, IconTrash } from "@/components/ui/Icons";
 import { fmtNum } from "@/lib/format";
 import { SpacesTable } from "./SpacesTable";
 import { AttachmentsList } from "@/features/contracts/AttachmentsList";
-import type { PropertyAttributes } from "@/types/api";
+import type { AssetChild, PropertyAttributes } from "@/types/api";
 
 export function PropertyDetail({ id }: { id: string }) {
   const q = useAsset(id);
@@ -33,6 +33,10 @@ export function PropertyDetail({ id }: { id: string }) {
   const occupied = spaces.filter((s) => s.status === "üüritud" || s.status === "täidetud").length;
   const free = spaces.filter((s) => s.status === "vaba").length;
   const company = companies.data?.find((c) => c.id === p.company_id);
+  const floorPlanLink = (s: AssetChild) => {
+    const plan = s.attachments.find((x) => x.role === "floor_plan");  // newest first
+    return plan && <button type="button" className="icon-btn !w-6 !h-6 text-muted" aria-label={`${t("assets.floorPlan")} — ${s.name}`} title={plan.filename} onClick={() => openAttachment(plan.id).catch((e) => toast.error(errorMessage(e)))}><IconFile width={14} height={14} /></button>;
+  };
   const onDelete = async () => { try { await remove.mutateAsync(id); toast.success(t("assets.propertyDeleted")); router.replace("/app/portfell?tab=esemed"); } catch (e) { toast.error(errorMessage(e)); } };
   return (
     <div className="grid gap-5">
@@ -43,7 +47,7 @@ export function PropertyDetail({ id }: { id: string }) {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
         <Card>
           <CardHeader title={t("assets.spaces")} actions={<LinkButton href={`/app/portfell/objekt/${id}?edit=1&step=2`} size="sm"><IconPlus width={14} height={14} />{t("assets.addSpace")}</LinkButton>} />
-          {spaces.length === 0 ? <EmptyState title={t("assets.noSpaces")} sub={t("assets.noSpacesSub")} /> : <SpacesTable spaces={spaces} />}
+          {spaces.length === 0 ? <EmptyState title={t("assets.noSpaces")} sub={t("assets.noSpacesSub")} /> : <SpacesTable spaces={spaces} nameAddon={floorPlanLink} />}
         </Card>
         <div className="grid gap-5">
           <Card>

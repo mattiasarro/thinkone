@@ -94,12 +94,14 @@ async def store_file(
 
 
 async def list_attachments(session: AsyncSession, subject_type: str | None = None, subject_id: uuid.UUID | None = None,
-                           role: str | None = None) -> list[Attachment]:
+                           role: str | None = None, subject_ids: list[uuid.UUID] | None = None) -> list[Attachment]:
     stmt = select(Attachment).where(Attachment.deleted_at.is_(None)).order_by(Attachment.created_at.desc())
     if subject_type:
         stmt = stmt.where(Attachment.subject_type == subject_type)
     if subject_id:
         stmt = stmt.where(Attachment.subject_id == subject_id)
+    if subject_ids is not None:
+        stmt = stmt.where(Attachment.subject_id.in_(subject_ids))
     if role:
         stmt = stmt.where(Attachment.role == role)
     return list((await session.execute(stmt)).scalars())
