@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # LLM — Anthropic API behind the ChatModel seam
     anthropic_api_key: str | None = None
-    llm_model: str = "claude-opus-5"
+    llm_model: str = "claude-opus-5-5"
     llm_mode: Literal["fake", "live"] = "fake"
 
     # integrations: one switch, per-adapter overrides
