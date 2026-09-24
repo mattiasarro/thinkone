@@ -71,6 +71,18 @@ class AuthSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PasswordReset(Base):
+    """Single-use password reset grant. The emailed token is this row's id signed with SECRET_KEY,
+    so neither this table nor the email job carries secret material."""
+
+    __tablename__ = "password_reset"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Company(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     """Ettevõte / üürileandja — the account's own legal entities (registry data, branding)."""
 

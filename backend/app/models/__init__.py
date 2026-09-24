@@ -20,6 +20,7 @@ from app.models.core import (  # noqa: F401
     Membership,
     Notification,
     Party,
+    PasswordReset,
     SearchIndex,
     Template,
     User,

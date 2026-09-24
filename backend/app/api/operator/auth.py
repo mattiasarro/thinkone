@@ -61,6 +61,15 @@ class AcceptInviteIn(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    password: str = Field(min_length=8, max_length=200)
+
+
 class MemberOut(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -102,6 +111,20 @@ async def logout(response: Response, request_sid: uuid.UUID | None = Depends(rea
     if request_sid:
         await auth_domain.revoke_session(session, request_sid)
     clear_session_cookie(response)
+    return Response(status_code=204)
+
+
+@router.post("/password/forgot", status_code=204)
+async def forgot_password(body: ForgotPasswordIn, session: AsyncSession = Depends(db_no_tenant)) -> Response:
+    # same answer whether or not the email belongs to anyone
+    await auth_domain.request_password_reset(session, body.email)
+    return Response(status_code=204)
+
+
+@router.post("/password/reset", status_code=204)
+async def reset_password(body: ResetPasswordIn, session: AsyncSession = Depends(db_no_tenant)) -> Response:
+    # revokes every session of the user (this browser's included); the client logs in afresh
+    await auth_domain.reset_password(session, token=body.token, password=body.password)
     return Response(status_code=204)
 
 

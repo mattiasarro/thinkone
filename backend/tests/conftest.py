@@ -85,7 +85,7 @@ async def _clean_db():
     async with sessionmaker()() as s:
         async with s.begin():
             await s.execute(text("RESET ROLE"))
-            tables = ", ".join(f'"{t}"' for t in TENANT_TABLES + ["auth_session", "account", "user", "key_date_kind", "asset_type", "contract_type"])
+            tables = ", ".join(f'"{t}"' for t in TENANT_TABLES + ["auth_session", "password_reset", "account", "user", "key_date_kind", "asset_type", "contract_type"])
             await s.execute(text(f"TRUNCATE {tables} CASCADE"))
             await s.execute(text("TRUNCATE procrastinate_jobs CASCADE"))
             await seed_globals(s)

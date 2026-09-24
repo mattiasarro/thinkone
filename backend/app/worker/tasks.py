@@ -33,6 +33,11 @@ async def enqueue_email(session: AsyncSession, notification_id: uuid.UUID) -> No
     await _enqueue(session, "app.worker.tasks.send_notification_email", {"notification_id": str(notification_id)}, queue="email")
 
 
+async def enqueue_password_reset_email(session: AsyncSession, reset_id: uuid.UUID) -> None:
+    # only the grant id travels through the queue; the worker derives the signed token when sending
+    await _enqueue(session, "app.worker.tasks.send_password_reset_email", {"reset_id": str(reset_id)}, queue="email")
+
+
 async def enqueue_structuring(session: AsyncSession, import_job_id: uuid.UUID) -> None:
     await _enqueue(session, "app.worker.tasks.structure_import", {"import_job_id": str(import_job_id)}, queue="import", lock=f"import:{import_job_id}")
 
@@ -76,6 +81,20 @@ async def send_notification_email(notification_id: str) -> None:
         from app.domain.events import emit
 
         emit(session, Actor.system(account_id), "notification", n.id, f"notification.email_{n.email_status}", {"message_id": n.email_message_id})
+
+
+@app.task(name="app.worker.tasks.send_password_reset_email", queue="email", retry=3)
+async def send_password_reset_email(reset_id: str) -> None:
+    from app.domain.auth import password_reset_email
+    from app.infra.db import sessionmaker
+    from app.integrations.email import email_provider
+
+    # user-level, not tenant-level: no notification row, no RLS scope
+    async with sessionmaker()() as session:
+        async with session.begin():
+            msg = await password_reset_email(session, uuid.UUID(reset_id))
+    if msg:
+        await email_provider().send(**msg)
 
 
 @app.task(name="app.worker.tasks.structure_import", queue="import", retry=1)
