@@ -12,7 +12,9 @@ export function statusTone(status: string | null | undefined): Tone {
     case "active": case "signed": case "kehtiv": case "täidetud": case "committed": case "üüritud": return "success";
     case "draft": case "pending": case "review": case "osaliselt": case "uploaded": case "extracting": case "structuring": case "invited": return "warning";
     case "ended": case "terminated": case "expired": case "archived": case "failed": case "täitmata": return "error";
-    case "imported": case "manual": return "info";
+    case "imported": case "manual": case "jagatud": return "info";
+    case "reserv": return "warning";
+    case "kasutusest väljas": return "error";
     case "vaba": return "primary";
     default: return "neutral";
   }

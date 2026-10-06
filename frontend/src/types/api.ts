@@ -24,22 +24,34 @@ export type PartyKind = "ee_company" | "foreign_company" | "person";
 export interface Party { id: UUID; kind: PartyKind; name: string; registry_code: string | null; personal_code: string | null; vat_number: string | null; address: string | null; contact_name: string | null; email: string | null; phone: string | null; roles: string[] }
 export type PartyInput = Omit<Party, "id">;
 
-export type AssetType = "property" | "space" | "department" | "position";
-export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata";
-export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; ehr_source?: string | null; ehr_payload?: Record<string, unknown> | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null }
-export interface SpaceAttributes { type?: string | null; net_area_m2?: number | null; rentable_area_m2: number; coefficient?: number | null; price_per_m2?: number | null; electrical_capacity_kw?: number | null; parking_spots?: number | null }
-export interface Asset { id: UUID; type_code: AssetType; name: string; company_id: UUID | null; parent_id: UUID | null; attributes: Record<string, unknown>; capacity: number | null; status: AssetStatus | null; children_count?: number }
+export type AssetType = "property" | "space" | "parking_spot" | "department" | "position";
+export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata" | "jagatud";
+export type SpacePartKey = "ladu" | "kontor" | "myygisaal" | "olmeala" | "yhisala";
+export const SPACE_PART_KEYS: SpacePartKey[] = ["ladu", "kontor", "myygisaal", "olmeala", "yhisala"];
+export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; ehr_source?: string | null; ehr_payload?: Record<string, unknown> | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null; template_id?: string | null; has_parking?: boolean | null }
+/** A space has one area (rentable) plus an optional breakdown into parts that sums to it; electrical capacity is in amperes. */
+export interface SpaceAttributes { type?: string | null; rentable_area_m2: number; parts?: Partial<Record<SpacePartKey, number>> | null; price_per_m2?: number | null; electrical_capacity_a?: number | null; parking_spots?: number | null; floor?: string | null; split_from?: string | null; split_into?: string[] | null }
+export interface Asset { id: UUID; type_code: AssetType; name: string; company_id: UUID | null; parent_id: UUID | null; attributes: Record<string, unknown>; capacity: number | null; status: AssetStatus | null; children_count?: number; occupancy?: { units: number; occupied: number; free: number } | null }
 export interface AssetInput { type_code: AssetType; name: string; company_id?: UUID | null; parent_id?: UUID | null; attributes: Record<string, unknown>; capacity?: number | null }
-export interface Allocation { id: UUID; kind: "exclusive" | "coverage" | string; contract?: { id: UUID; number: string | null; title: string; party_name?: string | null } | null; asset?: { id: UUID; name: string; type_code: AssetType }; valid_from?: ISODate | null; valid_to?: ISODate | null }
+export interface Allocation { id: UUID; kind: "exclusive" | "coverage" | string; contract?: { id: UUID; number: string | null; title: string; status?: string; party_name?: string | null } | null; asset?: { id: UUID; name: string; type_code: AssetType; parent_id?: UUID | null }; period_start?: ISODate | null; period_end?: ISODate | null; valid_from?: ISODate | null; valid_to?: ISODate | null }
 export interface AssetChild extends Asset { attachments: Attachment[] }
-export interface AssetDetail extends Asset { children: AssetChild[]; attachments: Attachment[]; allocations: Allocation[] }
+export type SpotStatus = "vaba" | "üüritud" | "reserv" | "kasutusest väljas";
+export type SpotType = "tavaline" | "elektriauto" | "ligipääsetav";
+export interface ParkingSpot { id: UUID; number: string; zone: string | null; type: SpotType; reserve: boolean; out_of_service: boolean; status: SpotStatus | null; space_id: UUID | null; space_name: string | null; contract: { id: UUID; number: string; title: string; status: string } | null }
+export interface AssetRef { id: UUID; name: string; type_code: AssetType; status?: AssetStatus | null; attributes?: Record<string, unknown> }
+export interface AssetDetail extends Asset { children: AssetChild[]; attachments: Attachment[]; allocations: Allocation[]; parent?: AssetRef | null; parking_spots: ParkingSpot[]; split_parent?: AssetRef | null; split_units: AssetRef[]; delete_block_reason?: string | null; split_block_reason?: string | null }
 
 export interface SpaceImportRow { row: number; ok: boolean; errors: string[]; data: Record<string, unknown> }
-export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; updated: number }
+export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; updated: number; parking_created?: number }
+export interface ParkingImportRow { row: number; ok: boolean; errors: string[]; numbers: string[]; zone: string | null; type: SpotType; reserve: boolean; space_name: string | null; space_id: UUID | null }
+export interface ParkingImportResult { rows: ParkingImportRow[]; created: number; skipped: number; dry_run: boolean }
+export interface PlanRow { filename: string; content_type: string; size: number; target: "space" | "property" | "skip"; space_id: UUID | null; space_name: string | null; note: string | null; attachment_id: UUID | null }
+export interface SplitUnitInput { name: string; parts: Partial<Record<SpacePartKey, number>>; price_per_m2: number; parking_numbers: string[] }
 
 export type AttachmentSubject = "asset" | "company" | "contract" | "template";
 export type AttachmentRole = "floor_plan" | "site_plan" | "parking_plan" | "logo" | "generic" | "annex";
 export interface Attachment { id: UUID; role: AttachmentRole | string; filename: string; content_type: string; size: number; created_at: ISODate }
+export type { AssetDetail as SpaceDetail };
 
 export type TemplateKind = "general_terms" | "special_terms_base" | "quote_base";
 export interface Template { id: UUID; kind: TemplateKind; name: string; version: number; is_current: boolean; node_count: number; created_at: ISODate; company_id?: UUID | null }
@@ -63,14 +75,15 @@ export interface ProposalParty { name: string; role: string; registry_code?: str
 export interface ProposalParameter { key: string; label: string; value: string | number | null; unit?: string | null; text: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; source_number?: string | null }
 export interface ProposalKeyDate { kind: string; date: ISODate; title: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null }
 export interface ProposalClause { number: string; level: number; heading?: string | null; text: string; page?: number | null; char_start?: number | null; char_end?: number | null }
-export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null } | null }
+export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null }
 export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate }
 export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null }
-export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; allocation_kind?: "exclusive" | "coverage" | null; party_id?: UUID | null; party?: ProposalParty | null; category: ContractCategory; checked?: string[] }
+export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; allocation_kind?: "exclusive" | "coverage" | null; party_id?: UUID | null; party?: ProposalParty | null; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
 
 export interface SearchHit { entity_type: string; entity_id: UUID; title: string; subtitle: string | null; link: string | null }
-export interface AuditEvent { id: UUID | number; ts?: ISODate; action?: string; entity_type?: string; event_type?: string; kind?: string; actor_type?: string; actor_name?: string | null; actor?: string | null; reason?: string | null; occurred_at?: ISODate; created_at?: ISODate; payload?: Record<string, unknown> | null }
+export interface AuditEvent { id: UUID | number; ts?: ISODate; action?: string; entity_type?: string; entity_id?: UUID | null; entity_label?: string | null; entity_link?: string | null; event_type?: string; kind?: string; actor_type?: string; actor_name?: string | null; actor?: string | null; on_behalf_of?: UUID | null; reason?: string | null; correlation_id?: string | null; occurred_at?: ISODate; created_at?: ISODate; payload?: Record<string, unknown> | null }
+export interface AuditStats { actor_type: Record<string, number>; entity_type: Record<string, number> }
 
 export interface HealthFinding { code: string; severity: "info" | "warning" | "error"; title: string; count: number; items: { contract_id: UUID; number: string | null; title: string; detail: string | null }[] }
 export interface PortfolioHealth { generated_at: ISODate; totals: { contracts: number; active: number; imported: number; platform: number }; findings: HealthFinding[] }
-export interface PortfolioSummary { contracts_by_status: Record<string, number>; assets: { properties: number; spaces: number; occupied: number; free: number }; key_dates_next_30: number; open_imports: number }
+export interface PortfolioSummary { contracts_by_status: Record<string, number>; assets: { properties: number; spaces: number; occupied: number; free: number }; key_dates_next_30: number; open_imports: number; companies: number }

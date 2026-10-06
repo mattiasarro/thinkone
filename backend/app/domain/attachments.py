@@ -24,6 +24,7 @@ EXTENSION_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
+    ".svg": "image/svg+xml",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ".asice": "application/vnd.etsi.asic-e+zip",
     ".bdoc": "application/vnd.etsi.asic-e+zip",
@@ -45,7 +46,7 @@ def resolve_content_type(filename: str, content_type: str | None) -> str:
         return "image/jpeg"
     if ext in EXTENSION_TYPES and ct in ("", "application/octet-stream", "application/zip", "application/x-zip-compressed"):
         return EXTENSION_TYPES[ext]
-    raise DomainError(f"Failitüüp ei ole lubatud: {ct or ext or 'tundmatu'} (lubatud: PDF, PNG, JPEG, DOCX, ASiC-E)", code="unsupported_type")
+    raise DomainError(f"Failitüüp ei ole lubatud: {ct or ext or 'tundmatu'} (lubatud: PDF, PNG, JPEG, SVG, DOCX, ASiC-E)", code="unsupported_type")
 
 
 def safe_filename(filename: str) -> str:

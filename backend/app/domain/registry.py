@@ -19,6 +19,11 @@ STATUS_WORDS = {
     "employment": {"free": "täitmata", "partial": "osaliselt", "occupied": "täidetud"},
 }
 DEFAULT_WORDS = {"free": "vaba", "partial": "osaliselt", "occupied": "hõivatud"}
+# parking register statuses (demo v663): out of service › rented › reserve › free; the EV type is shown separately
+SPOT_STATUS = {"out": "kasutusest väljas", "occupied": "üüritud", "reserve": "reserv", "free": "vaba"}
+SPLIT_STATUS = "jagatud"
+# unit types that do not count towards a container's occupancy (the register's own units, not lettable space)
+AUXILIARY_UNITS = {"parking_spot"}
 
 
 @dataclass
@@ -30,6 +35,10 @@ class Occupancy:
 
 def status_word(vertical: str, level: str) -> str:
     return STATUS_WORDS.get(vertical, DEFAULT_WORDS)[level]
+
+
+def is_split_parent(asset: Asset) -> bool:
+    return asset.type_code == "space" and bool((asset.attributes or {}).get("split_into"))
 
 
 def active_allocations_stmt(asset_ids: list[uuid.UUID], today: date):
@@ -57,8 +66,23 @@ def unit_level(asset: Asset, allocations: list[Allocation]) -> str:
     return "occupied" if quota >= (asset.capacity or 1) else "partial"
 
 
+def unit_status(asset: Asset, level: str) -> str:
+    if asset.type_code == "parking_spot":
+        attrs = asset.attributes or {}
+        if attrs.get("out_of_service"):
+            return SPOT_STATUS["out"]
+        if level != "free":
+            return SPOT_STATUS["occupied"]
+        if attrs.get("reserve"):
+            return SPOT_STATUS["reserve"]
+        return SPOT_STATUS["free"]
+    if is_split_parent(asset):
+        return SPLIT_STATUS
+    return status_word(asset.asset_type.vertical, level)
+
+
 async def asset_statuses(session: AsyncSession, assets: list[Asset], today: date | None = None) -> dict[uuid.UUID, str | Occupancy]:
-    """Batch: units → status word; containers → Occupancy over their direct unit children."""
+    """Batch: units → status word; containers → Occupancy over their direct lettable unit children."""
     today = today or date.today()
     result: dict[uuid.UUID, str | Occupancy] = {}
     units = [a for a in assets if a.asset_type.kind == "unit"]
@@ -67,7 +91,7 @@ async def asset_statuses(session: AsyncSession, assets: list[Asset], today: date
     if containers:
         stmt = select(Asset).where(Asset.parent_id.in_([c.id for c in containers]), Asset.deleted_at.is_(None))
         for child in (await session.execute(stmt)).scalars():
-            if child.asset_type.kind == "unit":
+            if child.asset_type.kind == "unit" and child.type_code not in AUXILIARY_UNITS and not is_split_parent(child):
                 children[child.parent_id].append(child)
     all_units = {u.id: u for u in units}
     for kids in children.values():
@@ -79,7 +103,7 @@ async def asset_statuses(session: AsyncSession, assets: list[Asset], today: date
             by_asset[alloc.asset_id].append(alloc)
     levels = {uid: unit_level(u, by_asset.get(uid, [])) for uid, u in all_units.items()}
     for u in units:
-        result[u.id] = status_word(u.asset_type.vertical, levels[u.id])
+        result[u.id] = unit_status(u, levels[u.id])
     for c in containers:
         kids = children.get(c.id, [])
         occupied = sum(1 for k in kids if levels[k.id] != "free")
@@ -109,3 +133,13 @@ async def has_overlapping_exclusive(session: AsyncSession, asset_id: uuid.UUID, 
     if exclude_id is not None:
         stmt = stmt.where(and_(Allocation.id != exclude_id))
     return (await session.execute(stmt.limit(1))).first() is not None
+
+
+async def any_allocations(session: AsyncSession, asset_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Count of allocations (live or historical) per asset — a document that ever referenced the asset keeps it."""
+    if not asset_ids:
+        return {}
+    from sqlalchemy import func
+
+    stmt = select(Allocation.asset_id, func.count()).where(Allocation.asset_id.in_(asset_ids), Allocation.deleted_at.is_(None)).group_by(Allocation.asset_id)
+    return {aid: n for aid, n in (await session.execute(stmt)).all()}

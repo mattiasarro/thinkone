@@ -72,7 +72,7 @@ function Review({ job }: { job: ImportJobDetail }) {
   const [draft, setDraft] = useState<Proposal>(base);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [link, setLink] = useState<LinkState>(() => ({
-    company_id: "", asset_id: "", space_id: "", partyMode: "new", party_id: "",
+    company_id: "", asset_id: "", space_id: "", partyMode: "new", party_id: "", parking_numbers: null,
     // supporting agreements (haldus/hooldus/kindlustus/turva) cover a property rather than occupying a space
     allocation_kind: SUPPORTING.includes(base.contract.category) ? "coverage" : "exclusive",
   }));
@@ -116,7 +116,7 @@ function Review({ job }: { job: ImportJobDetail }) {
       const r = await commit.mutateAsync({
         company_id: link.company_id || null, asset_id: link.space_id || link.asset_id || null, allocation_kind: link.asset_id || link.space_id ? link.allocation_kind : null,
         party_id: link.partyMode === "existing" ? link.party_id : null, party: newParty, category: draft.contract.category,
-        checked: Array.from(checked),
+        checked: Array.from(checked), parking_numbers: link.space_id ? link.parking_numbers : null,
       });
       toast.success(t("imports.committed"));
       router.push(`/app/portfell/leping/${r.contract_id}`);

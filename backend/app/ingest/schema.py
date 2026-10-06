@@ -96,8 +96,19 @@ class Proposal(BaseModel):
 
 
 def _strictify(schema: dict[str, Any]) -> dict[str, Any]:
-    """All properties required, no additional properties, optional → nullable (structured-output friendly)."""
+    """All properties required, no additional properties, optional → nullable (structured-output friendly).
+
+    Keeps the compiled grammar small: ``anyOf [X, null]`` becomes ``type: [X, "null"]`` and descriptions/titles
+    are dropped (the prompt carries the field semantics)."""
     if isinstance(schema, dict):
+        any_of = schema.get("anyOf")
+        if isinstance(any_of, list) and len(any_of) == 2 and any(x.get("type") == "null" for x in any_of):
+            other = next(x for x in any_of if x.get("type") != "null")
+            if isinstance(other.get("type"), str) and "$ref" not in other:
+                merged = {k: v for k, v in schema.items() if k != "anyOf"}
+                merged.update({k: v for k, v in other.items() if k != "type"})
+                merged["type"] = [other["type"], "null"]
+                schema = merged
         if schema.get("type") == "object" and "properties" in schema:
             props = schema["properties"]
             schema["required"] = list(props.keys())
@@ -113,9 +124,12 @@ def _strictify(schema: dict[str, Any]) -> dict[str, Any]:
             schema["$defs"] = {k: _strictify(v) for k, v in schema["$defs"].items()}
         schema.pop("default", None)
         schema.pop("title", None)
+        schema.pop("description", None)
+        # the structured-output API rejects numeric bounds; Pydantic still enforces them on the way back
+        for k in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"):
+            schema.pop(k, None)
         if schema.get("format") == "date":
-            schema.pop("format")
-            schema["description"] = (schema.get("description", "") + " ISO date YYYY-MM-DD").strip()
+            schema.pop("format")  # the prompt says dates are ISO YYYY-MM-DD; Pydantic parses them on the way back
     return schema
 
 

@@ -101,3 +101,31 @@ async def test_key_dates(client: AsyncClient, admin: dict):
     assert (await client.request("DELETE", f"/api/v1/key-dates/{kd['id']}")).status_code == 204
     assert (await client.request("DELETE", f"/api/v1/key-dates/{kd['id']}")).status_code == 404
     assert len((await client.get("/api/v1/key-dates")).json()) == 2
+
+
+async def test_global_event_log_filters_and_exports(client: AsyncClient, admin: dict):
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    space = await make_space(client, prop["id"], "Pind 7")
+    cid = await make_contract(admin["account"]["id"], number="LEP-77", status="active")
+    assert (await client.post("/api/v1/allocations", json={"contract_id": str(cid), "asset_id": space["id"], "kind": "exclusive"})).status_code == 201
+
+    stats = (await client.get("/api/v1/audit/stats")).json()
+    assert stats["actor_type"]["human"] >= 5 and stats["entity_type"]["asset"] == 2 and stats["entity_type"]["contract"] == 1
+    rows = (await client.get("/api/v1/audit", params={"actor_type": "human", "q": "Pind 7"})).json()
+    assert rows and all(r["actor_type"] == "human" for r in rows)
+    sp = next(r for r in rows if r["entity_type"] == "asset" and r["entity_id"] == space["id"])
+    assert sp["entity_label"] == "Pind 7" and sp["entity_link"] == f"/app/portfell/pind/{space['id']}" and sp["actor_name"] == "Tarmo Sepp"
+    alloc = next(r for r in (await client.get("/api/v1/audit", params={"entity_type": "allocation"})).json())
+    assert alloc["entity_link"] == f"/app/portfell/leping/{cid}" and alloc["entity_label"] == "Pind 7"
+    assert (await client.get("/api/v1/audit", params={"actor_type": "agent"})).json() == []
+    assert (await client.get("/api/v1/audit", params={"q": "ei-leidu-kunagi"})).json() == []
+
+    r = await client.get("/api/v1/audit/export", params={"format": "csv", "entity_type": "asset"})
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    assert r.text.startswith("id;ts;actor_type") and r.text.count("\n") == 3 and "Pind 7" in r.text
+    r = await client.get("/api/v1/audit/export", params={"format": "jsonl"})
+    lines = [json.loads(ln) for ln in r.text.splitlines()]
+    assert lines[0]["action"] == "account.created" and lines[-1]["action"] == "allocation.created" and lines[-1]["entity_label"] == "Pind 7"
+    r = await client.get("/api/v1/audit/export", params={"format": "pdf", "q": "LEP-77"})
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content.startswith(b"%PDF")

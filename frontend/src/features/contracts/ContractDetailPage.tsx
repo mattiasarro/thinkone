@@ -140,7 +140,7 @@ function Detail({ c }: { c: ContractDetail }) {
                 <ul className="grid gap-2">
                   {c.allocations.map((a) => (
                     <li key={a.id} className="flex items-center gap-2 text-sm">
-                      {a.asset ? <Link href={`/app/portfell/objekt/${a.asset.id}`} className="text-primary font-semibold truncate">{a.asset.name}</Link> : "—"}
+                      {a.asset ? <Link href={a.asset.type_code === "space" ? `/app/portfell/pind/${a.asset.id}` : a.asset.type_code === "parking_spot" && a.asset.parent_id ? `/app/portfell/objekt/${a.asset.parent_id}/parkimine` : `/app/portfell/objekt/${a.asset.id}`} className="text-primary font-semibold truncate">{a.asset.name}</Link> : "—"}
                       <span className="pill ml-auto">{tEnum("contract.allocationKind", a.kind)}</span>
                     </li>
                   ))}

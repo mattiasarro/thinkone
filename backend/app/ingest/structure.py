@@ -47,7 +47,8 @@ def validate_and_anchor(data: dict[str, Any], ex: Extraction) -> Proposal:
 
 async def structure(ex: Extraction) -> tuple[Proposal, StructuredResult, str]:
     user = build_user_message(ex)
-    result = await chat_model().structured(system=SYSTEM, user=user, schema=proposal_json_schema())
+    # 128K output: thinking + a long clause list (a 10-page lease is ~40-60K JSON tokens) must both fit
+    result = await chat_model().structured(system=SYSTEM, user=user, schema=proposal_json_schema(), max_tokens=128000)
     prop = validate_and_anchor(result.data, ex)
     log.info("import_structured", model=result.model, prompt=PROMPT_VERSION, clauses=len(prop.clauses),
              params=len(prop.parameters), key_dates=len(prop.key_dates), uncertain=len(prop.uncertain()))

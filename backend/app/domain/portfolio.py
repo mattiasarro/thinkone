@@ -107,7 +107,8 @@ async def soft_delete_contract(session: AsyncSession, actor: Actor, contract_id:
 async def summary(session: AsyncSession) -> dict[str, Any]:
     by_status = dict((await session.execute(select(Contract.status, func.count()).where(Contract.deleted_at.is_(None)).group_by(Contract.status))).all())
     props = (await session.execute(select(func.count()).select_from(Asset).where(Asset.type_code == "property", Asset.deleted_at.is_(None)))).scalar_one()
-    spaces = list((await session.execute(select(Asset).where(Asset.type_code == "space", Asset.deleted_at.is_(None)))).scalars())
+    spaces = [a for a in (await session.execute(select(Asset).where(Asset.type_code == "space", Asset.deleted_at.is_(None)))).scalars()
+              if not (a.attributes or {}).get("split_into")]
     occupied = 0
     if spaces:
         today = date.today()
@@ -120,8 +121,11 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
     in30 = (await session.execute(select(func.count()).select_from(KeyDate).where(KeyDate.deleted_at.is_(None), KeyDate.due_date >= date.today(),
                                                                                    KeyDate.due_date <= date.today() + timedelta(days=30)))).scalar_one()
     open_imports = (await session.execute(select(func.count()).select_from(ImportJob).where(ImportJob.status.in_(["uploaded", "extracting", "structuring", "review", "failed"])))).scalar_one()
+    from app.models.core import Company
+
+    companies = (await session.execute(select(func.count()).select_from(Company).where(Company.deleted_at.is_(None)))).scalar_one()
     return {"contracts_by_status": by_status, "assets": {"properties": props, "spaces": len(spaces), "occupied": occupied, "free": len(spaces) - occupied},
-            "key_dates_next_30": in30, "open_imports": open_imports}
+            "key_dates_next_30": in30, "open_imports": open_imports, "companies": companies}
 
 
 LISA_RE = re.compile(r"\b[Ll]isa\w*\s+(?:nr\.?\s*)?(\d{1,2})\b")

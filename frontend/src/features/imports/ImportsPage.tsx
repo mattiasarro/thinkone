@@ -42,15 +42,16 @@ export function ImportsPage() {
       <LinkButton href="/app/portfell" variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{t("portfolio.title")}</LinkButton>
       <PageHead title={t("imports.title")} sub={t("imports.sub")} actions={<LinkButton href="/app/portfell/import/manual">{t("imports.manualLink")}</LinkButton>} />
       <Dropzone onFiles={onFiles} multiple accept=".pdf,.docx,.asice,.bdoc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.etsi.asic-e+zip" label={upload.isPending ? t("imports.uploading") : t("imports.dropzone")} hint={t("imports.dropzoneHint")} busy={upload.isPending} />
-      <Card>
-        <CardHeader title={t("imports.jobs")} />
-        {jobs.isLoading ? <div className="p-6"><Loading /></div> : jobs.error ? <div className="p-6"><ErrorState error={jobs.error} onRetry={() => jobs.refetch()} /></div> : (jobs.data ?? []).length === 0 ? (
-          <EmptyState icon={<IconFile width={40} height={40} />} title={t("imports.empty")} />
-        ) : (
+      {jobs.isLoading ? <Card><div className="p-6"><Loading /></div></Card> : jobs.error ? <Card><div className="p-6"><ErrorState error={jobs.error} onRetry={() => jobs.refetch()} /></div></Card> : (jobs.data ?? []).length === 0 ? (
+        <Card><EmptyState icon={<IconFile width={40} height={40} />} title={t("imports.empty")} /></Card>
+      ) : ([["inProgress", (jobs.data ?? []).filter((j) => j.status !== "committed" && j.status !== "manual")], ["finished", (jobs.data ?? []).filter((j) => j.status === "committed" || j.status === "manual")]] as const).filter(([, list]) => list.length > 0).map(([key, list]) => (
+      <Card key={key}>
+        <CardHeader title={key === "inProgress" ? t("imports.inProgress") : t("imports.finished")} actions={<Pill>{list.length}</Pill>} />
+        {(
           <Table>
             <thead><tr><th>{t("common.file")}</th><th>{t("common.status")}</th><th>{t("common.created")}</th><th /></tr></thead>
             <tbody>
-              {(jobs.data ?? []).map((j) => (
+              {list.map((j) => (
                 <tr key={j.id} className="clickable" onClick={() => router.push(jobHref(j))}>
                   <Td l={t("common.file")}><span className="font-semibold">{jobTitle(j)}</span>{j.source_document && j.source_document.filename !== jobTitle(j) && <span className="block text-xs text-muted">{j.source_document.filename}</span>}</Td>
                   <Td l={t("common.status")}><span className="inline-flex items-center gap-2"><Pill tone={statusTone(j.status)}>{tEnum("imports.status", j.status)}</Pill>{IMPORT_PENDING.has(j.status) && <Spinner />}</span>{j.error && <span className="block text-xs text-error mt-1">{j.error}</span>}</Td>
@@ -62,6 +63,7 @@ export function ImportsPage() {
           </Table>
         )}
       </Card>
+      ))}
     </div>
   );
 }

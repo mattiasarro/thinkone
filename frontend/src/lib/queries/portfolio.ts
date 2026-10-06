@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, ContractDetail, ContractSummary, KeyDate, KeyDateKind, Party, PartyInput, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractSummary, KeyDate, KeyDateKind, ParkingImportResult, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -27,6 +27,12 @@ export function useRegisterAmendment(id: string) {
 }
 export function useAudit(entityType: string, entityId: string | undefined) {
   return useQuery({ queryKey: ["audit", entityType, entityId], queryFn: () => api.get<AuditEvent[]>("/audit", { entity_type: entityType, entity_id: entityId }), enabled: !!entityId });
+}
+export function useAuditLog(params: Query) {
+  return useQuery({ queryKey: ["audit", "log", params], queryFn: () => api.get<AuditEvent[]>("/audit", { limit: 200, ...params }), placeholderData: keepPreviousData });
+}
+export function useAuditStats() {
+  return useQuery({ queryKey: ["audit", "stats"], queryFn: () => api.get<AuditStats>("/audit/stats") });
 }
 
 // ---- parties ----
@@ -66,20 +72,70 @@ export function useUpdateAsset() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: Partial<AssetInput> & { id: string }) => api.patch<Asset>(`/assets/${id}`, body),
-    onSuccess: (a) => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset", a.id] }); if (a.parent_id) qc.invalidateQueries({ queryKey: ["asset", a.parent_id] }); },
+    onSuccess: () => invalidateAssets(qc),
   });
 }
 export function useDeleteAsset() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.delete(`/assets/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset"] }); } });
+  return useMutation({ mutationFn: (id: string) => api.delete(`/assets/${id}`), onSuccess: () => invalidateAssets(qc) });
 }
 export function useImportSpaces(propertyId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ file, text, dryRun }: { file?: File; text?: string; dryRun: boolean }) =>
       file ? api.upload<SpaceImportResult>(`/assets/${propertyId}/spaces/import`, { file }, { dry_run: dryRun }) : api.post<SpaceImportResult>(`/assets/${propertyId}/spaces/import`, { text }, { dry_run: dryRun }),
-    onSuccess: (_r, v) => { if (!v.dryRun) { qc.invalidateQueries({ queryKey: ["asset", propertyId] }); qc.invalidateQueries({ queryKey: ["assets"] }); } },
+    onSuccess: (_r, v) => { if (!v.dryRun) invalidateAssets(qc); },
   });
+}
+const invalidateAssets = (qc: ReturnType<typeof useQueryClient>) => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset"] }); qc.invalidateQueries({ queryKey: ["parking"] }); qc.invalidateQueries({ queryKey: ["audit"] }); };
+
+// ---- parking register ----
+export function useParking(propertyId: string | undefined) {
+  return useQuery({ queryKey: ["parking", propertyId], queryFn: () => api.get<ParkingSpot[]>(`/assets/${propertyId}/parking`), enabled: !!propertyId });
+}
+export function useImportParking(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, text, dryRun }: { file?: File; text?: string; dryRun: boolean }) =>
+      file ? api.upload<ParkingImportResult>(`/assets/${propertyId}/parking/import`, { file }, { dry_run: dryRun }) : api.post<ParkingImportResult>(`/assets/${propertyId}/parking/import`, { text }, { dry_run: dryRun }),
+    onSuccess: (_r, v) => { if (!v.dryRun) invalidateAssets(qc); },
+  });
+}
+export function useUpdateParking(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (b: { ids: string[]; patch: Record<string, unknown> }) => api.post<ParkingSpot[]>(`/assets/${propertyId}/parking/update`, b), onSuccess: () => invalidateAssets(qc) });
+}
+export function useAssignParking(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (b: { space_id: string | null; numbers: string[] }) => api.post<ParkingSpot[]>(`/assets/${propertyId}/parking/assign`, b), onSuccess: () => invalidateAssets(qc) });
+}
+export function useDeleteParking(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (ids: string[]) => api.post<void>(`/assets/${propertyId}/parking/delete`, { ids }), onSuccess: () => invalidateAssets(qc) });
+}
+export function useSetHasParking(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (has_parking: boolean) => api.post<Asset>(`/assets/${propertyId}/parking/has-parking`, { has_parking }), onSuccess: () => invalidateAssets(qc) });
+}
+
+// ---- plans (bulk floor-plan upload) ----
+export function useUploadPlans(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ files, mapping, dryRun }: { files: File[]; mapping?: Record<string, string>; dryRun: boolean }) =>
+      api.uploadMany<PlanRow[]>(`/assets/${propertyId}/plans`, files.map((file) => ({ field: "files", file })), { mapping: mapping ? JSON.stringify(mapping) : undefined }, { dry_run: dryRun }),
+    onSuccess: (_r, v) => { if (!v.dryRun) { invalidateAssets(qc); qc.invalidateQueries({ queryKey: ["attachments"] }); } },
+  });
+}
+
+// ---- split / merge ----
+export function useSplitSpace(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (units: SplitUnitInput[]) => api.post<Asset[]>(`/assets/${spaceId}/split`, { units }), onSuccess: () => invalidateAssets(qc) });
+}
+export function useMergeSpace(spaceId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => api.post<Asset>(`/assets/${spaceId}/merge`), onSuccess: () => invalidateAssets(qc) });
 }
 export type { Allocation };
 

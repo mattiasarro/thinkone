@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from tests.helpers import make_company, make_contract, make_property, make_space
 
-CSV_OK = "nimi;tüüp;netopind;üüripind;koefitsient;hind;elekter;parkimiskohad\nA-101;büroo;120,5;132,55;1,10;9,50;25;2\nA-102;ladu;300;300;;6;;\n"
+CSV_OK = "nimi;tüüp;üüripind;ladu;kontor;olmeala;hind;elekter;parkimiskohad\nA-101;büroo;132,55;;120,5;12,05;9,50;25;1, 2\nA-102;ladu;300;300;;;6;;\n"
 
 
 async def test_asset_hierarchy_and_validation(client: AsyncClient, admin: dict):
@@ -48,7 +48,7 @@ async def test_asset_hierarchy_and_validation(client: AsyncClient, admin: dict):
     assert detail["attachments"] == [] and detail["allocations"] == [] and detail["children_count"] == 1
 
     hits = (await client.get("/api/v1/search", params={"q": "A-1b"})).json()
-    assert any(h["entity_type"] == "asset" and h["link"] == f"/app/portfell/objekt/{prop['id']}?space={space['id']}" for h in hits)
+    assert any(h["entity_type"] == "asset" and h["link"] == f"/app/portfell/pind/{space['id']}" for h in hits)
 
     r = await client.request("DELETE", f"/api/v1/assets/{prop['id']}")
     assert r.status_code == 204
@@ -94,6 +94,10 @@ async def test_derived_status_from_allocations(client: AsyncClient, admin: dict)
     assert (await client.request("DELETE", f"/api/v1/assets/{s1['id']}")).status_code == 409
     assert (await client.request("DELETE", f"/api/v1/allocations/{alloc['id']}")).status_code == 204
     assert (await client.get(f"/api/v1/assets/{s1['id']}")).json()["status"] == "vaba"
+    # any remaining document reference (here the later-period draft lease) still keeps the space (demo v794)
+    assert (await client.request("DELETE", f"/api/v1/assets/{s1['id']}")).status_code == 409
+    for al in (await client.get(f"/api/v1/assets/{s1['id']}/allocations")).json():
+        assert (await client.request("DELETE", f"/api/v1/allocations/{al['id']}")).status_code == 204
     assert (await client.request("DELETE", f"/api/v1/assets/{s1['id']}")).status_code == 204
 
     # quota: position with capacity 2
@@ -115,7 +119,7 @@ async def test_spaces_csv_import(client: AsyncClient, admin: dict):
     await make_space(client, prop["id"], "A-102", 250, type="ladu")
 
     r = await client.get("/api/v1/assets/spaces/csv-template")
-    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv") and r.text.startswith("nimi;tüüp;netopind;üüripind")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv") and r.text.startswith("nimi;tüüp;üüripind;ladu;kontor")
 
     # dry run: nothing written, actions reported
     r = await client.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "true"}, files={"file": ("pinnad.csv", CSV_OK.encode("utf-8"), "text/csv")})
@@ -123,8 +127,8 @@ async def test_spaces_csv_import(client: AsyncClient, admin: dict):
     res = r.json()
     assert res["dry_run"] is True and res["created"] == 1 and res["updated"] == 1
     assert [(x["row"], x["ok"], x["action"]) for x in res["rows"]] == [(2, True, "create"), (3, True, "update")]
-    assert res["rows"][0]["data"] == {"name": "A-101", "type": "büroo", "net_area_m2": 120.5, "rentable_area_m2": 132.55, "coefficient": 1.1,
-                                      "price_per_m2": 9.5, "electrical_capacity_kw": 25.0, "parking_spots": 2}
+    assert res["rows"][0]["data"] == {"name": "A-101", "type": "büroo", "rentable_area_m2": 132.55, "parts": {"kontor": 120.5, "olmeala": 12.05},
+                                      "price_per_m2": 9.5, "electrical_capacity_a": 25.0, "parking_spots": 2, "parking_numbers": ["1", "2"]}
     assert len((await client.get("/api/v1/assets", params={"parent_id": prop["id"]})).json()) == 1
 
     # commit via pasted text (tab-delimited, English headers)
@@ -140,7 +144,7 @@ async def test_spaces_csv_import(client: AsyncClient, admin: dict):
     assert ev[0]["action"] == "asset.spaces_imported" and ev[0]["payload"]["created"] == 1
 
     # row errors: missing rentable area, non-numeric, duplicate name, negative value; good rows still counted
-    bad = "nimi,üüripind,parkimine\nB-1,,1\nB-2,abc,1\nB-3,50,-1\nB-4,40,\nb-4,41,\n"
+    bad = "nimi,üüripind,parkimiskohti\nB-1,,1\nB-2,abc,1\nB-3,50,-1\nB-4,40,\nb-4,41,\n"
     r = await client.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "true"}, json={"text": bad})
     assert r.status_code == 200, r.text
     rows = {x["row"]: x for x in r.json()["rows"]}
@@ -157,3 +161,33 @@ async def test_spaces_csv_import(client: AsyncClient, admin: dict):
     space_id = spaces["A-101"]["id"]
     r = await client.post(f"/api/v1/assets/{space_id}/spaces/import", json={"text": CSV_OK})
     assert r.status_code == 400
+
+
+async def test_space_parts_must_sum_and_legacy_fields_tolerated(client: AsyncClient, admin: dict):
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    r = await client.post("/api/v1/assets", json={"type_code": "space", "name": "Pind 1", "parent_id": prop["id"],
+                                                  "attributes": {"rentable_area_m2": 100, "parts": {"ladu": 80, "kontor": 10}}})
+    assert r.status_code == 422 and "klappima" in r.json()["errors"][0]["msg"]
+    r = await client.post("/api/v1/assets", json={"type_code": "space", "name": "Pind 1", "parent_id": prop["id"],
+                                                  "attributes": {"rentable_area_m2": 100, "parts": {"ladu": 80, "kontor": 20, "olmeala": 0}, "electrical_capacity_kw": 32}})
+    assert r.status_code == 201, r.text
+    a = r.json()["attributes"]
+    assert a["parts"] == {"ladu": 80.0, "kontor": 20.0} and a["electrical_capacity_a"] == 32 and "electrical_capacity_kw" not in a
+    # the CSV import creates the parking register rows from the numbers column and assigns them to the space
+    r = await client.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "false"}, json={"text": CSV_OK})
+    assert r.status_code == 200 and r.json()["parking_created"] == 2, r.text
+    spots = (await client.get(f"/api/v1/assets/{prop['id']}/parking")).json()
+    assert [(s["number"], s["space_name"], s["status"]) for s in spots] == [("1", "A-101", "vaba"), ("2", "A-101", "vaba")]
+    sp = next(x for x in (await client.get("/api/v1/assets", params={"parent_id": prop["id"], "type_code": "space"})).json() if x["name"] == "A-101")
+    detail = (await client.get(f"/api/v1/assets/{sp['id']}")).json()
+    assert [s["number"] for s in detail["parking_spots"]] == ["1", "2"] and detail["parent"]["name"] == prop["name"]
+    assert detail["attributes"]["parking_spots"] == 2 and detail["delete_block_reason"] is None
+    # property detail lists spaces only (register rows are not children) and the whole register
+    pd = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
+    assert {c["type_code"] for c in pd["children"]} == {"space"} and len(pd["parking_spots"]) == 2 and pd["children_count"] == 3
+    # deleting the space releases its spots (they stay in the register without a space)
+    r = await client.request("DELETE", f"/api/v1/assets/{sp['id']}")
+    assert r.status_code == 204
+    spots = (await client.get(f"/api/v1/assets/{prop['id']}/parking")).json()
+    assert [s["space_name"] for s in spots] == [None, None]

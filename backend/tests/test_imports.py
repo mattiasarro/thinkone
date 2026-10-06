@@ -6,10 +6,11 @@ import uuid
 
 from httpx import AsyncClient
 
-SAMPLES = pathlib.Path("/Users/m/code/thinkone/demo/importitud")
-LEASE_PDF = SAMPLES / "üürileping-maru ehitus" / "Üürileping P_29 MARU Ehitus.pdf"
-MAINT_DOCX = SAMPLES / "hooldus" / "HOOLDUSLEPING Nr H5.08 (003) draft vm 230530.docx"
-SCAN_LIKE_PDF = SAMPLES / "üürileping-maru ehitus" / "T6B_Pind_29.pdf"  # a drawing: text layer too thin → treated as scan
+# the client's demo package ships the sample originals (demo/demo/lisad/importitud)
+SAMPLES = pathlib.Path(__file__).resolve().parents[2] / "demo" / "demo" / "lisad" / "importitud"
+LEASE_PDF = SAMPLES / "MARU_uurileping_P29.pdf"
+MAINT_DOCX = SAMPLES / "Hooldusleping_H5-08.docx"
+SCAN_LIKE_PDF = SAMPLES / "T6B_pind_29_plaan.pdf"  # a drawing: text layer too thin → treated as scan
 
 
 async def _run_worker_inline(job_id: str):
@@ -52,10 +53,18 @@ async def test_import_lease_pdf_end_to_end(client: AsyncClient, admin: dict):
                                                              "attributes": {"address": "Taevavärava tee 6b"}})).json()
     space = (await client.post("/api/v1/assets", json={"type_code": "space", "name": "P_29", "parent_id": prop_asset["id"],
                                                         "attributes": {"rentable_area_m2": 174.8, "price_per_m2": 7.6}})).json()
+    # the space's default parking spots follow the lease at commit (demo v586); one spot is out of service and stays free
+    r = await client.post(f"/api/v1/assets/{prop_asset['id']}/parking/import", params={"dry_run": "false"}, json={"text": "41;;;P_29\n42;;;P_29\n43;;;\n"})
+    assert r.status_code == 200 and r.json()["created"] == 3
+    spot42 = next(s for s in (await client.get(f"/api/v1/assets/{prop_asset['id']}/parking")).json() if s["number"] == "42")
+    await client.post(f"/api/v1/assets/{prop_asset['id']}/parking/update", json={"ids": [spot42["id"]], "patch": {"out_of_service": True}})
     r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": j["uncertain"], "company_id": co["id"], "asset_id": space["id"]})
     assert r.status_code == 200, r.text
     cid = r.json()["contract_id"]
+    spots = {s["number"]: s for s in (await client.get(f"/api/v1/assets/{prop_asset['id']}/parking")).json()}
+    assert spots["41"]["status"] == "üüritud" and spots["41"]["contract"]["id"] == cid and spots["42"]["status"] == "kasutusest väljas" and spots["43"]["status"] == "vaba"
     c = (await client.get(f"/api/v1/contracts/{cid}")).json()
+    assert {a["asset"]["name"] for a in c["allocations"]} == {"P_29", "P 41"}
     assert c["origin"] == "imported" and c["category"] == "lease" and c["title"].startswith("Üürileping P_29")
     assert c["party"]["registry_code"] == "10714568"
     assert any(f["key"] == "rent_per_m2" for f in c["facts"])
@@ -160,3 +169,13 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     assert r.status_code == 200
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
     assert c["source_documents"][0]["container_signatures"][0]["personal_code"] == "37001010000"
+
+
+def test_proposal_schema_has_no_numeric_bounds():
+    """Anthropic structured output refuses minimum/maximum on integer and number types (seen live 2026-10-06)."""
+    import json
+
+    from app.ingest.schema import proposal_json_schema
+
+    text = json.dumps(proposal_json_schema())
+    assert '"minimum"' not in text and '"maximum"' not in text and '"exclusiveMinimum"' not in text

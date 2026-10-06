@@ -14,12 +14,16 @@ Contract-workflow platform (Estonian commercial real estate first, employment co
 
 ## Phase 2 status
 
-Implemented: account/user setup with invites, companies (äriregister autofill), asset registry (property/space with EHR autofill,
-CSV import, attachments, derived occupancy), parties with roles, templates (general-terms DOCX → locked clause tree),
-import pipeline (PDF/DOCX/ASiC-E → extraction with anchors → LLM structuring → review → commit; manual registration for scans;
-externally signed amendments), versioned contract facts, key dates + calendar + daily scan, notifications with email delivery
-state, audit trail + export, omnibox search, portfolio health report. Every write is event-logged; RLS is enforced by a
-non-superuser application role.
+Implemented: account/user setup with invites and the data-driven „Alusta · 10 minutit” setup card, companies (äriregister
+autofill), asset registry (object workflow in five steps — building with EHR autofill · spaces with parts breakdown, CSV
+import and a space page · bulk floor-plan upload matched by filename · parking register as a separate asset with per-space
+default spots · terms + template; derived occupancy; space split/merge; delete guard for documented spaces), parties with
+roles, templates (general-terms DOCX → locked clause tree), import pipeline (PDF/DOCX/ASiC-E → extraction with anchors → LLM
+structuring → review with „Kas see on Pind N?” and äriregister check → commit with space + parking-spot linking; manual
+registration for scans; externally signed amendments; in-progress/finished batches), versioned contract facts, key dates +
+calendar + daily scan, notifications with email delivery state, global event log page with actor/entity filters and CSV/JSONL/PDF
+export plus the per-contract court folder, omnibox search, portfolio health report. Every write is event-logged; RLS is enforced
+by a non-superuser application role.
 
 ## Run locally
 

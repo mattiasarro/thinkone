@@ -13,6 +13,7 @@ from app.models.registry import AssetType
 ASSET_TYPES = [
     ("property", "real_estate", "container", "Hoone / objekt", "app.verticals.real_estate:PropertyAttributes"),
     ("space", "real_estate", "unit", "Üüripind", "app.verticals.real_estate:SpaceAttributes"),
+    ("parking_spot", "real_estate", "unit", "Parkimiskoht", "app.verticals.real_estate:ParkingSpotAttributes"),
     ("department", "employment", "container", "Osakond", "app.verticals.employment:DepartmentAttributes"),
     ("position", "employment", "unit", "Ametikoht", "app.verticals.employment:PositionAttributes"),
 ]

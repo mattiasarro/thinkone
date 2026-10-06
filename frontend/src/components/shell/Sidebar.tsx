@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { Me } from "@/types/api";
 import { t } from "@/i18n";
 import { cx, initials } from "@/lib/format";
-import { IconBuilding, IconCal, IconChat, IconGrid, IconSettings, IconSpark, IconX, IconChevronLeft, IconChevronRight, LogoMark } from "@/components/ui/Icons";
+import { IconBuilding, IconCal, IconChat, IconClock, IconGrid, IconSettings, IconSpark, IconX, IconChevronLeft, IconChevronRight, LogoMark } from "@/components/ui/Icons";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { UserMenu } from "./UserMenu";
 
@@ -70,6 +70,11 @@ export function Sidebar({ me, mobileOpen, onCloseMobile, collapsed, onToggleColl
       {!collapsed && <CompanySwitcher me={me} />}
 
       <div className={cx("border-t pt-4", collapsed ? "mt-auto" : "mt-3")} style={{ borderColor: "var(--color-divider)" }}>
+        <Link href="/app/audit" title={collapsed ? t("nav.audit") : undefined} aria-current={isActive("/app/audit") ? "page" : undefined}
+          className={cx("flex items-center gap-3 min-h-[44px] rounded-control text-sm font-medium", collapsed ? "justify-center w-11 mx-auto" : "px-3 py-2", isActive("/app/audit") ? "bg-surface text-primary font-semibold shadow-surface" : "text-ink hover:bg-[rgb(20_26_38/0.05)]")}>
+          <IconClock className={isActive("/app/audit") ? "text-primary" : "text-muted"} />
+          {!collapsed && <span>{t("nav.audit")}</span>}
+        </Link>
         <Link href="/app/seaded" title={collapsed ? t("nav.seaded") : undefined} aria-current={isActive("/app/seaded") ? "page" : undefined}
           className={cx("flex items-center gap-3 min-h-[44px] rounded-control text-sm font-medium", collapsed ? "justify-center w-11 mx-auto" : "px-3 py-2", isActive("/app/seaded") ? "bg-surface text-primary font-semibold shadow-surface" : "text-ink hover:bg-[rgb(20_26_38/0.05)]")}>
           <IconSettings className={isActive("/app/seaded") ? "text-primary" : "text-muted"} />

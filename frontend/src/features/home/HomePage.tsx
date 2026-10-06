@@ -3,13 +3,14 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { t, tEnum } from "@/i18n";
 import { useMe } from "@/lib/queries/auth";
-import { useKeyDates, usePortfolioHealth } from "@/lib/queries/portfolio";
+import { useKeyDates, usePortfolioHealth, usePortfolioSummary } from "@/lib/queries/portfolio";
 import { useImports } from "@/lib/queries/imports";
 import { addDays, daysUntil, fmtDate, isoDay } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Pill, severityTone } from "@/components/ui/Pill";
 import { Loading, EmptyState } from "@/components/ui/State";
-import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconAlert, IconCal, IconFile } from "@/components/ui/Icons";
+import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconAlert, IconCal, IconFile, IconCheck } from "@/components/ui/Icons";
+import { cx } from "@/lib/format";
 
 type Item = { key: string; href: string; icon: React.ReactNode; title: string; sub: string; pill?: React.ReactNode; sort: number };
 
@@ -19,6 +20,7 @@ export function HomePage() {
   const kd = useKeyDates({ from: isoDay(addDays(today, -365)), to: isoDay(addDays(today, 30)) });
   const imports = useImports();
   const health = usePortfolioHealth();
+  const summary = usePortfolioSummary();
 
   const h = today.getHours();
   const greet = h < 11 ? "home.greetingMorning" : h < 18 ? "home.greetingDay" : "home.greetingEvening";
@@ -55,6 +57,8 @@ export function HomePage() {
         <h1 className="font-heading text-[32px] leading-10 md:text-[40px] md:leading-[44px] font-semibold tracking-tight">{t(greet, { name: firstName })}</h1>
         <p className="page-sub">{t("nav.avalehtQ")}</p>
       </div>
+
+      <SetupCard summary={summary.data} />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <QuickLink href="/app/portfell/objekt/uus" icon={<IconBuilding />} label={t("home.addAsset")} />
@@ -99,5 +103,41 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
       <span className="font-semibold text-sm">{label}</span>
       <IconArrowRight width={16} height={16} className="ml-auto text-muted" />
     </Link>
+  );
+}
+
+/** „Alusta · 10 minutit” (demo v623): four setup steps whose done-state comes from the data, shown until all are done. */
+function SetupCard({ summary }: { summary: ReturnType<typeof usePortfolioSummary>["data"] }) {
+  if (!summary) return null;
+  const contracts = Object.values(summary.contracts_by_status).reduce((a, b) => a + b, 0);
+  const steps = [
+    { key: "company", done: summary.companies > 0, href: "/app/seaded?tab=ettevotted", title: t("home.setup.company"), sub: t("home.setup.companySub"), icon: <IconUsers /> },
+    { key: "building", done: summary.assets.properties > 0, href: "/app/portfell/objekt/uus", title: t("home.setup.building"), sub: t("home.setup.buildingSub"), icon: <IconBuilding /> },
+    { key: "spaces", done: summary.assets.spaces > 0, href: "/app/portfell?tab=esemed", title: t("home.setup.spaces"), sub: t("home.setup.spacesSub"), icon: <IconFile /> },
+    { key: "contracts", done: contracts > 0, href: "/app/portfell/import", title: t("home.setup.contracts"), sub: t("home.setup.contractsSub"), icon: <IconImport /> },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null;
+  return (
+    <Card>
+      <CardHeader title={t("home.setup.title")} actions={<Pill tone="primary">{t("home.setup.progress", { done, total: steps.length })}</Pill>}>
+        <p className="text-sm text-muted">{t("home.setup.sub")}</p>
+      </CardHeader>
+      <ol className="px-[var(--card-padding)] pb-2 divide-y" style={{ borderColor: "var(--line)" }}>
+        {steps.map((s, i) => (
+          <li key={s.key}>
+            <Link href={s.href} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-canvas min-h-[52px]">
+              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success" : "text-primary")} style={{ background: s.done ? "var(--color-success-subtle)" : "var(--color-primary-subtle)" }}>{s.done ? <IconCheck /> : s.icon}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{i + 1}. {s.title}</span>
+                <span className="block text-xs text-muted">{s.sub}</span>
+              </span>
+              <Pill tone={s.done ? "success" : "neutral"}>{s.done ? t("home.setup.done") : t("home.setup.todo")}</Pill>
+              <IconArrowRight width={16} height={16} className="text-muted flex-none" />
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }

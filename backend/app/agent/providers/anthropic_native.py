@@ -22,15 +22,32 @@ class AnthropicChatModel:
         self.model = model
 
     async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 64000) -> StructuredResult:
+        try:
+            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=True)
+        except anthropic.BadRequestError as e:
+            # The API compiles the JSON schema into a grammar and refuses large ones; the schema still goes into
+            # the prompt and Pydantic validates the reply, so fall back to free-form JSON for this call.
+            if "grammar" not in str(e).lower():
+                raise
+            log.warning("llm_structured_grammar_fallback", error=str(e)[:200])
+            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=False)
+
+    async def _call(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int, grammar: bool) -> StructuredResult:
         # Streaming keeps long structuring runs clear of HTTP timeouts; the stable system prompt is cached.
         # max_tokens covers thinking as well as the JSON (thinking is always on for Opus 5.5).
+        output_config: dict[str, Any] = {"effort": "high"}
+        sys_text = system
+        if grammar:
+            output_config["format"] = {"type": "json_schema", "schema": schema}
+        else:
+            sys_text = f"{system}\n\nReply with ONLY one JSON object (no prose, no code fences) that validates against this JSON schema:\n{json.dumps(schema, ensure_ascii=False)}"
         async with self.client.beta.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
-            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": sys_text, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
             thinking={"type": "adaptive"},
-            output_config={"effort": "high", "format": {"type": "json_schema", "schema": schema}},
+            output_config=output_config,
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",
         ) as stream:
@@ -41,12 +58,14 @@ class AnthropicChatModel:
         if msg.stop_reason == "max_tokens":
             raise RuntimeError("Structuring output exceeded max_tokens")
         # A mid-stream fallback continues the declined partial in a new text block, so join them all.
-        text = "".join(b.text for b in msg.content if b.type == "text")
+        text = "".join(b.text for b in msg.content if b.type == "text").strip()
+        if text.startswith("```"):
+            text = text.strip("`").removeprefix("json").strip()
         usage = {
             "input_tokens": msg.usage.input_tokens,
             "output_tokens": msg.usage.output_tokens,
             "cache_read_input_tokens": getattr(msg.usage, "cache_read_input_tokens", 0) or 0,
             "cache_creation_input_tokens": getattr(msg.usage, "cache_creation_input_tokens", 0) or 0,
         }
-        log.info("llm_structured", model=msg.model, request_id=request_id, **usage)
+        log.info("llm_structured", model=msg.model, request_id=request_id, grammar=grammar, **usage)
         return StructuredResult(data=json.loads(text), model=msg.model, usage=usage, raw_text=text)

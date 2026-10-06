@@ -41,6 +41,7 @@ class SummaryOut(BaseModel):
     assets: dict[str, int]
     key_dates_next_30: int
     open_imports: int
+    companies: int = 0
 
 
 @router.get("/health", response_model=HealthOut)

@@ -4,8 +4,9 @@ import re
 
 from app.ingest.docx_terms import parse_general_terms, preview_numbers
 
-DOCX = pathlib.Path("/Users/m/code/thinkone/demo/Üürileping/Üürileping.docx")
-JS = pathlib.Path("/Users/m/code/thinkone/demo/demo/uldtingimused.js")
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+DOCX = ROOT / "demo" / "testfailid" / "lepingud" / "Üürileping.docx"  # local-only (testfailid/ is gitignored)
+JS = ROOT / "demo" / "demo" / "uldtingimused.js"
 
 
 def _expected():

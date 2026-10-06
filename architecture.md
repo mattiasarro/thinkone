@@ -139,11 +139,20 @@ company                      (Ettevõte/üürileandja)  account_id, registry dat
 property                     (Objekt)                company_id, EHR fields (ehr_code, address,
                                                      use_type, footprint_m2, net_area_m2, floors,
                                                      build_year), vat_taxable, utility_cost_winter/summer
-space                        (Pind)                  property_id, name, type, net_area_m2,
-                                                     rentable_area_m2, coefficient, price_per_m2,
-                                                     electrical_capacity_kw, parking_spots
-attachment                                           polymorphic: space floor plans (Lisa 1),
-                                                     property site/parking plan (Lisa 2) → S3 key + sha256
+space                        (Pind)                  property_id, name, type, rentable_area_m2 (the ONE
+                                                     area), parts {ladu, kontor, müügisaal, olmeala,
+                                                     ühisala} summing to it, price_per_m2,
+                                                     electrical_capacity_a, split_from/split_into
+                                                     (rental units of a split space); parking_spots
+                                                     count only on buildings without a register
+parking_spot                 (Parkimiskoht)          asset type under the property (demo v551/v660):
+                                                     number, zone, type tavaline|elektriauto|
+                                                     ligipääsetav, reserve, out_of_service, space_id
+                                                     (the space whose default spot it is); status
+                                                     derived from allocations like any unit
+attachment                                           polymorphic: space floor plans (Lisa 1; bulk
+                                                     upload matched by filename), property site/
+                                                     parking plan (Lisa 2) → S3 key + sha256
 template                                             property_id, kind: general_terms | special_terms_base
                                                      | quote_base; versioned, immutable once referenced
 party                        (Klient/Osapool)        ONE table for every counterparty: EE company |
@@ -224,7 +233,8 @@ Key modeling rules from the spec, enforced in the domain layer:
 - **General terms are immutable.** At lease creation, the property's `general_terms` template version is snapshotted into `clause` rows with `locked=true`. They are never edited; an accepted change creates a _special-terms clause_ with `overrides_clause_id` pointing at the locked clause. Rendering shows "§X, muudetud Lisa 3 p Y".
 - **Quote → N leases.** Accepting a quote covering N spaces creates N lease drafts (one per space), each pre-filled: general terms (locked), main terms generated from property/space/quote data, quote's structured special terms copied into Annex 3.
 - **Money is net.** All prices stored without VAT; VAT presentation derived from `property.vat_taxable` (inherited onto the lease at creation) and the standard Estonian rate (config value with effective date, not hard-coded).
-- **Rentable area is an input,** not computed (the operator computes it in the import template); coefficient and net area are stored as metadata only.
+- **Rentable area is the only area** (demo v656): net area and coefficient were dropped from the model; the optional parts breakdown must sum to the rentable area. Electrical capacity is amperes (the general terms cap it at 63 A).
+- **A space that any document referenced cannot be deleted** (demo v794) — live or archived leases, imports and (later) quotes keep it; its parking spots stay in the register without a space. Splitting a space into rental units and merging them back are explicit, event-logged actions, never edits.
 
 ### Clause structure, numbering & references
 

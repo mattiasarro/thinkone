@@ -95,6 +95,13 @@ export const api = {
     }
     return request<T>("POST", path, { form, query });
   },
+  /** Multipart upload with repeated fields (e.g. many ``files``). */
+  uploadMany: <T>(path: string, files: { field: string; file: File }[], fields: Record<string, string | undefined> = {}, query?: Query) => {
+    const form = new FormData();
+    for (const { field, file } of files) form.append(field, file, file.name);
+    for (const [k, v] of Object.entries(fields)) if (v !== undefined) form.append(k, v);
+    return request<T>("POST", path, { form, query });
+  },
 };
 
 export function isApiError(e: unknown): e is ApiError {

@@ -14,12 +14,16 @@ import httpx
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/")
 DEMO = pathlib.Path(__file__).resolve().parents[2] / "demo"
-SAMPLES = DEMO / "importitud"
+SAMPLES = DEMO / "demo" / "lisad" / "importitud"  # the client's demo package ships the sample originals
 
-SPACES = [  # from demo/demo/data.js (Hoone T6B, real m²)
-    ("Pind 1", "ladu", 214.5, 7.5), ("Pind 2", "ladu", 174.8, 7.6), ("Pind 4", "büroo", 96.0, 9.0), ("Pind 6", "ladu", 302.0, 7.2),
-    ("Pind 8", "tootmine", 410.0, 6.9), ("Pind 12", "büroo", 128.0, 9.5), ("Pind 14", "ladu", 188.0, 7.5), ("Pind 16", "ladu", 176.0, 7.5),
-    ("Pind 18", "büroo", 88.0, 9.0), ("Pind 20", "ladu", 250.0, 7.3), ("Pind 24", "tootmine", 330.0, 7.0), ("Pind 29", "ladu", 174.8, 7.6),
+# name, type, rentable m², (ladu, kontor, olmeala) m², €/m², A, parking spot numbers — demo/demo/data.js (Hoone T6B)
+SPACES = [
+    ("Pind 1", "ladu", 214.5, (180, 24.5, 10), 7.5, 32, "1, 2"), ("Pind 2", "ladu", 174.8, (150, 14.8, 10), 7.6, 32, "3"),
+    ("Pind 4", "büroo", 96.0, (0, 86, 10), 9.0, 25, "4, 5"), ("Pind 6", "ladu", 302.0, (260, 32, 10), 7.2, 40, "6, 7, 8"),
+    ("Pind 8", "tootmine", 410.0, (370, 30, 10), 6.9, 63, "9, 10, 11"), ("Pind 12", "büroo", 128.0, (0, 118, 10), 9.5, 25, "12"),
+    ("Pind 14", "ladu", 188.0, (160, 18, 10), 7.5, 32, "13, 14"), ("Pind 16", "ladu", 176.0, (150, 16, 10), 7.5, 32, "15"),
+    ("Pind 18", "büroo", 88.0, (0, 78, 10), 9.0, 25, "16"), ("Pind 20", "ladu", 250.0, (220, 20, 10), 7.3, 40, "17, 18"),
+    ("Pind 24", "tootmine", 330.0, (290, 30, 10), 7.0, 63, "19, 20"), ("Pind 29", "ladu", 174.8, (150, 14.8, 10), 7.6, 32, "21, 22"),
 ]
 
 
@@ -34,16 +38,22 @@ def main() -> None:
     attrs = {k: v for k, v in (ehr[0] if ehr else {}).items() if k in ("ehr_code", "address", "use_type", "footprint_m2", "net_area_m2", "floors", "build_year")}
     attrs.update({"vat_taxable": True, "utility_cost_winter": 2.1, "utility_cost_summer": 1.4, "utility_source": "manual"})
     prop = c.post("/api/v1/assets", json={"type_code": "property", "name": "Hoone T6B", "company_id": co["id"], "attributes": attrs}).json()
-    csv = "nimi;tüüp;üüripind;hind\n" + "\n".join(f"{n};{t};{a};{p}" for n, t, a, p in SPACES)
+    csv = "nimi;tüüp;üüripind;ladu;kontor;olmeala;hind;elekter;parkimiskohad\n" + "\n".join(
+        f"{n};{t};{a};{l or ''};{k or ''};{o or ''};{p};{e};{pk}" for n, t, a, (l, k, o), p, e, pk in SPACES)
     imp = c.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "false"}, json={"text": csv}).json()
-    print("spaces:", imp.get("created"), "created")
+    print("spaces:", imp.get("created"), "created;", imp.get("parking_created"), "parking spots")
+    c.post(f"/api/v1/assets/{prop['id']}/parking/import", params={"dry_run": "false"}, json={"text": "23-26;Hoov;elektriauto;\n27-30;Hoov;reserv;\n"})
     spaces = {s["name"]: s for s in c.get("/api/v1/assets", params={"type_code": "space", "parent_id": prop["id"]}).json()}
-    for plan in ("T6B_pinnaplaan.pdf", "T6B_parkimisskeem.pdf"):
-        f = DEMO / "demo" / "lisad" / plan
-        if f.exists():
-            c.post("/api/v1/attachments", data={"subject_type": "asset", "subject_id": prop["id"], "role": "site_plan" if "parkimis" in plan else "floor_plan"},
-                   files={"file": (plan, f.read_bytes(), "application/pdf")})
-    gt = DEMO / "Üürileping" / "Üürileping.docx"
+    park = DEMO / "demo" / "lisad" / "T6B_parkimisskeem.pdf"
+    if park.exists():
+        c.post("/api/v1/attachments", data={"subject_type": "asset", "subject_id": prop["id"], "role": "parking_plan"},
+               files={"file": (park.name, park.read_bytes(), "application/pdf")})
+    wanted = {n.split()[1].zfill(2) for n, *_ in SPACES}  # only the seeded spaces' plans; the rest would become whole-building plans
+    plans = [f for f in sorted((DEMO / "demo" / "lisad" / "pinnad").glob("T6B_Pind_*.pdf")) if f.stem.rsplit("_", 1)[1] in wanted]  # matched by filename
+    if plans:
+        r = c.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=[("files", (f.name, f.read_bytes(), "application/pdf")) for f in plans])
+        print("plans:", r.status_code, sum(1 for x in r.json() if x["target"] == "space") if r.status_code < 300 else r.text[:200])
+    gt = DEMO / "testfailid" / "lepingud" / "Üürileping.docx"
     if gt.exists():
         r = c.post("/api/v1/templates/general-terms", data={"name": "Äriruumide üürilepingu üldtingimused", "company_id": co["id"]},
                    files={"file": (gt.name, gt.read_bytes(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")})
@@ -62,9 +72,8 @@ def main() -> None:
         r = c.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": j["uncertain"], "company_id": co["id"], "asset_id": asset_id})
         print("import", path.name, "→", r.status_code, r.json())
 
-    import_file(SAMPLES / "üürileping-maru ehitus" / "Üürileping P_29 MARU Ehitus.pdf", "application/pdf", spaces.get("Pind 29", {}).get("id"))
-    import_file(SAMPLES / "hooldus" / "HOOLDUSLEPING Nr H5.08 (003) draft vm 230530.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", prop["id"])
+    import_file(SAMPLES / "MARU_uurileping_P29.pdf", "application/pdf", spaces.get("Pind 29", {}).get("id"))
+    import_file(SAMPLES / "Hooldusleping_H5-08.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", prop["id"])
     h = c.get("/api/v1/portfolio/health").json()
     print("health:", h["totals"], [(f["code"], f["count"]) for f in h["findings"]])
 

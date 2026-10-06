@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ObjectWizard } from "@/features/assets/ObjectWizard";
+import { ObjectWizard, type WizardStep } from "@/features/assets/ObjectWizard";
 import { PropertyDetail } from "@/features/assets/PropertyDetail";
 import { t } from "@/i18n";
 
@@ -8,7 +8,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { id } = await params;
   const sp = await searchParams;
   if (sp.edit) {
-    const step = sp.step === "2" ? 2 : sp.step === "3" ? 3 : 1;
+    const n = Number(sp.step);
+    const step = (n >= 1 && n <= 5 ? n : 1) as WizardStep;
     return <ObjectWizard propertyId={id} step={step} />;
   }
   return <PropertyDetail id={id} />;

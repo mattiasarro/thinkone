@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal, db
 from app.domain import assets as assets_domain
 from app.domain import attachments as attachments_domain
+from app.domain import parking as parking_domain
+from app.domain import plans as plans_domain
 from app.domain import registry
+from app.domain import spaces as spaces_domain
 from app.domain.errors import DomainError
 from app.models.contracts import Contract
 from app.models.registry import Allocation, Asset
@@ -58,6 +62,7 @@ class AllocationContractOut(BaseModel):
     title: str
     status: str
     type_code: str
+    party_name: str | None = None
 
 
 class AllocationOut(BaseModel):
@@ -76,10 +81,37 @@ class AssetChildOut(AssetOut):
     attachments: list[AttachmentSummaryOut]  # e.g. a space's floor plan, shown on the parent property
 
 
+class ParkingSpotOut(BaseModel):
+    id: uuid.UUID
+    number: str
+    zone: str | None
+    type: str
+    reserve: bool
+    out_of_service: bool
+    status: str | None
+    space_id: uuid.UUID | None
+    space_name: str | None
+    contract: dict[str, Any] | None
+
+
+class AssetRefOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    type_code: str
+    status: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
 class AssetDetailOut(AssetOut):
     children: list[AssetChildOut]
     attachments: list[AttachmentSummaryOut]
     allocations: list[AllocationOut]
+    parent: AssetRefOut | None = None
+    parking_spots: list[ParkingSpotOut] = []  # a space's default spots / a property's whole register
+    split_parent: AssetRefOut | None = None
+    split_units: list[AssetRefOut] = []
+    delete_block_reason: str | None = None
+    split_block_reason: str | None = None
 
 
 class AssetIn(BaseModel):
@@ -122,10 +154,70 @@ class ImportResultOut(BaseModel):
     created: int
     updated: int
     dry_run: bool
+    parking_created: int = 0
 
 
 class SpacesImportIn(BaseModel):
     text: str = Field(min_length=1)
+
+
+class ParkingRowOut(BaseModel):
+    row: int
+    ok: bool
+    errors: list[str]
+    numbers: list[str]
+    zone: str | None
+    type: str
+    reserve: bool
+    space_name: str | None
+    space_id: uuid.UUID | None
+
+
+class ParkingImportOut(BaseModel):
+    rows: list[ParkingRowOut]
+    created: int
+    skipped: int
+    dry_run: bool
+
+
+class ParkingUpdateIn(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1)
+    patch: dict[str, Any]
+
+
+class ParkingAssignIn(BaseModel):
+    space_id: uuid.UUID | None = None  # null → the numbers get no space
+    numbers: list[str]
+
+
+class ParkingDeleteIn(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class HasParkingIn(BaseModel):
+    has_parking: bool
+
+
+class PlanRowOut(BaseModel):
+    filename: str
+    content_type: str
+    size: int
+    target: str
+    space_id: uuid.UUID | None
+    space_name: str | None
+    note: str | None
+    attachment_id: uuid.UUID | None
+
+
+class SplitUnitIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    parts: dict[str, float]
+    price_per_m2: float = Field(gt=0)
+    parking_numbers: list[str] = Field(default_factory=list)
+
+
+class SplitIn(BaseModel):
+    units: list[SplitUnitIn] = Field(min_length=2)
 
 
 # ---- assets ------------------------------------------------------------------------------------
@@ -135,6 +227,12 @@ class SpacesImportIn(BaseModel):
 async def spaces_csv_template(p: Principal = Depends(current_principal)) -> Response:
     return Response(content=assets_domain.csv_template(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": 'attachment; filename="pinnad-mall.csv"'})
+
+
+@router.get("/assets/parking/csv-template", response_class=Response, responses={200: {"content": {"text/csv": {}}}})
+async def parking_csv_template(p: Principal = Depends(current_principal)) -> Response:
+    return Response(content=parking_domain.PARKING_TEMPLATE, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="parkimiskohad-mall.csv"'})
 
 
 @router.get("/assets", response_model=list[AssetOut])
@@ -155,15 +253,42 @@ async def create_asset(body: AssetIn, p: Principal = Depends(current_principal),
 async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) -> AssetDetailOut:
     a = await assets_domain.get_asset(session, asset_id)
     base = (await _outs(session, [a]))[0]
-    children = await _outs(session, await assets_domain.children_of(session, a.id))
+    kids = [c for c in await assets_domain.children_of(session, a.id) if c.type_code not in registry.AUXILIARY_UNITS]
+    children = await _outs(session, kids)
     child_atts: dict[uuid.UUID, list[AttachmentSummaryOut]] = {c.id: [] for c in children}
     for x in await attachments_domain.list_attachments(session, subject_type="asset", subject_ids=list(child_atts)):
         child_atts[x.subject_id].append(AttachmentSummaryOut.model_validate(x))
     atts = await attachments_domain.list_attachments(session, subject_type="asset", subject_id=a.id)
     allocs = await assets_domain.list_allocations(session, asset_id=a.id)
+    parent = await session.get(Asset, a.parent_id) if a.parent_id else None
+    spots: list[ParkingSpotOut] = []
+    split_parent = None
+    split_units: list[AssetRefOut] = []
+    delete_reason = await assets_domain.delete_block_reason(session, a)
+    split_reason = None
+    if a.type_code == "space" and a.parent_id:
+        rows = await parking_domain.spot_rows(session, a.parent_id)
+        spots = [ParkingSpotOut(**r) for r in rows if r["space_id"] == a.id]
+        attrs = a.attributes or {}
+        if attrs.get("split_from"):
+            sp = await session.get(Asset, uuid.UUID(attrs["split_from"]))
+            if sp:
+                split_parent = AssetRefOut(id=sp.id, name=sp.name, type_code=sp.type_code)
+        if attrs.get("split_into"):
+            units = [await session.get(Asset, uuid.UUID(i)) for i in attrs["split_into"]]
+            units = [u for u in units if u and not u.deleted_at]
+            st = await registry.asset_statuses(session, units) if units else {}
+            split_units = [AssetRefOut(id=u.id, name=u.name, type_code=u.type_code, status=st.get(u.id) if isinstance(st.get(u.id), str) else None,
+                                       attributes=u.attributes or {}) for u in units]
+        split_reason = await spaces_domain.split_block_reason(session, a)
+    elif a.type_code == "property":
+        spots = [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, a.id)]
     return AssetDetailOut(**base.model_dump(), children=[AssetChildOut(**c.model_dump(), attachments=child_atts[c.id]) for c in children],
                           attachments=[AttachmentSummaryOut.model_validate(x) for x in atts],
-                          allocations=[_alloc_out(al, c) for al, c in allocs])
+                          allocations=[await _alloc_out(session, al, c) for al, c in allocs],
+                          parent=AssetRefOut(id=parent.id, name=parent.name, type_code=parent.type_code, attributes=parent.attributes or {}) if parent else None,
+                          parking_spots=spots, split_parent=split_parent, split_units=split_units,
+                          delete_block_reason=delete_reason, split_block_reason=split_reason)
 
 
 @router.patch("/assets/{asset_id}", response_model=AssetOut)
@@ -184,7 +309,94 @@ async def import_spaces(property_id: uuid.UUID, request: Request, dry_run: bool 
     """CSV/TSV upload (multipart ``file``) or pasted text (JSON ``{"text": ...}``, e.g. from Excel)."""
     text = await _import_text(request)
     res = await assets_domain.import_spaces(session, p.actor, property_id, text, dry_run=dry_run)
-    return ImportResultOut(rows=[ImportRowOut(**r.__dict__) for r in res.rows], created=res.created, updated=res.updated, dry_run=res.dry_run)
+    return ImportResultOut(rows=[ImportRowOut(**r.__dict__) for r in res.rows], created=res.created, updated=res.updated, dry_run=res.dry_run,
+                           parking_created=res.parking_created)
+
+
+# ---- space split / merge ------------------------------------------------------------------------
+
+
+@router.post("/assets/{space_id}/split", response_model=list[AssetOut], status_code=201)
+async def split_space(space_id: uuid.UUID, body: SplitIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[AssetOut]:
+    units = await spaces_domain.split(session, p.actor, space_id, [u.model_dump() for u in body.units])
+    return await _outs(session, units)
+
+
+@router.post("/assets/{space_id}/merge", response_model=AssetOut)
+async def merge_space(space_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> AssetOut:
+    a = await spaces_domain.merge(session, p.actor, space_id)
+    return (await _outs(session, [a]))[0]
+
+
+# ---- parking register ----------------------------------------------------------------------------
+
+
+@router.get("/assets/{property_id}/parking", response_model=list[ParkingSpotOut])
+async def list_parking(property_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[ParkingSpotOut]:
+    await assets_domain.get_asset(session, property_id)
+    return [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, property_id)]
+
+
+@router.post("/assets/{property_id}/parking/import", response_model=ParkingImportOut)
+async def import_parking(property_id: uuid.UUID, request: Request, dry_run: bool = Query(default=True),
+                         p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ParkingImportOut:
+    """``nr;tsoon;tüüp;pind`` rows (file or pasted text); nr may be a range such as 10-20."""
+    text = await _import_text(request)
+    res = await parking_domain.import_spots(session, p.actor, property_id, text, dry_run=dry_run)
+    return ParkingImportOut(rows=[ParkingRowOut(**r.__dict__) for r in res.rows], created=res.created, skipped=res.skipped, dry_run=res.dry_run)
+
+
+@router.post("/assets/{property_id}/parking/update", response_model=list[ParkingSpotOut])
+async def update_parking(property_id: uuid.UUID, body: ParkingUpdateIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[ParkingSpotOut]:
+    await parking_domain.update_spots(session, p.actor, property_id, body.ids, body.patch)
+    ids = set(body.ids)
+    return [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, property_id) if r["id"] in ids]
+
+
+@router.post("/assets/{property_id}/parking/assign", response_model=list[ParkingSpotOut])
+async def assign_parking(property_id: uuid.UUID, body: ParkingAssignIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[ParkingSpotOut]:
+    """Make ``numbers`` exactly the space's default spots (or detach them when space_id is null)."""
+    prop = await assets_domain.get_asset(session, property_id)
+    space = await assets_domain.get_asset(session, body.space_id) if body.space_id else None
+    if space and space.parent_id != prop.id:
+        raise DomainError("Pind peab olema sama hoone pind")
+    if space:
+        await parking_domain.assign_numbers(session, p.actor, prop, body.numbers, space)
+    else:
+        spots = [s for s in await parking_domain.list_spots(session, prop.id) if (s.attributes or {}).get("number") in set(body.numbers)]
+        await parking_domain.update_spots(session, p.actor, prop.id, [s.id for s in spots], {"space_id": None})
+    return [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, property_id)]
+
+
+@router.post("/assets/{property_id}/parking/delete", status_code=204)
+async def delete_parking(property_id: uuid.UUID, body: ParkingDeleteIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> Response:
+    await parking_domain.delete_spots(session, p.actor, property_id, body.ids)
+    return Response(status_code=204)
+
+
+@router.post("/assets/{property_id}/parking/has-parking", response_model=AssetOut)
+async def set_has_parking(property_id: uuid.UUID, body: HasParkingIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> AssetOut:
+    a = await parking_domain.set_has_parking(session, p.actor, property_id, body.has_parking)
+    return (await _outs(session, [a]))[0]
+
+
+# ---- plans (bulk floor-plan upload) ---------------------------------------------------------------
+
+
+@router.post("/assets/{property_id}/plans", response_model=list[PlanRowOut])
+async def upload_plans(property_id: uuid.UUID, files: list[UploadFile] = File(...), mapping: str | None = Form(default=None),
+                       dry_run: bool = Query(default=True), p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[PlanRowOut]:
+    """Many plan files (PDF · PNG · JPG · SVG · ZIP) → matched to spaces by filename. ``mapping`` is a JSON object
+    {filename: space_id | "property" | "skip"} with the operator's corrections; dry_run returns the proposal only."""
+    payload = [plans_domain.PlanFile(f.filename or "fail", f.content_type or "", await f.read()) for f in files]
+    try:
+        m = json.loads(mapping) if mapping else None
+    except json.JSONDecodeError as e:
+        raise DomainError("mapping peab olema JSON-objekt") from e
+    if m is not None and not isinstance(m, dict):
+        raise DomainError("mapping peab olema JSON-objekt")
+    rows = await (plans_domain.propose(session, property_id, payload, m) if dry_run else plans_domain.commit(session, p.actor, property_id, payload, m))
+    return [PlanRowOut(**r) for r in plans_domain.rows_out(rows)]
 
 
 # ---- allocations -------------------------------------------------------------------------------
@@ -193,7 +405,7 @@ async def import_spaces(property_id: uuid.UUID, request: Request, dry_run: bool 
 @router.get("/assets/{asset_id}/allocations", response_model=list[AllocationOut])
 async def asset_allocations(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[AllocationOut]:
     await assets_domain.get_asset(session, asset_id)
-    return [_alloc_out(al, c) for al, c in await assets_domain.list_allocations(session, asset_id=asset_id)]
+    return [await _alloc_out(session, al, c) for al, c in await assets_domain.list_allocations(session, asset_id=asset_id)]
 
 
 @router.post("/allocations", response_model=AllocationOut, status_code=201)
@@ -202,7 +414,7 @@ async def create_allocation(body: AllocationIn, p: Principal = Depends(current_p
                                       period_start=body.period_start, period_end=body.period_end, area_m2=body.area_m2)
     c = await session.get(Contract, al.contract_id)
     assert c
-    return _alloc_out(al, c)
+    return await _alloc_out(session, al, c)
 
 
 @router.api_route("/allocations/{allocation_id}", methods=["DELETE"], status_code=204)
@@ -233,10 +445,16 @@ async def _outs(session: AsyncSession, rows: list[Asset]) -> list[AssetOut]:
     return out
 
 
-def _alloc_out(al: Allocation, c: Contract) -> AllocationOut:
+async def _alloc_out(session: AsyncSession, al: Allocation, c: Contract) -> AllocationOut:
+    party_name = None
+    if c.party_id:
+        from app.models.core import Party
+
+        party = await session.get(Party, c.party_id)
+        party_name = party.name if party else None
     return AllocationOut(id=al.id, contract_id=al.contract_id, asset_id=al.asset_id, kind=al.kind, quantity=al.quantity, period_start=al.period_start,
                          period_end=al.period_end, area_m2=float(al.area_m2) if al.area_m2 is not None else None,
-                         contract=AllocationContractOut(id=c.id, number=c.number, title=c.title, status=c.status, type_code=c.type_code))
+                         contract=AllocationContractOut(id=c.id, number=c.number, title=c.title, status=c.status, type_code=c.type_code, party_name=party_name))
 
 
 async def _import_text(request: Request) -> str:
