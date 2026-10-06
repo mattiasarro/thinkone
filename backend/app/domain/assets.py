@@ -554,11 +554,38 @@ def _header_word(col: str) -> str:
     return col
 
 
+_PYDANTIC_ET = [
+    (re.compile(r"^Input should be greater than or equal to (\S+)$"), r"peab olema vähemalt \1"),
+    (re.compile(r"^Input should be greater than (\S+)$"), r"peab olema suurem kui \1"),
+    (re.compile(r"^Input should be less than or equal to (\S+)$"), r"ei tohi olla suurem kui \1"),
+    (re.compile(r"^Input should be less than (\S+)$"), r"peab olema väiksem kui \1"),
+    (re.compile(r"^Input should be a valid (number|integer|decimal).*$"), "ei ole arv"),
+    (re.compile(r"^Input should be a valid string$"), "peab olema tekst"),
+    (re.compile(r"^Field required$"), "puudub"),
+    (re.compile(r"^Value error, (.*)$"), r"\1"),
+]
+
+
 def _attr_errors(e: DomainError) -> list[str]:
+    """Row-level messages for the import preview: Estonian column name + translated pydantic message."""
     errs = getattr(e, "errors", None) or []
     if not errs:
         return [e.message]
-    return [f"{'.'.join(str(x) for x in err.get('loc', [])) or 'väärtus'}: {err.get('msg')}" for err in errs]
+    out: list[str] = []
+    for err in errs:
+        loc = [str(x) for x in err.get("loc", [])]
+        field_name = ".".join(loc) or "väärtus"
+        if loc and loc[0] in COLUMN_ALIASES.values():
+            field_name = _header_word(loc[0]) if len(loc) == 1 else f"{_header_word(loc[0])}.{'.'.join(loc[1:])}"
+        elif loc and loc[0] == "parts" and len(loc) > 1:
+            field_name = SPACE_PART_LABELS.get(loc[1], loc[1])
+        msg = str(err.get("msg") or "vigane väärtus")
+        for rx, repl in _PYDANTIC_ET:
+            if rx.match(msg):
+                msg = rx.sub(repl, msg)
+                break
+        out.append(f"{field_name} {msg}" if msg[:1].islower() else f"{field_name}: {msg}")
+    return out
 
 
 __all__ = ["SPACE_PART_KEYS"]

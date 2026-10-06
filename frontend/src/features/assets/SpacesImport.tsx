@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "@/i18n";
+import { useDebounced } from "@/lib/hooks";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
 import { Table, Td } from "@/components/ui/Table";
@@ -17,13 +18,21 @@ export function SpacesImport({ propertyId, onDone, onCancel }: { propertyId: str
   const [preview, setPreview] = useState<SpaceImportResult | null>(null);
   const imp = useImportSpaces(propertyId);
   const toast = useToast();
-  const run = async (dryRun: boolean) => {
+  const run = async (dryRun: boolean, src: { file: File | null; text: string } = { file, text }) => {
     try {
-      const r = await imp.mutateAsync({ file: file ?? undefined, text: file ? undefined : text, dryRun });
+      const r = await imp.mutateAsync({ file: src.file ?? undefined, text: src.file ? undefined : src.text, dryRun });
       if (dryRun) setPreview(r);
       else { toast.success(t("assets.importDone", { created: r.created, updated: r.updated })); onDone(); }
     } catch (e) { toast.error(errorMessage(e)); }
   };
+  // The preview is the error report, so it runs on its own: as soon as a file is chosen, and once pasted text settles.
+  const onFile = (f: File | null) => { setFile(f); setPreview(null); if (f) void run(true, { file: f, text }); };
+  const debouncedText = useDebounced(text, 700);
+  useEffect(() => {
+    if (file || !debouncedText.trim()) return;
+    void run(true, { file: null, text: debouncedText });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when the settled text changes
+  }, [debouncedText, file]);
   const okRows = preview?.rows.filter((r) => r.ok).length ?? 0;
   const hasErrors = !!preview && preview.rows.some((r) => !r.ok);
   const cols = preview ? Array.from(new Set(preview.rows.flatMap((r) => Object.keys(r.data ?? {})))) : [];
@@ -34,11 +43,12 @@ export function SpacesImport({ propertyId, onDone, onCancel }: { propertyId: str
       <a className="text-primary font-semibold text-sm w-fit" href={`${API_BASE}/assets/spaces/csv-template`} target="_blank" rel="noopener">{t("assets.downloadTemplate")}</a>
       <div className="field">
         <label htmlFor="csv-file">{t("assets.csvFile")}</label>
-        <input id="csv-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" className="text-sm" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }} />
+        <input id="csv-file" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" className="text-sm" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
       </div>
       <Textarea label={t("assets.pasteText")} rows={5} value={text} onChange={(e) => { setText(e.target.value); setPreview(null); }} placeholder={t("assets.importPlaceholder")} disabled={!!file} />
       <div className="flex gap-2 flex-wrap">
         <Button onClick={() => run(true)} busy={imp.isPending && !preview} disabled={!file && !text.trim()}>{t("assets.preview")}</Button>
+        {imp.isPending && !preview && <span className="text-sm text-muted self-center">{t("assets.previewLoading")}</span>}
         <Button variant="text" onClick={onCancel}>{t("common.cancel")}</Button>
       </div>
       {preview && (
@@ -59,7 +69,7 @@ export function SpacesImport({ propertyId, onDone, onCancel }: { propertyId: str
               </tbody>
             </Table>
           </div>
-          <div className="flex justify-end"><Button variant="primary" onClick={() => run(false)} busy={imp.isPending} disabled={hasErrors || okRows === 0}>{t("assets.commitImport", { n: okRows })}</Button></div>
+          <div className="flex justify-end"><Button variant="primary" onClick={() => run(false)} busy={imp.isPending} disabled={okRows === 0}>{t("assets.commitImport", { n: okRows })}</Button></div>
         </div>
       )}
     </div>

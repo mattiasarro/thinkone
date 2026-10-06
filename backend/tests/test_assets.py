@@ -150,9 +150,13 @@ async def test_spaces_csv_import(client: AsyncClient, admin: dict):
     rows = {x["row"]: x for x in r.json()["rows"]}
     assert rows[2]["ok"] is False and "üüripind puudub" in rows[2]["errors"]
     assert rows[3]["ok"] is False and "ei ole arv" in rows[3]["errors"][0]
-    assert rows[4]["ok"] is False and rows[4]["errors"][0].startswith("parking_spots")
+    assert rows[4]["ok"] is False and rows[4]["errors"] == ["parkimiskohtade_arv peab olema vähemalt 0"]
     assert rows[5]["ok"] is True and rows[6]["ok"] is False and "kordub" in rows[6]["errors"][0]
     assert r.json()["created"] == 1
+
+    # negative rentable area → Estonian column name, not the raw pydantic message
+    r = await client.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "true"}, json={"text": "nimi;üüripind\nC-1;-5\n"})
+    assert r.status_code == 200 and r.json()["rows"][0]["errors"] == ["üüripind peab olema vähemalt 0"]
 
     r = await client.post(f"/api/v1/assets/{prop['id']}/spaces/import", json={"text": "nimi;hind\nA;1\n"})
     assert r.status_code == 400 and "üüripind" in r.json()["detail"]
