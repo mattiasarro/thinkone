@@ -56,6 +56,11 @@ export function useDeleteAttachment() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.delete(`/attachments/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["attachments"] }); qc.invalidateQueries({ queryKey: ["asset"] }); qc.invalidateQueries({ queryKey: ["contract"] }); } });
 }
+/** Presigned download URL for an attachment; refetched before the 10-minute signature expires. */
+export function useAttachmentUrl(id: string | null | undefined) {
+  return useQuery({ queryKey: ["attachment-url", id], queryFn: () => api.get<{ url: string }>(`/attachments/${id}/url`).then((r) => r.url), enabled: !!id, staleTime: 5 * 60_000, refetchInterval: 5 * 60_000 });
+}
+
 export async function openAttachment(id: string) {
   const { url } = await api.get<{ url: string }>(`/attachments/${id}/url`);
   window.open(url, "_blank", "noopener");

@@ -50,6 +50,10 @@ async def test_company_logo_upload(client: AsyncClient, admin: dict):
     r = await client.get(f"/api/v1/attachments/{att_id}/url")
     assert r.status_code == 200 and r.json()["url"].startswith("memory://account/")
 
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>'
+    r = await client.post(f"/api/v1/companies/{c['id']}/logo", files={"file": ("logo.svg", svg, "image/svg+xml")})
+    assert r.status_code == 200 and r.json()["logo_attachment_id"] != att_id
+
     r = await client.post(f"/api/v1/companies/{c['id']}/logo", files={"file": ("logo.pdf", b"%PDF-1.4", "application/pdf")})
     assert r.status_code == 400
     r = await client.post(f"/api/v1/companies/{c['id']}/logo", files={"file": ("big.png", b"0" * (1024 * 1024 + 1), "image/png")})

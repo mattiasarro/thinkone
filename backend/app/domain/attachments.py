@@ -32,6 +32,7 @@ EXTENSION_TYPES = {
 }
 ALLOWED_TYPES = set(EXTENSION_TYPES.values())
 IMAGE_TYPES = {"image/png", "image/jpeg"}
+LOGO_TYPES = IMAGE_TYPES | {"image/svg+xml"}  # logos are only rendered via <img>, where SVG scripts never run
 
 
 def resolve_content_type(filename: str, content_type: str | None) -> str:

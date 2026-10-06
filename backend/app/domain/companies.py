@@ -83,7 +83,7 @@ async def set_logo(session: AsyncSession, actor: Actor, company_id: uuid.UUID, *
     c = await get_company(session, company_id)
     att = await attachments_domain.store_file(
         session, actor, subject_type="company", subject_id=c.id, role="logo", filename=filename, content_type=content_type,
-        data=data, max_bytes=LOGO_MAX_BYTES, allowed_types=attachments_domain.IMAGE_TYPES,
+        data=data, max_bytes=LOGO_MAX_BYTES, allowed_types=attachments_domain.LOGO_TYPES,
     )
     previous = c.logo_attachment_id
     c.logo_attachment_id = att.id

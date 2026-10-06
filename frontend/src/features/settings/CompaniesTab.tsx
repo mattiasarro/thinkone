@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { t } from "@/i18n";
-import { fetchAriregisterDetail, useAriregister, useCompanies, useDeleteCompany, useSaveCompany, useUploadLogo, openAttachment } from "@/lib/queries/settings";
+import { fetchAriregisterDetail, useAriregister, useAttachmentUrl, useCompanies, useDeleteCompany, useSaveCompany, useUploadLogo, openAttachment } from "@/lib/queries/settings";
 import { useDebounced } from "@/lib/hooks";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,18 @@ const schema = z.object({
   email: z.string().email(t("common.validationError")).optional().or(z.literal("")), phone: z.string().optional(), accent_color: z.string().optional(),
 });
 type Form = z.infer<typeof schema>;
+
+/** Logo tile: the uploaded image when the company has one (click opens the original), otherwise the initial on the accent colour. */
+function CompanyLogo({ company: c }: { company: Company }) {
+  const url = useAttachmentUrl(c.logo_attachment_id);
+  const hasLogo = !!c.logo_attachment_id && !!url.data && !url.error;
+  return (
+    <button type="button" className="w-12 h-12 rounded-control grid place-items-center flex-none font-heading font-bold text-lg text-white overflow-hidden" style={{ background: hasLogo ? "var(--color-surface)" : c.accent_color || "var(--color-primary)" }} onClick={() => c.logo_attachment_id && openAttachment(c.logo_attachment_id)} aria-label={t("settings.companies.logo")} disabled={!c.logo_attachment_id}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- presigned bucket URL, not an optimisable static asset */}
+      {hasLogo ? <img src={url.data} alt={`${c.name} logo`} className="w-full h-full object-contain" /> : c.name[0]?.toUpperCase()}
+    </button>
+  );
+}
 
 export function CompaniesTab() {
   const list = useCompanies();
@@ -41,9 +53,7 @@ export function CompaniesTab() {
           {(list.data ?? []).map((c) => (
             <Card key={c.id} pad className="flex flex-col gap-3">
               <div className="flex items-start gap-3">
-                <button type="button" className="w-12 h-12 rounded-control grid place-items-center flex-none font-heading font-bold text-lg text-white overflow-hidden" style={{ background: c.accent_color || "var(--color-primary)" }} onClick={() => c.logo_attachment_id && openAttachment(c.logo_attachment_id)} aria-label={t("settings.companies.logo")} disabled={!c.logo_attachment_id}>
-                  {c.name[0]?.toUpperCase()}
-                </button>
+                <CompanyLogo company={c} />
                 <div className="min-w-0 flex-1">
                   <div className="font-heading font-semibold text-base truncate">{c.name}</div>
                   <div className="text-xs text-muted">{[c.registry_code && `${t("settings.companies.registryCode")} ${c.registry_code}`, c.vat_number && `${t("settings.companies.vatNumber")} ${c.vat_number}`].filter(Boolean).join(" · ") || "—"}</div>
