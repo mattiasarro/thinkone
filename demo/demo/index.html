@@ -6,14 +6,15 @@
   <title>ThinkOne · Lepingutöövoo platvorm</title>
   <meta name="description" content="ThinkOne — lepingutöövoo platvormi demokeskkond (spets v2): esemeregister + lepingumootor, ärikinnisvara üürilepingud. Taevavärava OÜ · Hoone T6B." />
 
-  <!-- Fondid: Geist (UI) · Geist Mono (tunnused, summad) · Bricolage Grotesque (pealkirjad); fallback Segoe UI-le kui võrk puudub -->
+  <!-- Fondid: Inter Tight (pealkirjad) · Inter (UI) · Geist Mono (mõõtarvud), fallback Segoe UI-le kui võrk puudub -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Poppins:wght@500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Inter+Tight:wght@500..800&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css?v=431" />
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("thinkone_theme")||"dark";}catch(e){}</script>
+  <link rel="stylesheet" href="styles.css?v=807" />
   <!-- favicon: must ThinkOne logomärk -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 116 116'><rect width='116' height='116' rx='24' fill='white'/><g transform='translate(20.8,11.6) scale(0.8)' fill='%23000000'><path d='M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z'/><path d='M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z'/></g></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 116 116'><g transform='translate(58 58) rotate(-8) scale(.88) translate(-58 -58)'><rect width='116' height='116' rx='24' fill='white'/><g transform='translate(20.8,11.6) scale(0.8)' fill='%23000000'><path d='M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z'/><path d='M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z'/></g></g></svg>">
 </head>
 <body>
   <a class="skip-link" href="#app-view" onclick="event.preventDefault();document.getElementById('app-view').focus()">Liigu põhisisu juurde</a>
@@ -37,18 +38,22 @@
             <input id="omni-in" aria-label="Otsi või küsi agendilt" placeholder="Otsi või küsi… lepingud · kliendid · pinnad" autocomplete="off"/>
             <kbd>⌘K</kbd>
             <button class="omni-send" id="omni-send" title="Küsi AI-lt (Enter)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              <svg data-i="up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             </button>
           </div>
           <div class="drop omni-pop" id="omni-pop"></div>
         </div>
         <div class="pop-wrap" id="loo-wrap">
           <!-- ainult „+" — rippmenüü ütleb ise, mida luua saab -->
-          <button class="btn-loo" id="loo-btn" title="Loo uus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg><span>Uus</span></button>
+          <button class="btn btn-primary btn-sm btn-loo" id="loo-btn" title="Loo uus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg><span>Uus</span></button>
           <div class="drop loo-pop" id="loo-pop"></div>
         </div>
       </div>
-      <div></div>
+      <div class="top-actions">
+        <button class="icon-btn" id="theme-btn" title="Hele või tume vaade" aria-label="Vaheta hele ja tume vaade" onclick="toggleTheme()">
+          <svg data-i="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.2A8.4 8.4 0 0 1 10.8 4a8.4 8.4 0 1 0 9.2 9.2Z"/></svg>
+        </button>
+      </div>
     </header>
 
     <!-- ============ SIDEBAR (bränd + navigatsioon), täiskõrguses vasakus servas ============ -->
@@ -58,13 +63,13 @@
         <!-- ThinkOne logomärk (ainult kokkutõmmatud menüüs) -->
         <svg class="logo-mark" viewBox="0 0 116 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
           <!-- v409: logomärk kastis — must ümarnurkne ruut, valge märk sees (vt HANDOFF) -->
-          <g class="lg-box"><rect width="116" height="116" rx="26"/>
+          <g class="lg-box" transform="translate(58 58) rotate(-8) scale(.88) translate(-58 -58)"><rect width="116" height="116" rx="26"/>
             <g transform="translate(28.2 20.9) scale(0.64)"><path d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/><path d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/></g></g>
         </svg>
         <!-- ThinkOne platvormi logo (vektor) -->
         <svg class="logo" viewBox="0 0 525 116" xmlns="http://www.w3.org/2000/svg" aria-label="ThinkOne">
           <!-- v409: logomärk kastis — must ümarnurkne ruut, valge märk sees (vt HANDOFF) -->
-          <g class="lg-box"><rect width="116" height="116" rx="26"/>
+          <g class="lg-box" transform="translate(58 58) rotate(-8) scale(.88) translate(-58 -58)"><rect width="116" height="116" rx="26"/>
             <g transform="translate(28.2 20.9) scale(0.64)"><path d="M0,33.06v47.14h31.79v-29.6L7.67,31.96h51.52V.17h-26.31c-.55,0-1.1.55-1.64.55L.55,31.42c0,.55-.55,1.1-.55,1.64Z"/><path d="M92.63,82.94v-47.14h-32.34v30.15l24.12,18.09h-50.97v31.79h26.31c.55,0,1.1-.55,1.64-.55l30.69-30.69s.55-1.1.55-1.64Z"/></g></g>
           <g class="lg-word" transform="translate(24 0)">
           <path d="M130.73,80.64v-31.4h-14.2v-10.1h40.61v10.1h-14.64v31.4h-11.76Z"/>
@@ -92,8 +97,17 @@
       </div>
 
       <div class="sb-foot">
+        <!-- v487: telefonis on ülariba teemanupp peidus — lüliti menüüsahtlis -->
+        <button class="sb-item sb-theme" onclick="toggleTheme()">
+          <svg data-i="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="ic"><path d="M20 13.2A8.4 8.4 0 0 1 10.8 4a8.4 8.4 0 1 0 9.2 9.2Z"/></svg>
+          <span>Hele / tume vaade</span>
+        </button>
+        <button class="sb-item" id="sb-logi" title="Iga muudatus ühes logis — kes, mida, millal">
+          <svg data-i="audit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="ic"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span>Sündmuslogi</span>
+        </button>
         <button class="sb-item" id="sb-settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="ic"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34c.63-.26 1.03-.88 1.03-1.56V3a2 2 0 1 1 4 0v.09c0 .68.4 1.3 1.03 1.56a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87c.26.63.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.3.4-1.56 1.03Z"/></svg>
+          <svg data-i="gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="ic"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34c.63-.26 1.03-.88 1.03-1.56V3a2 2 0 1 1 4 0v.09c0 .68.4 1.3 1.03 1.56a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87c.26.63.88 1.03 1.56 1.03H21a2 2 0 1 1 0 4h-.09c-.68 0-1.3.4-1.56 1.03Z"/></svg>
           <span>Seaded</span>
         </button>
         <div class="pop-wrap" style="width:100%">
@@ -108,6 +122,7 @@
 
     <!-- ============ MAIN ============ -->
     <div class="main">
+      <div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
       <main id="app-view" tabindex="-1"><!-- vaade renderitakse JS-iga --></main>
     </div>
   </div>
@@ -126,12 +141,12 @@
     <div class="pdfbox">
       <div class="pdfbar">
         <div>
-          <div class="overline">Lisa · dokument</div>
+          <div class="overline" id="pdfkind">Lisa · dokument</div>
           <div class="pdftitle" id="pdftitle">—</div>
         </div>
         <div class="flex" style="gap:8px">
           <a class="btn btn-ghost btn-sm" id="pdfopen" target="_blank" rel="noopener">Ava uues vahekaardis</a>
-          <button class="btn btn-primary btn-sm" onclick="closePdf()">Sulge</button>
+          <button class="btn btn-ghost btn-sm" onclick="closePdf()">Sulge</button>
         </div>
       </div>
       <iframe id="pdfframe" title="PDF eelvaade"></iframe>
@@ -141,10 +156,11 @@
   </div>
 
   <!-- rollivahetus: kleepuv sakk parema serva keskel (sisu täidab renderShell) -->
-  <button class="role-tab" id="role-switch" title="Vaheta vaadet"></button>
-  <script src="uldtingimused.js?v=431"></script>
-  <script src="data.js?v=431"></script>
-  <script src="klauslid.js?v=431"></script>
-  <script src="app.js?v=431"></script>
+  <button class="btn btn-primary role-tab" id="role-switch" title="Vaheta vaadet"></button>
+  <script src="uldtingimused.js?v=807"></script>
+  <script src="data.js?v=807"></script>
+  <script src="klauslid.js?v=807"></script>
+  <script src="riskiandmed.js?v=807"></script>
+  <script src="app.js?v=807"></script>
 </body>
 </html>

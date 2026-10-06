@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThinkOne — Architecture</title>
+<style>
+:root { --bg:#fbfaf7; --fg:#1f1f1c; --muted:#6b6a63; --accent:#2b5c8a; --line:#e3e0d7; --code:#f1efe8; }
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.65 -apple-system, "Segoe UI", Inter, Roboto, sans-serif; }
+.layout { display:grid; grid-template-columns:270px minmax(0,1fr); min-height:100vh; }
+nav { position:sticky; top:0; height:100vh; overflow-y:auto; padding:28px 20px; border-right:1px solid var(--line); font-size:13.5px; }
+nav .brand { font-weight:700; font-size:15px; margin-bottom:16px; }
+nav ul { list-style:none; padding-left:0; margin:0; }
+nav ul ul { padding-left:14px; }
+nav li { margin:3px 0; }
+nav a { color:var(--muted); text-decoration:none; display:block; padding:2px 6px; border-radius:4px; }
+nav a:hover { color:var(--accent); background:#eef2f6; }
+main { padding:48px 64px 96px; max-width:1100px; }
+h1 { font-size:2.1rem; line-height:1.2; margin:0 0 1rem; letter-spacing:-0.01em; }
+h2 { font-size:1.5rem; margin:3rem 0 1rem; padding-bottom:.4rem; border-bottom:2px solid var(--line); }
+h3 { font-size:1.18rem; margin:2.2rem 0 .8rem; }
+h4 { font-size:1rem; margin:1.6rem 0 .6rem; }
+h2 a, h3 a, h4 a { color:inherit; text-decoration:none; }
+p { margin:.8rem 0; }
+a { color:var(--accent); }
+hr { border:0; border-top:1px solid var(--line); margin:2.5rem 0; }
+code { font:0.88em/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; background:var(--code); padding:.1em .35em; border-radius:4px; }
+pre { background:#23241f; color:#e8e6df; padding:16px 20px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.45; }
+pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+table { border-collapse:collapse; width:100%; margin:1.2rem 0; font-size:14.5px; }
+th, td { border:1px solid var(--line); padding:9px 12px; vertical-align:top; text-align:left; }
+th { background:#f1efe8; font-weight:600; }
+tr:nth-child(even) td { background:#fdfcfa; }
+ul, ol { padding-left:1.5rem; }
+li { margin:.3rem 0; }
+blockquote { margin:1rem 0; padding:.5rem 1rem; border-left:4px solid var(--accent); background:#f3f5f8; color:#333; }
+strong { font-weight:650; }
+@media (max-width:900px) { .layout { grid-template-columns:1fr; } nav { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); } main { padding:28px 20px 64px; } }
+@media print { nav { display:none; } .layout { display:block; } main { padding:0; max-width:none; } pre { white-space:pre-wrap; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav><div class="brand">ThinkOne — Architecture</div><div class="toc">
+<ul>
+<li><a href="#decisions-already-made">Decisions already made</a></li>
+<li><a href="#1-high-level-architecture">1. High-level architecture</a><ul>
+<li><a href="#components">Components</a></li>
+</ul>
+</li>
+<li><a href="#2-domain-model">2. Domain model</a><ul>
+<li><a href="#persistence-invariants-event-logged-crud">Persistence invariants (event-logged CRUD)</a></li>
+<li><a href="#v2-platform-core-assets-allocations-verticals">v2 platform core: assets, allocations, verticals</a></li>
+<li><a href="#clause-structure-numbering-references">Clause structure, numbering &amp; references</a></li>
+<li><a href="#state-machines">State machines</a></li>
+</ul>
+</li>
+<li><a href="#3-backend-structure">3. Backend structure</a></li>
+<li><a href="#4-document-pipeline">4. Document pipeline</a><ul>
+<li><a href="#clause-editor-architecture">Clause editor architecture</a></li>
+<li><a href="#import-pipeline-existing-contracts">Import pipeline (existing contracts)</a></li>
+</ul>
+</li>
+<li><a href="#5-signing-dokobit-hash-signing-local-asic-e">5. Signing (Dokobit hash-signing + local ASiC-E)</a></li>
+<li><a href="#6-ai-agent">6. AI agent</a><ul>
+<li><a href="#provider-abstraction">Provider abstraction</a></li>
+<li><a href="#tools-the-service-layer-minus-consequences">Tools = the service layer, minus consequences</a></li>
+<li><a href="#contract-qa">Contract Q&amp;A</a></li>
+<li><a href="#conversations-feedback-evals-cost">Conversations, feedback, evals, cost</a></li>
+<li><a href="#smart-dashboard-vajab-tegevust-tana">Smart dashboard („Vajab tegevust täna")</a></li>
+<li><a href="#import-structuring">Import structuring</a></li>
+</ul>
+</li>
+<li><a href="#7-external-integrations">7. External integrations</a></li>
+<li><a href="#8-cross-cutting-concerns">8. Cross-cutting concerns</a></li>
+<li><a href="#9-deployment-railway">9. Deployment (Railway)</a><ul>
+<li><a href="#configuration-matrix">Configuration matrix</a></li>
+</ul>
+</li>
+<li><a href="#10-repository-layout">10. Repository layout</a></li>
+<li><a href="#11-build-plan">11. Build plan</a><ul>
+<li><a href="#phase-1-architecture-acceptance-criteria-wk-1">Phase 1 — Architecture &amp; acceptance criteria (~wk 1)</a></li>
+<li><a href="#phase-2-foundation-portfolio-import-wk-15">Phase 2 — Foundation, portfolio, import (~wk 1–5)</a></li>
+<li><a href="#phase-3-quotes-portal-contract-prep-ai-foundation-wk-59">Phase 3 — Quotes, portal, contract prep, AI foundation (~wk 5–9)</a></li>
+<li><a href="#phase-4-lifecycle-signing-automation-pilot-wk-912">Phase 4 — Lifecycle, signing, automation, pilot (~wk 9–12)</a></li>
+<li><a href="#open-scope-decisions-future-invest">Open scope decisions (Future Invest)</a></li>
+<li><a href="#futures-the-architecture-must-not-preclude-and-now-doesnt">Futures the architecture must not preclude (and now doesn't)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav>
+<main>
+<h1 id="thinkone-architecture">ThinkOne — Architecture</h1>
+<p>Implements the <strong>v2 functional spec</strong> (<a href="ThinkOne - Funktsionaalne spetsifikatsioon v2.md">ThinkOne - Funktsionaalne spetsifikatsioon v2.md</a>), which generalizes the v1 lease workflow into a contract platform: an asset registry (esemeregister) and a contract engine (lepingumootor) joined by allocations (hõive), with employment contracts as the second vertical and import of existing contracts. (v1 spec: <a href="spec.md">spec.md</a>, historical.)</p>
+<p>Single deployment target: <strong>Railway</strong> — app containers with managed Postgres, Cloudflare R2 object storage, and a frontier model via the Anthropic API (DPA; API data not used for training). The v1 on-prem target (Proxmox + vLLM, "data never leaves the machine") is retired with spec v2; the provider interfaces that enabled it (LLM, storage, email, signing) remain as seams so a self-hosted variant stays possible later, but it is not designed or estimated here.</p>
+<p>All environment-specific behavior stays behind configuration and provider interfaces (12-factor: env vars only, no code branches per environment).</p>
+<h2 id="decisions-already-made">Decisions already made</h2>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Choice</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stack</td>
+<td><strong>FastAPI backend + Next.js frontend</strong></td>
+<td>Python owns the domain logic <em>and</em> the agent — tools share Pydantic models with services. Frontend consumes a generated OpenAPI client.</td>
+</tr>
+<tr>
+<td>Signing</td>
+<td><strong>Dokobit hash-signing API + local ASiC-E assembly</strong></td>
+<td>Only SHA-256 digests leave the infrastructure; documents stay local. Broker handles the Smart-ID/Mobile-ID ceremony under one contract. Behind a <code>SignatureProvider</code> interface.</td>
+</tr>
+<tr>
+<td>Client portal auth</td>
+<td><strong>Share-link (no account) → eID account at signing</strong></td>
+<td>Spec v2: quote + the lease drafts born from it are reachable via signed expiring links; the account is created at signing from the eID identity the Dokobit ceremony already yields (Smart-ID/Mobile-ID); same broker as signing.</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td><strong>Anthropic API behind a <code>ChatModel</code> seam</strong></td>
+<td>Native <code>anthropic</code> SDK, model <code>claude-opus-5</code>. Single adapter today; the seam stays so a self-hosted adapter can return if ever needed.</td>
+</tr>
+<tr>
+<td>Background jobs</td>
+<td><strong>Procrastinate</strong> (Postgres-backed task queue)</td>
+<td>Transactional enqueue with the domain write; async-native; reuses the single Postgres — no separate durable broker to run or back up.</td>
+</tr>
+<tr>
+<td>Persistence</td>
+<td><strong>Event-logged relational core — Postgres; no XTDB, no event sourcing</strong></td>
+<td>Every mutation emits a <code>domain_event</code> in-transaction; legally significant values are versioned facts with validity periods; every sent/signed version is an immutable artifact. §2 explains why a bitemporal DB / ES write model is rejected.</td>
+</tr>
+<tr>
+<td>Party &amp; access</td>
+<td><strong>One <code>party</code> table with roles; <code>membership</code> = user↔account M2M</strong></td>
+<td>Client/employee/supplier are roles, not tables — merging separate tables later is migration hell. M2M membership keeps advisor access and the counterparty network open without rework.</td>
+</tr>
+<tr>
+<td>Tenancy</td>
+<td><strong><code>account_id</code> on every row + Postgres RLS from V1</strong></td>
+<td>"Thousand-account shape" from day one; repository scoping alone is convention, not enforcement.</td>
+</tr>
+<tr>
+<td>Agent autonomy</td>
+<td><strong><code>requires_confirmation</code> policy on every mutating tool (MVP: all true)</strong></td>
+<td>Future autopilot becomes per-tool configuration, not development.</td>
+</tr>
+<tr>
+<td>Frontend IA</td>
+<td><strong>Five pages + omnibox — the demo is the UX spec</strong></td>
+<td>Avaleht · Ülevaade · Portfell · Kalender · Suhtlus; a new vertical adds types and filters, never a page.</td>
+</tr>
+</tbody>
+</table>
+<p>Added with spec v2: <strong>Deployment = Railway only</strong> (v1 on-prem/vLLM target retired). <strong>Vertical = configuration + a thin code module</strong> — schemas, templates, and key-date kinds are configuration; calculations and integrations are code in <code>verticals/&lt;name&gt;.py</code>; never a formula DSL, never EAV. <strong>Agent runs in-process</strong> in api/worker, not as a separate AI service — the spec's "AI-kihi taristu jookseb Railway platvormil" is satisfied by the whole platform running on Railway, and tools stay plain Python sharing transactions with the domain; a separate agent service would turn every tool call into a network hop for no benefit.</p>
+<p>Added with the MVP review (2026-08): the persistence invariants and party/access model above, plus — <strong>key-date kinds as configuration records</strong> (not enums; the calendar scales to new date types without development), <strong>citations stored as data</strong> (every AI answer's clause references persist as rows), <strong>AI-draft feedback captured from day 1</strong> (used / edited / discarded), <strong>every sent draft frozen</strong> (not only signed versions), <strong>N signers per party</strong> (joint representation is first-class), <strong>.asice/.bdoc import</strong> (containers are unpacked, signature metadata kept), <strong>optimistic concurrency + idempotent sends</strong>, <strong>deliverability-grade email</strong> (own sending domain, SPF/DKIM/DMARC, bounce visibility), <strong>i18n-ready strings, full account export, product metrics from day 1</strong>, and <strong>soft delete everywhere</strong> with GDPR erasure as an explicit procedure.</p>
+<p>Decided 2026-08: <strong>no Redis</strong> — Postgres is the single stateful service (plus R2 for blobs): domain state, job queue, event log, search projection, and SSE pub/sub via <code>LISTEN/NOTIFY</code>; caches are in-process. If a genuine cache/pub-sub scale need ever appears, Redis returns behind a small seam — a reversible decision.</p>
+<hr />
+<h2 id="1-high-level-architecture">1. High-level architecture</h2>
+<pre><code>                ┌────────────────────────────────────────────────────────┐
+                │                    Reverse proxy (TLS)                  │
+                │                    Railway edge                         │
+                └───────────────┬──────────────────────┬─────────────────┘
+                                │                      │
+                       ┌────────▼────────┐    ┌────────▼────────┐
+                       │   frontend       │    │      api        │
+                       │   Next.js        │───▶│   FastAPI       │
+                       │ operator + client│    │ REST + SSE      │
+                       │     portal       │    │                 │
+                       └─────────────────┘    └──┬────┬────┬────┘
+                                                 │    │    │
+              ┌──────────────────────────────────┘    │    └───────────────┐
+              │                                       │                    │
+     ┌────────▼────────┐                     ┌────────▼───────┐   ┌────────▼────────┐
+     │     worker      │                     │   PostgreSQL   │   │  Object storage │
+     │ Procrastinate:  │────────────────────▶│  ALL state:    │   │   S3 API:       │
+     │ jobs, cron, PDF,│                     │  domain · jobs │   │ Cloudflare R2   │
+     │ signing, agent  │                     │  events · FTS  │   │ plans, PDFs,    │
+     └──┬──────┬───────┘                     │  LISTEN/NOTIFY │   │ signed asice    │
+        │      │                             └────────────────┘   └─────────────────┘
+        │      │
+        │      └──────────────► External adapters (outbound only):
+        │                       e-Äriregister · EHR · Moderan · Krediidiinfo ·
+        │                       Inforegister · Kohtutäitur · Statistikaamet ·
+        │                       Dokobit (hash sign + identity) · SMTP ·
+        │                       TÖR (post-MVP, operator-confirmed)
+        │
+ ┌──────▼───────────────────────────────┐
+ │   Anthropic API (claude-opus-5)      │
+ │  DPA · no training on API data ·     │
+ │  per-request context only; agent     │
+ │  loop runs in-process in api/worker  │
+ │  — no separate AI service            │
+ └──────────────────────────────────────┘
+</code></pre>
+<p><strong>Shape: modular monolith.</strong> One Python package (<code>backend/app</code>) with two entrypoints — <code>api</code> (uvicorn) and <code>worker</code> (Procrastinate). Same image, different command. No microservices: the domain is one tightly coupled workflow and the team is small; module boundaries inside the package keep it splittable later.</p>
+<h3 id="components">Components</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Technology</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frontend</td>
+<td>Next.js (App Router), TypeScript, Tailwind, TanStack Query, TipTap (rich text)</td>
+<td>Operator app = the demo's five-page IA — <strong>Avaleht · Ülevaade · Portfell · Kalender · Suhtlus</strong> — plus the <strong>omnibox</strong> (Cmd+K: search across all entities + command palette, §8); a new vertical adds types and filters to these pages, never a page. Route groups: <code>/app</code> (operator/admin — incl. the import review UI, the largest new v2 surface) and <code>/portal</code> (client; quote/lease-draft share-link views run accountless, see §8). UI strings i18n-ready from day 1. API types generated from OpenAPI via Orval.</td>
+</tr>
+<tr>
+<td>api</td>
+<td>FastAPI, SQLAlchemy 2 (async), Pydantic v2, Alembic</td>
+<td>REST + SSE (chat streaming, notifications).</td>
+</tr>
+<tr>
+<td>worker</td>
+<td>Procrastinate (Postgres-backed, async, built-in periodic tasks)</td>
+<td>Key-date scanning, indexation, quote expiry, PDF rendering, signing ceremonies, risk reports, emails, audit exports, agent runs. Jobs enqueue in the same DB transaction as the domain write (no dual-write window). Procrastinate's tables are created alongside Alembic migrations (<code>procrastinate schema --apply</code>).</td>
+</tr>
+<tr>
+<td>db</td>
+<td>PostgreSQL 16</td>
+<td>Single database; multi-tenant by <code>account_id</code> + RLS (§8). Also holds the job queue, the event log, and the search projection.</td>
+</tr>
+<tr>
+<td>pub/sub / cache</td>
+<td>Postgres <code>LISTEN/NOTIFY</code>; in-process TTL caches</td>
+<td>No Redis. Worker→browser fan-out (SSE) rides <code>LISTEN/NOTIFY</code>: each process holds one dedicated listener connection (outside the SQLAlchemy pool; works because Railway connects direct — no transaction-pooling PgBouncer in front) and fans out to its SSE clients in-process. <code>NOTIFY</code> fires only on commit — an event can never announce a rolled-back change — and carries just <code>{entity, id, event}</code> (≤8 KB; receivers refetch). Caching needs no tier of its own at this scale: in-process TTL caches per instance, an <code>UNLOGGED</code> table if cross-instance; locks = Postgres advisory locks; idempotency = unique keys.</td>
+</tr>
+<tr>
+<td>files</td>
+<td>S3 API — Cloudflare R2 (MinIO as local-dev stand-in)</td>
+<td>Floor plans, site plans, generated PDFs, signed containers, imported source documents, audit exports. Never store file bytes in Postgres.</td>
+</tr>
+<tr>
+<td>llm</td>
+<td>Anthropic API (<code>claude-opus-5</code>), agent loop in-process</td>
+<td>See §6.</td>
+</tr>
+<tr>
+<td>pdf</td>
+<td>WeasyPrint (HTML/CSS → PDF, Jinja2 templates)</td>
+<td>Pure-Python, no headless browser; company logo/accent color injected per Company.</td>
+</tr>
+<tr>
+<td>digidoc</td>
+<td>libdigidocpp (RIA) with Python bindings, in the worker image</td>
+<td>ASiC-E container assembly, OCSP + timestamp. Fallback if packaging fights back: tiny DigiDoc4j (Java) sidecar with a 3-endpoint HTTP API.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-domain-model">2. Domain model</h2>
+<h3 id="persistence-invariants-event-logged-crud">Persistence invariants (event-logged CRUD)</h3>
+<p>One storage decision underlies the MVP review's architecture points, and it is made explicitly here: <strong>a conventional relational core in Postgres wrapped in three invariants</strong> — not a bitemporal database (e.g. XTDB), not an event-sourced write model.</p>
+<p>The domain has two time axes, and they need different tools:</p>
+<ul>
+<li><strong>Valid time is contract content.</strong> "Rent is 2 892 € from 01.01.2025" takes effect from a contractual date (indexation date, annex effective date), not from when someone typed it. No database provides this for free — it is negotiated domain data and must be modeled explicitly whatever the engine, so a bitemporal store's headline feature would not remove the modeling work.</li>
+<li><strong>Record time is the event log.</strong> Who changed what, when, and why is served by a mandatory in-transaction event log — richer than DB-level system versioning because it carries actor type, reason, and correlation.</li>
+<li>The one genuinely bitemporal need — <strong>correction vs. amendment</strong> — is two columns, not a database product: an indexation writes a new fact version with a contractual <code>valid_from</code>; fixing a typo writes one with a back-dated <code>valid_from</code>, <code>reason=correction</code>, and a <code>recorded_at</code> that reveals when the truth was learned. And the dispute-grade question "what did the client see on date X" is answered by frozen artifacts (invariant 3), not by database replay — a court accepts a signed container, not an event fold.</li>
+</ul>
+<p><strong>Event sourcing is rejected as the write model</strong> on the same economics: the domain is relational and query-heavy (clause trees, portfolio search, dashboards, calendars), and its history is already first-class rows — comments with statuses, negotiation rounds, annexes, document versions, signatures. ES would add projection infrastructure and event-schema evolution for no additional legal value. The design is forward-compatible instead: the event stream exists (invariant 1), so real projections — analytics, the counterparty network — can be added later without rearchitecting.</p>
+<p><strong>Invariant 1 — every mutation emits a <code>domain_event</code>, in the same transaction.</strong> Append-only: <code>id, ts, account_id, actor_type: human|system|agent, actor_user_id, on_behalf_of, entity_type, entity_id, action, payload (JSONB), reason, correlation_id</code>. No code path writes the database without one. One table serves four readers: the audit trail / decision memory (§8), product metrics (time-to-first-answer, click-to-accept), the automation measure (<code>actor_type</code> — impossible to reconstruct retroactively), and the AI-feedback dataset (§6). Enforcement is structural: every write goes through a domain command that emits the event — the agent calls the same commands, so it cannot bypass the log — plus a CI check that fails on repository writes outside a command. And every action and preference carries a <code>user_id</code> even under the flat V1 permission model: personalized AI cannot be built on anonymous history.</p>
+<p><strong>Invariant 2 — legally significant values are versioned facts, never overwritten.</strong> <code>contract_fact</code> rows (rent, utility rates, indexation parameters, salary) carry <code>valid_from/valid_to</code>, <code>recorded_at</code>, <code>reason: initial|indexation|amendment|correction</code>; an exclusion constraint forbids overlapping validity for one key. "Mis kehtis 1.01.2025?" is a range lookup. Stepped rent (astmeline üür) is the same shape on the price side — a rent value per period. The current-value columns on <code>contract</code> remain as a <strong>maintained projection</strong> of the latest fact version — the write path updates both atomically — so everyday queries and search stay plain SQL.</p>
+<p><strong>Invariant 3 — every externally visible version is an immutable artifact.</strong> Not only signed containers: every send-to-client freezes the rendered PDF <em>and</em> a clause-tree snapshot, content-addressed in object storage — evidence of exactly what the counterparty saw and negotiated over. Signing additionally freezes numbering (see clause rules below).</p>
+<p>Two floor rules complete the model: <strong>soft delete everywhere</strong> (<code>deleted_at</code> + partial indexes; hard deletion exists only as the explicit, event-logged <strong>GDPR-erasure procedure</strong>), and <strong>post-signature corrections never happen silently</strong> — the legal fix is an amendment (new annex, stage 08), the register fix is a <code>reason=correction</code> fact version plus event, so the signed document and the register cannot quietly diverge.</p>
+<h3 id="v2-platform-core-assets-allocations-verticals">v2 platform core: assets, allocations, verticals</h3>
+<p>The engine owns only what is provably universal across the three known contract shapes — real-estate lease, employment contract, imported generic contract: <strong>contract + clause tree + state machines + document versions + key dates + event log</strong>. Everything else is per-vertical.</p>
+<pre><code>asset_type       vertical, kind: container|unit, attribute-schema ref (code)
+asset            account_id, asset_type_id, parent_id (container → units),
+                 name, attributes JSONB (validated by the vertical's Pydantic
+                 schema — schema lives in code, data in JSONB), capacity
+                 (units: 1 = exclusive, N = quota/headcount); status DERIVED
+allocation       contract_id ↔ asset_id, kind: exclusive|quota|coverage,
+                 period  (supersedes lease.space_id)
+contract_type    vertical?, config: template kinds, parameter schema,
+                 key-date kinds, annex-role mapping, asset-binding rule
+</code></pre>
+<ul>
+<li><strong>Vertical = configuration + a thin code module.</strong> <code>verticals/real_estate.py</code> and <code>verticals/employment.py</code> register asset-type Pydantic schemas, main-terms generators, calculations (m²-pricing vs. salary), key-date kinds seeded as <code>key_date_kind</code> config records (<code>probation</code>, <code>salary_review</code> join <code>start|end|indexation</code>), annex-numbering roles (Lisa 1–2 are per-vertical), and adapters (EHR/Moderan/Statistikaamet vs. TÖR). The engine never branches on a vertical's name — it calls registered hooks. No formula DSL, no EAV.</li>
+<li><strong>Status is a projection.</strong> vaba/üüritud and täidetud/täitmata are computed from active allocations vs. <code>capacity</code> — never stored, never hand-maintained.</li>
+<li><strong>"Occupancy" is not one thing.</strong> <code>allocation.kind</code> distinguishes exclusive occupancy (lease on a space), quota occupancy (N employment contracts on one position — headcount), and coverage (an imported insurance/maintenance contract covering a whole building — container-level target, non-exclusive). This is deliberately a flat enum plus a nullable capacity column, <strong>not</strong> an inheritance hierarchy of contract types: types differ in config data and behavior hooks, and both compose better than they subclass.</li>
+<li><strong>Generic contract type.</strong> Imported non-vertical contracts (haldus/hooldus/kindlustus/valve) use a <code>generic</code> contract_type: no parameter schema, no unit binding, optional <code>coverage</code> allocation. The clause model works without a vertical.</li>
+<li><code>property</code>/<code>space</code> become the real-estate vertical's two asset types; their v1 columns move into that vertical's attribute schema. <code>lease</code> generalizes to <code>contract</code> (<code>contract_type_id</code>, <code>origin: platform|imported</code>). The v1 entity map below is the real-estate configuration of this core and reads with that rename.</li>
+</ul>
+<p>Mapping of spec entities to tables (names in English; spec term in parentheses):</p>
+<pre><code>account                      (Konto)
+company                      (Ettevõte/üürileandja)  account_id, registry data, logo, accent_color, kmkr
+property                     (Objekt)                company_id, EHR fields (ehr_code, address,
+                                                     use_type, footprint_m2, net_area_m2, floors,
+                                                     build_year), vat_taxable, utility_cost_winter/summer
+space                        (Pind)                  property_id, name, type, net_area_m2,
+                                                     rentable_area_m2, coefficient, price_per_m2,
+                                                     electrical_capacity_kw, parking_spots
+attachment                                           polymorphic: space floor plans (Lisa 1),
+                                                     property site/parking plan (Lisa 2) → S3 key + sha256
+template                                             property_id, kind: general_terms | special_terms_base
+                                                     | quote_base; versioned, immutable once referenced
+party                        (Klient/Osapool)        ONE table for every counterparty: EE company |
+                                                     foreign company | person (registry code / isikukood);
+                                                     roles via party_role: client|employee|supplier|…
+                                                     (one party may hold several). Replaces v1 `client`;
+                                                     employees/candidates are parties too. Also the seed
+                                                     of the future counterparty network.
+risk_report                  (Riskiraport)           party_id, score HIGH/MED/LOW, source payloads, ts
+quote                        (Hinnapakkumine)        party_id, property_id, status, valid_until,
+                                                     commercial_body (TipTap JSON), totals,
+                                                     version (optimistic lock, §8)
+quote_space                                          quote_id ↔ space_id (1..n spaces per quote)
+quote_special_term                                   structured items — flow into lease annex 3
+lease → contract             (Üürileping)            quote_id?, space via allocation (exactly 1),
+                                                     party_id, status, origin: platform|imported,
+                                                     version (optimistic lock); rent, utility,
+                                                     vat_taxable (inherited), indexation (method:
+                                                     fixed_pct | stat_cpi, rate, frequency, next_date)
+                                                     as current-value columns = maintained projection
+                                                     of contract_fact (invariant 2)
+contract_fact                                        versioned facts (invariant 2): contract_id, key,
+                                                     value JSONB, valid_from/valid_to, recorded_at,
+                                                     reason: initial|indexation|amendment|correction,
+                                                     superseded_by; exclusion constraint: no overlapping
+                                                     validity per key among live rows
+annex                        (Lisa)                  lease_id, number (1=floor plan, 2=site plan,
+                                                     3=special terms, 4+=amendments), status
+clause                       (Lepingupunkt)          lease_id, annex_id?, parent_id? (tree node),
+                                                     container: body|annex_id, ordinal (sibling order),
+                                                     number_style, category: general|main|special,
+                                                     locked, overrides_clause_id (ülimuslikkus,
+                                                     machine-readable), text (rich; display number is
+                                                     DERIVED from tree, never stored), source_template_id
+clause_comment               (ClauseComment)         clause_id, author (operator|client), body,
+                                                     resolution: accepted|rejected|open
+signature_container          (SignatureContainer)    lease_id, kind: contract(1)|special_terms(2),
+                                                     s3_key, sha256, status; signer rows: N signers PER
+                                                     PARTY, each with own ceremony state (joint
+                                                     representation, §5)
+source_document                                      imported original (PDF/DOCX/ASiC-E): s3_key, sha256
+                                                     — the LEGAL TRUTH for origin=imported contracts;
+                                                     for containers also the extracted signature
+                                                     metadata (who signed, when)
+key_date_kind                                        CONFIGURATION RECORD, not a code enum: name,
+                                                     default notify_days, vertical? — verticals seed
+                                                     kinds (start|end|indexation|probation|salary_review);
+                                                     new kinds (insurance end, permit expiry) are rows,
+                                                     not development
+key_date                     (KeyDate)               subject (contract now; polymorphic so future
+                                                     envelope documents can join), kind_id →
+                                                     key_date_kind, due_date, notify_days_before, fired_at
+domain_event                 (AuditEvent/sündmuslogi) append-only event log — invariant 1; see §8
+agent_thread / agent_message                         AI conversations: persisted domain data linked to
+                                                     the entities they touched (decision memory, §6)
+agent_citation                                       answer → clause/contract links stored as rows (§6)
+ai_draft_feedback                                    fate of every AI draft: used|edited|discarded (§6)
+search_index                                         omnibox projection: one row per searchable entity
+                                                     (entity_type, entity_id, account_id, tsvector,
+                                                     trigram text, display payload) — §8
+thread / message             (CommunicationThread)   per quote/lease; in-app messages (the Suhtlus page
+                                                     renders these as one timeline)
+membership                                           user ↔ account M2M with role: admin|operator — an
+                                                     advisor org (law firm, accountant) can later hold a
+                                                     limited role on many accounts without schema change;
+                                                     carries per-user notification prefs (incl. vacation
+                                                     delegate)
+user                                                 operators/admins: global identity (email+password);
+                                                     accounts via membership
+portal_identity                                      client-side users; personal code (isikukood) from
+                                                     Smart-ID/Mobile-ID auth, linked to party(ies)
+notification                                         in-app inbox + email dispatch state incl. delivery/
+                                                     bounce status from provider webhooks (§8)
+</code></pre>
+<p>Key modeling rules from the spec, enforced in the domain layer:</p>
+<ul>
+<li><strong>General terms are immutable.</strong> At lease creation, the property's <code>general_terms</code> template version is snapshotted into <code>clause</code> rows with <code>locked=true</code>. They are never edited; an accepted change creates a <em>special-terms clause</em> with <code>overrides_clause_id</code> pointing at the locked clause. Rendering shows "§X, muudetud Lisa 3 p Y".</li>
+<li><strong>Quote → N leases.</strong> Accepting a quote covering N spaces creates N lease drafts (one per space), each pre-filled: general terms (locked), main terms generated from property/space/quote data, quote's structured special terms copied into Annex 3.</li>
+<li><strong>Money is net.</strong> All prices stored without VAT; VAT presentation derived from <code>property.vat_taxable</code> (inherited onto the lease at creation) and the standard Estonian rate (config value with effective date, not hard-coded).</li>
+<li><strong>Rentable area is an input,</strong> not computed (the operator computes it in the import template); coefficient and net area are stored as metadata only.</li>
+</ul>
+<h3 id="clause-structure-numbering-references">Clause structure, numbering &amp; references</h3>
+<p>A clause is a <strong>node in a tree</strong> (adjacency list via <code>parent_id</code>), not a flat bullet — Estonian leases nest (§5 → 5.1 → (a)), and the spec requires every <em>point</em> to be independently addressable, commentable, and override-targetable.</p>
+<ul>
+<li><strong>Node per marked item.</strong> Every <em>marked</em> item — numbered, lettered, dashed — is its own <code>clause</code> node; only unmarked in-sentence enumerations („büroo-, lao- ja tootmispinnana", „sh …") stay inline in a node's rich-text <code>text</code>. The rule is mechanical, so import needs no granularity judgment, and every line a client might comment on is addressable with no preparatory step. Validated against the real data: the T6B general terms are 18 sections of flat numbered points — 114 nodes, no third level, no inline bullets (even §17's „…kui need on: / …; või" alternatives carry their own point numbers in the source) — so trees stay in the low hundreds of nodes at worst. What must stay controlled is node <em>lifecycle</em>, not node count: nodes are created only at authoring boundaries (template ingestion, import, the explicit add-point command), never by keystrokes — Enter inside a clause is a paragraph break, and split/merge/promote are guarded model operations, so ids never churn from typing.</li>
+<li><strong>Numbers are derived, never stored as identity.</strong> The displayed number (§5.1.2) is a pure function of the committed tree — walk <code>parent_id</code> to the container root, applying each level's <code>number_style</code>. Identity is the immutable <code>clause.id</code> (UUID), assigned once and never changed by reorder, insert, or re-parent.</li>
+<li><strong>Everything references by id.</strong> <code>overrides_clause_id</code>, <code>clause_comment.clause_id</code>, and in-text cross-references all store <code>clause.id</code>, never a number. A mid-list insert or reorder changes only the <em>projection</em>: every number on a rendered document — including a number shown <em>inside</em> a clause that cross-references another — is computed from one consistent read of the tree, so the referencing and referenced clauses renumber together, atomically. Drift is structurally impossible because no reference points at a number.</li>
+<li><strong>In-text cross-references are structured tokens.</strong> Prose like "subject to §7.3" is a reference node in the rich text carrying the target <code>clause.id</code>, resolved to the live number at render time — never a typed string. This is the one place the by-id rule must reach <em>into</em> the body text, not just the foreign keys.</li>
+<li><strong>Deletion is guarded.</strong> A clause referenced by an override or an in-text token cannot be silently removed — FK <code>RESTRICT</code> / block-with-warning; rendering a reference whose target is gone is a loud validation error, never a blank or wrong number. (Override targets are usually <code>locked</code> general/main clauses, which aren't deleted anyway.)</li>
+<li><strong>Signed versions freeze the numbering.</strong> On signing, the rendered document — with concrete "§5.1.2" — becomes an immutable artifact (the legal paper); that frozen numbering is a snapshot output, separate from the editable tree that later amendments work on.</li>
+<li><strong>Ordering</strong> is <code>ordinal</code> scoped to <code>(container, parent_id)</code>; reorder/insert rewrites sibling ordinals (trivial at clause-list scale) — or use fractional ranks if single-row inserts ever matter. This touches order, not identity.</li>
+</ul>
+<p>Templates carry the same shape: the <code>general_terms</code> body is itself a clause tree, snapshotted into the lease's tree at lease creation.</p>
+<h3 id="state-machines">State machines</h3>
+<p>Explicit, declarative transition maps in <code>domain/state_machines.py</code> — one for Quote, one for Lease/Annex, exactly as in the spec (incl. terminal states <code>rejected | expired | cancelled</code> for quotes; <code>cancelled | ended | early_terminated</code> for leases). Every transition:</p>
+<ol>
+<li>validates guards (e.g. "all clauses accepted" before <code>ready_to_sign</code>),</li>
+<li>is executed in one DB transaction,</li>
+<li>emits a <code>domain_event</code> (with <code>actor_type</code> — human, system for cron/expiry, agent),</li>
+<li>enqueues follow-up jobs (notifications, PDF render, signing).</li>
+</ol>
+<p>Because the job queue lives in Postgres (Procrastinate, see §3), step 4 enqueues <em>inside</em> the same transaction as steps 2–3: a state change and the jobs it triggers commit atomically. There is no dual-write window where a lease is marked signed but its notification or signing job is silently lost — exactly the failure a contract workflow with a court-grade audit trail cannot tolerate. (A Redis-based queue would need a separate transactional-outbox table for the same guarantee; here the queue table <em>is</em> the outbox.)</p>
+<p>Both the REST handlers and the agent tools call the <em>same</em> transition functions — there is no second path. Time-based transitions (quote expiry, lease end) are fired by the worker's cron jobs through the same functions.</p>
+<p>Spec-v2 additions: the quote machine gains a final <code>converted_to_contracts</code> state after <code>accepted</code> (validity default 14 days, config); the same machines serve <strong>every contract type</strong> — verticals add no states. Imported contracts enter the machine directly in their archived/active state and never pass through the negotiation states.</p>
+<p><strong>Archive visibility (spec stage 07).</strong> Default list views show only active contracts and their current state; superseded document versions, replaced annexes, and terminal-state documents are filtered out and revealed with one click. This is a query-layer filter on state/<code>superseded_at</code> — not a separate store.</p>
+<hr />
+<h2 id="3-backend-structure">3. Backend structure</h2>
+<pre><code>backend/
+  app/
+    api/                # FastAPI routers, request/response schemas (thin)
+      operator/         #   /api/v1/... operator+admin endpoints
+      portal/           #   /api/v1/portal/... client endpoints
+      agent.py          #   chat: POST message, SSE stream
+    domain/             # entities, services, state machines — NO framework imports
+      events.py         #   command wrapper: every mutation emits domain_event (invariant 1)
+      facts.py          #   versioned contract facts — valid-time writes/reads (invariant 2)
+      objects.py        #   property/space setup, CSV import
+      quotes.py
+      leases.py         #   clause engine, annex numbering, overrides
+      signing.py        #   orchestration of the signing ceremony
+      keydates.py       #   indexation calc (fixed % / CPI), expiry
+      pricing.py        #   rent, utility, VAT presentation
+      registry.py       #   portfolio search (Postgres FTS), effective_state,
+                        #   smart-dashboard attention rules
+    verticals/          # thin per-vertical code modules (config + hooks):
+      real_estate.py    #   asset schemas, pricing calc, EHR/Moderan wiring
+      employment.py     #   position schema, salary fields; TÖR deferred
+    ingest/             # import of existing contracts (text-layer PDF/DOCX only)
+      extract.py        #   text + page/char anchors (PyMuPDF / python-docx); NO OCR
+      structure.py      #   LLM structuring job → clause-tree + params proposal
+    agent/
+      tools.py          #   Pydantic-typed tools wrapping domain services
+      loop.py           #   provider-agnostic tool loop
+      providers/        #   anthropic_native.py (sole adapter; seam kept)
+      prompts/          #   versioned; prompt version stamped into each run's events
+      evals/            #   golden Q&amp;A set + runner (§6)
+    integrations/       # one adapter per external system, each with a FakeX stub
+      ariregister.py, ehr.py, moderan.py, risk/  (krediidiinfo, inforegister,
+      kohtutaitur), statistikaamet.py, dokobit_sign.py, dokobit_identity.py,
+      email.py, tor.py (post-MVP; filing always operator-confirmed)
+    documents/
+      templates/        #   Jinja2 HTML for quote, lease, annexes
+      render.py         #   WeasyPrint
+      container.py      #   libdigidocpp ASiC-E assembly
+    infra/              # db session, S3 client, LISTEN/NOTIFY pub-sub, settings (pydantic-settings)
+    worker/             # Procrastinate app: task + periodic-task definitions
+  tests/
+</code></pre>
+<p><strong>Layering rule:</strong> <code>api</code> and <code>worker</code> call <code>domain</code>; <code>domain</code> calls <code>integrations</code> through interfaces (<code>Protocol</code> classes); nothing imports upward. Every integration ships a deterministic fake so the full workflow runs locally with zero external accounts (<code>INTEGRATIONS_MODE=fake</code>). A second rule: <strong>no naked writes</strong> — api, worker, and agent mutate state only through domain commands (<code>domain/events.py</code>), which emit <code>domain_event</code> and maintain fact/search projections in the same transaction; CI fails on repository writes outside a command.</p>
+<p><strong>Frontend type sharing:</strong> CI runs FastAPI's OpenAPI export → Orval → typed TanStack Query hooks committed to <code>frontend/src/api/</code>. Agent tool-call payloads (the proposals rendered as confirmable cards in chat) are part of the OpenAPI schema, so they cross the boundary typed as well.</p>
+<hr />
+<h2 id="4-document-pipeline">4. Document pipeline</h2>
+<ol>
+<li><strong>Authoring</strong> — quotes have (a) free-form rich text (TipTap JSON) and (b) structured special-term items; leases are fully structured (clause rows). No document is ever produced by copying free text into a contract.</li>
+<li><strong>Rendering</strong> — Jinja2 HTML + company branding → WeasyPrint → PDF. Rendered PDFs are immutable, content-addressed (<code>sha256</code>) objects in S3: <code>account/{id}/lease/{id}/v{n}/lease.pdf</code>.</li>
+<li><strong>Assembly of attachments</strong> — at quote/lease creation the system collects the right files automatically: Lisa 1 floor plans from the selected space(s), Lisa 2 site/parking plan from the property (uploaded once during object setup — stage 02 of the spec).</li>
+<li><strong>Versioning</strong> — every send-to-client creates a new immutable document version: the rendered PDF <strong>and</strong> a clause-tree snapshot are frozen, content-addressed (invariant 3 — evidence of exactly what the client saw, for every draft V1, V2, … not only the signed one); the negotiation loop never mutates an already-sent version.</li>
+</ol>
+<h3 id="clause-editor-architecture">Clause editor architecture</h3>
+<p>The clause tree is edited in the operator UI by a <strong>structure-owns-the-tree, TipTap-per-clause</strong> model — <em>not</em> one ProseMirror document for the whole contract.</p>
+<ul>
+<li><strong>The app/React layer owns the structure</strong>, keyed by <code>clause_id</code>: the tree, sibling order, derived numbering, lock state, comment pins, override links, and all block operations (add / indent / reorder / promote / merge). These are commands on the domain model, not editor side-effects — so <code>clause_id</code>s are created and destroyed only by guarded operations, never by an editor split/merge you'd have to police.</li>
+<li><strong>TipTap edits one clause's inline body</strong>, not the document. Each clause renders as static HTML; a TipTap instance is mounted only on the clause being actively edited (click-to-edit), so there is ~1 live editor at a time, not one per clause. Locked clauses (general/main) render as static HTML with no editor at all.</li>
+<li><strong>Minimal per-clause schema</strong>: paragraph, bold/italic, plus one custom inline extension — <code>clauseRef</code>, carrying <code>targetClauseId</code> and rendered through a NodeView to the <em>live</em> derived number. No list nodes in the schema: under §2's node-per-marked-item rule a list item <em>is</em> a clause, so lists exist as sibling nodes in the tree, not as markup inside a body. That extension is what makes in-text cross-references store ids and resolve to numbers at render time. Bodies persist as TipTap/ProseMirror <strong>JSON</strong> in <code>clause.text</code> (JSON, not HTML, so <code>clauseRef</code> ids survive round-trips).</li>
+<li><strong>Promotion</strong> (inline text → addressable clause) survives as the rare escape hatch: "extract the selected range from this clause's JSON → create a new clause row with a fresh id" — a model operation, not a ProseMirror split. Under the node-per-marked-item rule it is seldom needed — markers already became nodes at ingestion.</li>
+</ul>
+<p><strong>Three renderers, one numbering function.</strong> The editing view (React tree + per-clause TipTap), the signed-PDF view (server-side WeasyPrint, step 2 above), and the LLM-context view (<code>render_contract_context</code>, §6 Contract Q&amp;A) all consume the <em>same</em> clause tree and the <em>same</em> numbering derivation. That derivation lives in shared logic — computed server-side and handed to all three — so the operator's editor, the legal PDF, and any <code>§</code> the agent cites can never disagree on "§5.1.2".</p>
+<h3 id="import-pipeline-existing-contracts">Import pipeline (existing contracts)</h3>
+<p>Spec v2 brings existing contracts (haldus/hooldus/kindlustus/valve plus old leases — quote import dropped per Future Invest 2026-08; stray old quotes live on as plain attachments) into the clause model. This is the one place the platform's "document is a projection of structure" principle <strong>inverts</strong>: for imported contracts the signed source document is the legal truth, and the extracted clause structure is an index/approximation of it. The UI badges imported contracts accordingly; a dispute is settled by the stored original, never by the extraction.</p>
+<ul>
+<li><strong>Scope: text-layer PDF/DOCX only.</strong> Scanned/image-only documents are explicitly out of scope — no OCR. Upload validation rejects PDFs without an extractable text layer (such files can still be stored as plain attachments).</li>
+<li><strong>Digital containers (.asice/.bdoc) are first-class input.</strong> Estonian legacy contracts commonly live in signature containers: the pipeline unpacks the container, applies the text-layer rule to the datafiles inside, and records the container's signature metadata (signers, timestamps) on <code>source_document</code>; the container itself is stored unaltered as the legal original.</li>
+<li><strong>Manual registration (no OCR).</strong> A scanned document kept as an attachment can get operator-entered key data (parties, amounts, key dates, contract kind) as a <strong>clause-less <code>origin=imported</code> contract record</strong> — it then joins the key-date calendar, search, and reporting like any imported contract. No clause tree, no content Q&A; for content, only the original file governs. Cheap: a form over the existing model, no LLM involved.</li>
+<li><strong>Flow:</strong> upload → <code>ingest/extract.py</code> pulls text with page/char anchors → worker job runs LLM structuring (structured output validated against the clause schema; every proposed clause carries a provenance anchor into the source) → <strong>operator review UI</strong> (source and proposed structure side by side; corrections are edits to the proposal, logged to the audit trail) → commit as <code>contract</code> with <code>origin=imported</code> plus a <code>source_document</code> row. Nothing enters the registry without operator confirmation.</li>
+<li><strong>Imported contracts are outside the amendment flow.</strong> Stage 08 (new annexes, early termination via annex) applies only to <code>origin=platform</code> contracts — the platform never signs an annex on top of a base contract it did not produce. Imported contracts participate in search, Q&amp;A, key dates, and reporting only.</li>
+<li><strong>Externally signed amendments are registerable (MVP).</strong> When an imported contract is amended outside the platform, the operator uploads the signed annex (text-layer → extraction; scanned → manual key data), updates the contract's parameters and key dates, all audit-logged — the registry's "mis tegelikult kehtib" stays truthful even though the ceremony happened elsewhere. Proposed post-MVP: a <strong>verified-amendment flow</strong> — stage 08 on an imported contract with two safeguards: the operator verifies only the clauses the amendment touches against the source PDF (provenance anchors, side-by-side), and the annex quotes the amended original text verbatim so its legal meaning never depends on extraction quality. Full re-baseline (confirming the whole tree authoritative) reserved for contracts amended repeatedly. Pending Future Invest's choice (their question 4.2).</li>
+<li>Imported non-vertical contracts get the <code>generic</code> contract type (§2); imported old leases may be mapped onto the real-estate vertical for typed parameters.</li>
+</ul>
+<hr />
+<h2 id="5-signing-dokobit-hash-signing-local-asic-e">5. Signing (Dokobit hash-signing + local ASiC-E)</h2>
+<p>Two containers per the spec: <strong>Container 1</strong> = lease PDF + floor plan + parking plan; <strong>Container 2</strong> = special terms annex. Flow per signer, orchestrated by a worker job with a state row (<code>signature_container.status</code>):</p>
+<pre><code>1. container.py: create ASiC-E, add datafiles                     (local)
+2. dokobit: GET signer certificate (/smartid|mobile/certificate)  (digest-free)
+3. container.py: prepareSignature(cert) → SignedInfo digest       (local)
+4. dokobit: POST /{method}/sign/hash.json with the digest         (only hash leaves)
+5. poll status → signature value; show verification code in UI
+6. container.py: setSignatureValue → finalize (OCSP + timestamp
+   via SK, hash-only) → store signed .asice in S3                 (local)
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><strong>N signers per party, each with independent ceremony state.</strong> Estonian companies routinely sign through two board members jointly (ühine esindusõigus); a container reaches <code>signed</code> only when every required signer of every party has completed, and the signer list is per-contract data, not an assumption of one-per-side.</li>
+<li>Each container requires its own ceremony per signer — the UI runs them sequentially (sign Container 1 → immediately prompt Container 2).</li>
+<li><code>SignatureProvider</code> is an interface; a <code>FakeSigner</code> signs with a self-issued test cert for dev/demo. A future "direct SK" adapter would only replace steps 2/4/5.</li>
+<li>Signed containers are validated locally with libdigidocpp after assembly (do not ship to SiVa — that would upload the document).</li>
+<li>Qualified timestamping + OCSP require an SK contract even in the Dokobit-hash setup; budget for it.</li>
+<li>Signing methods are <strong>Smart-ID / Mobile-ID only</strong> (decision 2026-08). Smart-ID covers Baltic signers (Estonian, Latvian, Lithuanian personal codes), which handles the välisfirma client type's realistic case. <strong>eIDAS / cross-border signing is out of MVP scope</strong> — it is an open-ended family of national schemes that strains the hash-signing flow (Dokobit's fuller-API territory); if ever needed it becomes another method behind <code>SignatureProvider</code>, and eIDAS 2.0 wallets may standardize it in the meantime.</li>
+</ul>
+<hr />
+<h2 id="6-ai-agent">6. AI agent</h2>
+<h3 id="provider-abstraction">Provider abstraction</h3>
+<pre><code class="language-python">class ChatModel(Protocol):
+    async def stream(self, system: str, messages: list[Msg],
+                     tools: list[ToolDef]) -&gt; AsyncIterator[Event]: ...
+</code></pre>
+<ul>
+<li><strong><code>anthropic_native.py</code></strong> — official <code>anthropic</code> SDK (never an OpenAI-compatible shim for Claude). Default model <code>claude-opus-5</code>, adaptive thinking, streaming. Prompt caching: <code>cache_control</code> breakpoint after the (stable) system prompt + tool definitions; conversation appended after it.</li>
+<li>Internal event vocabulary (<code>text_delta</code>, <code>tool_call</code>, <code>done</code>) keeps the loop and UI provider-agnostic. The sole adapter today is Anthropic; the seam exists so a self-hosted adapter could return if a customer ever demands it.</li>
+<li><strong>In-process, not a service.</strong> The loop runs inside api/worker — tools are plain Python functions sharing transactions and Pydantic models with the domain.</li>
+</ul>
+<p>The loop itself is hand-rolled (~small): the agent here is ~15 domain tools + entity resolution + Q&amp;A, and human-in-the-loop control matters more than framework features. Because tools are plain Pydantic-typed functions, adopting deepagents/LangGraph later is a harness swap, not a rewrite.</p>
+<h3 id="tools-the-service-layer-minus-consequences">Tools = the service layer, minus consequences</h3>
+<p>Per the spec's human-in-the-loop rule, the agent <strong>has no tool that sends, signs, or transitions to a client-visible state</strong>. Beyond that structural rule, <strong>every mutating tool definition carries a <code>requires_confirmation</code> policy field — all <code>true</code> in MVP</strong>: consequential effects exist only as confirmable proposals. That one field is what later turns autopilot („AI valmistas ette 4 asja — vaata üle ja kinnita") into per-tool configuration instead of development. Tool classes:</p>
+<ul>
+<li><strong>Read/Q&amp;A</strong> — <code>search_parties</code>, <code>get_property</code>, <code>list_spaces</code>, <code>get_quote</code>, <code>get_lease</code>, <code>load_contract</code> (full rendered contract text for grounded Q&amp;A — see Contract Q&amp;A below), <code>search_portfolio</code> (FTS + typed filters over the whole registry, incl. imported contracts), <code>get_effective_state</code> (üld + põhi + overriding eri merged; each value carries its source clause id), <code>list_key_dates</code>, <code>get_audit_trail</code>, <code>summarize_negotiation</code> (Decision Memory = audit events + clause comments + threads).</li>
+<li><strong>Draft/prepare</strong> — <code>create_quote_draft</code>, <code>create_lease_draft</code>, <code>draft_contract_from_brief</code> (the spec's <strong>lepingugeneraator</strong>: free-form brief → contract draft through the same template + clause services; the draft enters the normal mustand → läbirääkimine → allkiri flow), <code>draft_special_term</code>, <code>draft_commercial_text</code> (the quote's free-form commercial section), <code>apply_client_proposal</code> (turn a client's free-form ettepanek into concrete draft edits — special-term wording plus its <code>kirjutab_üle</code> target — for operator review), <code>draft_reply</code> (response draft in a Suhtlus thread), <code>explain_clause</code> (plain-language explanation of a clause in its contract context), <code>start_amendment_draft</code>, <code>order_risk_report</code>, <code>create_party_from_registry</code>.</li>
+<li><strong>Clarify</strong> — ambiguous orders ("pind 12" matches two spaces) end the turn with a question, as the spec requires.</li>
+</ul>
+<p>"Send to client" / "start signing" appear in the chat UI as <strong>confirmation cards</strong> rendered from the draft the agent produced; clicking them calls the normal REST endpoint under the operator's session. The agent literally cannot perform consequential actions — enforcement is structural, not prompt-based. Structured answers are <strong>cards too, not paragraphs</strong>: „mis indekseerub 2027?" returns a mini-table (contract · date · old→new rent) with an „Ava Portfellis" deep link — card payloads are typed in the OpenAPI schema like tool payloads.</p>
+<p>Two spec-v2 clarifications. <strong>No UX automation:</strong> a command like „Loo pakkumine ettevõttele Future Invest OÜ, Hoone T6B pind 12" means the agent resolves the entities, creates the draft via tools, and replies with a confirmation card plus a <strong>deep-link to the draft page</strong> — it never drives the UI. <strong>Client chat is human↔human:</strong> the portal vestlusliides writes to CommunicationThread between client and operator; the AI answers operators only. Confirmed by Future Invest (2026-08): in MVP the AI never answers end users — the client's chat is human↔human with the operator. Nothing here precludes adding client-facing AI later.</p>
+<p>Authorization: agent runs inside the operator's request context — tools see exactly what the operator's role and <code>account_id</code> allow. Every tool call writes a <code>domain_event</code> with <code>actor_type = agent</code>, <code>on_behalf_of = &lt;operator&gt;</code>.</p>
+<h3 id="contract-qa">Contract Q&amp;A</h3>
+<p>Operators ask natural-language questions about a contract — "when can the tenant terminate?", "what's the rent after the next indexation?", "which clause covers roof repairs?". Each contract fits in the model's context, so this needs <strong>no retrieval layer</strong> (no embeddings, no vector store, no chunking): the whole contract is rendered once and placed in the prompt. The feature is operator-only — it sits inside the existing Read/Q&amp;A tool class with no new endpoint, tenancy scope, or audit path.</p>
+<ul>
+<li><strong>Third renderer.</strong> <code>documents/render.py</code> gains <code>render_contract_context(lease, version)</code> — a third consumer of the §4 numbering derivation, alongside the React editor and the WeasyPrint PDF. It walks the committed clause tree into flat markdown carrying stable <code>§X.Y</code> numbers <strong>and</strong> a <code>clause.id</code> anchor per node, plus lease metadata (rent, utility, VAT, indexation, key dates) and the structured special terms. Because it reuses the one numbering function, any <code>§</code> the model cites already matches the editor and the signed PDF.</li>
+<li><strong>One read tool.</strong> <code>load_contract(lease_id, version="signed"|"draft")</code> joins the Read/Q&amp;A class; the existing tool loop pulls the rendered text into context and the agent answers from it. <code>version</code> reuses §2's signing-freezes-numbering rule: a <em>signed</em> contract cites the frozen numbers pinned by <code>sha256</code> ("the contract you signed on 2026-03-11 says…"); a <em>draft</em> cites the live derived tree.</li>
+<li><strong>Citations are machine-checked.</strong> The model answers with the §4 <code>clauseRef</code> token; every citation is post-validated to resolve to a real node — the same "a reference whose target is gone is a loud validation error" rule from §2. A hallucinated <code>§9.9</code> fails validation instead of reaching the operator, and valid citations render in chat as clickable live numbers. Validated citations are then <strong>stored as <code>agent_citation</code> rows</strong> (message → clause id) — the substrate for source chips and future trust metrics, not just markup in a rendered reply.</li>
+<li><strong>The contract is the cached prefix.</strong> A contract is immutable once signed and slow-changing as a draft — ideal cache content. The §6 <code>cache_control</code> breakpoint extends to cover system + tools + contract; Q&amp;A turns append after it, so multi-turn follow-ups on one contract are cheap.</li>
+<li><strong>Per-contract vs. portfolio.</strong> <code>load_contract</code> answers questions about one identified contract. Cross-contract questions ("which leases index next year?") route to the structured tools (<code>search_portfolio</code>, <code>list_key_dates</code>, <code>get_lease</code>) aggregating across contracts — including imported ones — never load N full contracts into one context.</li>
+</ul>
+<h3 id="conversations-feedback-evals-cost">Conversations, feedback, evals, cost</h3>
+<ul>
+<li><strong>AI conversations are domain data.</strong> <code>agent_thread</code>/<code>agent_message</code> persist every operator chat, linked to the entities the run touched; they are part of decision memory, appear in the per-contract audit export where relevant, and follow account retention (GDPR erasure covers them). Where AI conversations live is a schema answer, not a mystery.</li>
+<li><strong>Feedback is captured from day 1.</strong> The fate of every AI draft — used unchanged | edited | discarded — plus import-structuring corrections and suggestion accepts land in <code>ai_draft_feedback</code> and <code>domain_event</code>. Nearly free to log now; in two years it is the dataset a "company-minded" assistant is tuned on. Impossible to backfill.</li>
+<li><strong>Eval harness is an architectural requirement, not QA garnish.</strong> Prompts are versioned in-repo (<code>agent/prompts/</code>, version stamped into each run's events); <code>agent/evals/</code> holds a golden set (~50 questions over seed data with expected answers and required citations — format agreed with Future Invest) and a runner executable on demand and nightly; target ≥95% correct answers with valid citations. Import structuring gets the same treatment (extraction fixtures → expected clause trees).</li>
+<li><strong>Cost is governed per account.</strong> Token usage is metered per agent run (rows keyed to account/user/run, rolled up daily), prompt caching per above, runaway protection (max turns and tool calls per run; monthly per-account budget → graceful degradation with an operator-visible notice). Who pays overage is a pricing question — the meter is what keeps every answer to it possible.</li>
+</ul>
+<h3 id="smart-dashboard-vajab-tegevust-tana">Smart dashboard („Vajab tegevust täna")</h3>
+<p>Rules first, LLM garnish. The attention queue is computed by deterministic domain rules — expiring quote, unanswered client comment, approaching key date without a decision: exactly the spec's own examples — so selection is cheap, explainable, and testable (<code>domain/registry.py</code>). The LLM at most phrases the one-line "why this needs you" summary on top of the rule output; it never selects the items and never scans the portfolio.</p>
+<h3 id="import-structuring">Import structuring</h3>
+<p>The ingest pipeline (§4) reuses the same provider: a worker job sends extracted text to the model with a structured-output schema mirroring the clause tree + typed parameters + parties + key dates; the proposal is validated against the schema, anchored to source offsets, and queued for operator review. Granularity is not a judgment call: the node-per-marked-item rule (§2) goes into the schema and prompt — any numbered/lettered/dashed item becomes a node — and imported contracts keep the source document's own numbering verbatim (the original is the legal truth, §4). Nothing is committed without confirmation. Because Q&amp;A and structuring outputs are operator-reviewed, the quality bar everywhere stays operator-assist, not client-facing legal advice.</p>
+<hr />
+<h2 id="7-external-integrations">7. External integrations</h2>
+<p>All adapters are outbound-only, retried via the worker, and snapshot their raw responses (for the audit trail and for re-parsing):</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Used for</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>e-Äriregister</td>
+<td>Company autofill (onboarding + client creation)</td>
+<td>Open-data JSON for basics; XML gateway (contract) if KMKR/extended fields needed.</td>
+</tr>
+<tr>
+<td>EHR (ehitisregister)</td>
+<td>Building autofill by EHR code/address</td>
+<td>Public API; fields stored on <code>property</code>, manually correctable.</td>
+</tr>
+<tr>
+<td>Moderan</td>
+<td>Utility costs (last 12 months → winter/summer €/m² averages)</td>
+<td>Computed at import; manual entry fallback per spec.</td>
+</tr>
+<tr>
+<td>Krediidiinfo + Inforegister + Kohtutäitur + Äriregister</td>
+<td>Risk report</td>
+<td>Fan-out in worker, aggregate to HIGH/MED/LOW, store per-source payloads + timestamp. Informational, never blocking.</td>
+</tr>
+<tr>
+<td>Statistikaamet</td>
+<td>CPI for index-linked leases</td>
+<td>Fetched by the indexation cron only when <code>method=stat_cpi</code>.</td>
+</tr>
+<tr>
+<td>Dokobit</td>
+<td>Hash signing + Smart-ID/Mobile-ID identity (signing-time)</td>
+<td>§5; one broker contract for both.</td>
+</tr>
+<tr>
+<td>TÖR (töötamise register)</td>
+<td>Employment registration on contract signing/termination</td>
+<td><strong>Post-MVP.</strong> When built, filing happens only on operator confirmation (human-in-the-loop), never as an automatic side effect of signing.</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>Postmark / SES on a dedicated sending domain</td>
+<td>SPF/DKIM/DMARC from day 1; delivery/bounce webhooks update <code>notification</code> and surface to the operator („kiri ei jõudnud kohale — saada uuesti"). Behind <code>EmailProvider</code>.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-cross-cutting-concerns">8. Cross-cutting concerns</h2>
+<p><strong>Auth &amp; tenancy.</strong> Operators/admins: email + password (argon2) with optional TOTP, session cookies; a user's accounts come via <code>membership</code> (M2M with role) — one account each in practice today, but advisor organizations (a law firm or accountant with a limited role on many client accounts) must never require a schema change. Clients (spec v2): <strong>no account during negotiation</strong> — a signed, expiring share-link token sent by email grants access to exactly one quote, and the same grant <strong>extends to the lease drafts born from that quote</strong> (the contract stage carries its own validity window), covering stage-05 clause comments and acceptance. Actions taken via link are audit-attributed as "link holder (email)" — weaker identity than eID, acceptable pre-signature. The <strong>account is created at signing</strong>, seeded from the eID identity (personal code) the Dokobit ceremony already yields, and linked to the contract; from then on the client uses a portal session. Tenancy: <code>account_id</code> on every row and <strong>Postgres RLS enforced from V1</strong> (per-request <code>SET LOCAL app.account_id</code>, policies on every tenant table), with repository-layer scoping as the second belt — the schema is "thousand-account shaped" even while one account uses it. <strong>Intra-account roles:</strong> all operators of an account see all account data in V1 — per-vertical/field visibility (e.g. salaries in the employment vertical) is an explicit non-goal for MVP, documented as a known limitation and designed to bolt on later (role → vertical grants).</p>
+<p><strong>Event log (audit trail &amp; decision memory).</strong> The append-only <code>domain_event</code> table of §2 invariant 1 — written inside the same transaction as the change, carrying <code>actor_type (human|system|agent)</code>, <code>on_behalf_of</code>, and <code>reason</code>. Document versions and signed containers are immutable S3 objects referenced by sha256. <strong>1-click export</strong>: worker job assembles a ZIP per contract — events as CSV/JSONL + every sent and signed document version + containers (the "court folder") — into S3 and hands the operator a download link. The same table feeds product metrics and the AI-feedback dataset: one write, many readers. (Optional later: hash-chain events for tamper evidence.)</p>
+<p><strong>Concurrency &amp; idempotency.</strong> Negotiable drafts (quote, contract, annex) carry a <code>version</code> counter: mutating endpoints take the expected version and answer 409 — „keegi muutis vahepeal" — on mismatch, so two operators on one draft get a conflict message, never silent overwrites. Consequential commands (send, start signing, email dispatch) take an <strong>idempotency key</strong>, and their jobs use Procrastinate queueing locks, so a double-clicked „Saada" or a retried worker produces exactly one send.</p>
+<p><strong>Portfolio registry &amp; search.</strong> The spec's „struktureeritud andmeregister (RAG-i alus)" is, as specified, a structured registry — every example query („mis indekseerub 2027?", „kelle katseaeg lõpeb sel kuul?") is a typed filter, not semantic search. V1 ships Postgres FTS + <code>pg_trgm</code> over clause text, indexes over typed parameters and key dates, and <code>effective_state(contract)</code> as a pure derivation (üld + põhi + overriding eri merged, each value carrying the clause id it came from — deterministic for platform-born contracts, extraction-quality-bounded for imported ones). The agent tools (§6) sit on top. Embeddings/vector search stay deferred until semantic search over imported free text demonstrably needs them. The <strong>omnibox</strong> (Cmd+K) reads one <code>search_index</code> projection — a row per searchable entity (contracts, clauses, parties, spaces, quotes, documents, threads, key dates) with tsvector + trigram + display payload — maintained by the same domain commands that mutate the entities, in-transaction, so search is never stale. The command palette is the same field: typed intents („loo pakkumine") resolve to actions, and the roadmap merges this input with the agent.</p>
+<p><strong>Key dates &amp; indexation.</strong> Daily cron scans <code>key_date</code>: fires notifications <code>notify_days_before</code> ahead (contract end defaults to 90 days, to operator <strong>and</strong> client; <code>probation</code>/<code>salary_review</code> kinds come from the employment vertical); on the due date applies the transition. Regular indexation (per spec) applies the new rent <strong>automatically, with no new annex</strong>: compute (fixed % internally; CPI delta from Statistikaamet), update lease rent, write audit event, notify both parties. Deviations (skip a year, change method) and early termination go through the amendment flow (new annex, stage-08 cycle). Quote expiry → <code>expired</code>; lease end date → <code>ended</code>.</p>
+<p><strong>Notifications.</strong> Single <code>notify(event, recipients)</code> in the domain layer → in-app row + email job. Triggers per spec: sent, comment added, accepted, signing invitation, key date approaching. Delivery state is first-class: provider webhooks (delivered / bounced / complaint) update <code>notification</code>, and a bounce surfaces on the quote/contract — „kiri ei jõudnud kohale — saada uuesti". A per-user <strong>notification delegate</strong> (vacation cover) is a <code>membership</code> setting: post-MVP feature, but the column exists from day one.</p>
+<p><strong>Observability.</strong> Structured JSON logs (correlation id = request/agent-run id); Railway built-in logs; Sentry for errors. <strong>Product metrics from day 1</strong> are queries over <code>domain_event</code>, not a separate pipeline: time from question to first answer, clicks from draft to accept, share of actions with <code>actor_type=agent</code>.</p>
+<p><strong>i18n &amp; export.</strong> UI strings live in locale files from the first screen (Estonian ships alone; nothing user-visible is hard-coded), and generated documents already template per company. The full account dataset — contracts, facts, key dates, events — is exportable via API/CSV: a trust point in sales and the customer's escape hatch.</p>
+<p><strong>Files &amp; backups.</strong> Uploads are limited by size and content type (plans, PDFs, DOCX, ASiC-E). Managed Postgres backups are complemented by a scheduled <strong>restore drill</strong> — a worker job restores the latest backup into a scratch database and sanity-checks row counts, because a backup that has never been restored is a rumor. R2 bucket versioning guards the artifact store.</p>
+<hr />
+<h2 id="9-deployment-railway">9. Deployment (Railway)</h2>
+<p>Single target per spec v2; the v1 on-prem layout (Proxmox VMs + vLLM + GPU sizing) is retired. Local development runs the same containers via <code>deploy/compose.dev.yml</code> — postgres, minio (S3-compatible stand-in for R2) — with <code>INTEGRATIONS_MODE=fake</code>, so the full workflow runs with zero external accounts.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Railway implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frontend / api / worker</td>
+<td>Three Railway services from the same Dockerfiles; private networking between them.</td>
+</tr>
+<tr>
+<td>Postgres</td>
+<td>The single Railway managed datastore: domain state, job queue (Procrastinate), event log, search projection, and SSE pub/sub via <code>LISTEN/NOTIFY</code> (one dedicated listener connection per process; requires the direct connection Railway provides — no transaction pooler). No Redis service.</td>
+</tr>
+<tr>
+<td>Object storage</td>
+<td>Railway has no S3 — Cloudflare R2 (S3 API), EU jurisdiction. Plans, PDFs, signed containers, imported source documents, audit exports.</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td><code>ANTHROPIC_API_KEY</code>, model <code>claude-opus-5</code> (adaptive thinking, streaming, prompt caching on system + tools + loaded contract).</td>
+</tr>
+<tr>
+<td>Signing/digidoc</td>
+<td>libdigidocpp in the worker image; only SHA-256 digests leave the infrastructure (Dokobit hash-signing, §5).</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>Postmark / SES on a dedicated sending domain (SPF/DKIM/DMARC); bounce webhooks → <code>notification</code>.</td>
+</tr>
+<tr>
+<td>Cron</td>
+<td>Procrastinate periodic tasks (the worker is a long-running service); no Railway-specific cron needed.</td>
+</tr>
+</tbody>
+</table>
+<p>Privacy posture (document it to customers): contract data resides on Railway + R2 (EU); prompts reach Anthropic under DPA and are not used for training; only per-request context is ever sent — the datastore is never synced to the model provider (the spec's minimality principle). The v1 "data never leaves the house" guarantee is retired together with the on-prem target.</p>
+<h3 id="configuration-matrix">Configuration matrix</h3>
+<p>Everything environment-specific is an env var consumed by <code>infra/settings.py</code>:</p>
+<pre><code>ANTHROPIC_API_KEY / LLM_MODEL   (ChatModel seam in code; single provider today)
+S3_ENDPOINT / S3_BUCKET / S3_KEY / S3_SECRET
+DATABASE_URL
+DOKOBIT_SIGN_TOKEN / DOKOBIT_IDENTITY_TOKEN / DOKOBIT_ENV=sandbox|prod
+INTEGRATIONS_MODE=fake|live     (per-adapter overrides: ARIREGISTER_MODE=..., etc.)
+EMAIL_PROVIDER=postmark|ses|smtp  POSTMARK_TOKEN / SMTP_URL  (sending domain DNS: SPF/DKIM/DMARC)
+PUBLIC_URL                      (share links, emails, portal deep-links)
+</code></pre>
+<hr />
+<h2 id="10-repository-layout">10. Repository layout</h2>
+<pre><code>thinkone/
+  spec.md                                          # v1 (historical)
+  ThinkOne - Funktsionaalne spetsifikatsioon v2.md # current spec
+  architecture.md
+  demo/               # interactive UX reference (static SPA) — the operator experience §1's frontend implements
+  backend/            # FastAPI + worker (one package, two entrypoints)
+  frontend/           # Next.js (operator app + client portal)
+  deploy/
+    compose.dev.yml   # local dev: postgres, minio, INTEGRATIONS_MODE=fake
+    railway/          # service configs / railway.json
+  scripts/            # openapi→orval codegen, db seed, backup
+</code></pre>
+<hr />
+<h2 id="11-build-plan">11. Build plan</h2>
+<p><em>(build-plan.md, which estimated the retired v1 on-prem scope, is deleted; this section is the plan of record, aligned with the development contract's four phases. Expected timeline ≈ 2–3 months from signing, Payment 1, and initial inputs — a planning timeline with weekly sync demos, not a fixed deadline.)</em></p>
+<p>Sequencing in one breath: the persistence/party/tenancy invariants land at the top of Phase 2 because retrofitting them is the expensive path; import comes early (Phase 2, per contract), which pulls the clause model's <strong>read path</strong> and the <strong>LLM plumbing</strong> forward with it; key dates appear as data + calendar in Phase 2 while their automation ships in Phase 4; the employment vertical's config path is proven in Phase 3 and its lifecycle completes in Phase 4.</p>
+<h3 id="phase-1-architecture-acceptance-criteria-wk-1">Phase 1 — Architecture &amp; acceptance criteria (~wk 1)</h3>
+<ul>
+<li><strong>Architecture finalized with Future Invest</strong> — this document plus this phase breakdown; the contract's no-cost, scope-neutral adjustment round, exercised once.</li>
+<li><strong>Objective acceptance criteria per phase</strong>, written against the exit demos below — including closing the open scope decisions (next subsection), since criteria can't be objective over undecided scope. The confirmed out-list (OCR, TÖR, eIDAS, intra-account roles) is restated in the same doc. Where the demo is richer than the written spec — the juhtriba guided flow, per-comment arutelu threads, printable A4 previews, stepped-rent special terms — criteria are written against the <strong>demo</strong>, so that richness doesn't get silently under-scoped.</li>
+</ul>
+<p><strong>Exit:</strong> both documents signed off in a sync call. Nothing else lives in Phase 1.</p>
+<h3 id="phase-2-foundation-portfolio-import-wk-15">Phase 2 — Foundation, portfolio, import (~wk 1–5)</h3>
+<ol>
+<li><strong>Inputs &amp; scaffold</strong> — demo walkthrough as UX sign-off (delta list, not new design); sample corpus (10–20 real contracts — PDF, DOCX, .asice/.bdoc, one scanned — plus lease/quote/special-terms and employment templates, space CSVs, logos); credentials round — <strong>Dokobit sandbox + SK paperwork out on day 1, the longest lead item</strong> — Railway/R2/Anthropic, sending-domain DNS, Moderan, äriregister/EHR, Statistikaamet, risk sources; golden-set format agreed + first ~10 questions; repo scaffold, CI/CD to Railway, compose.dev, provider seams + fakes. The demo gets extended with mockups of the two surfaces it doesn't yet cover — the <strong>import review screen</strong> and the <strong>setup/CSV flows</strong> — before they're built: Phase 2 is where the demo is thinnest, and the review UI's right pane largely reuses the demo's existing contract-document component (source PDF left, familiar clause tree right, confirm controls on top).</li>
+<li><strong>Invariant substrate</strong> — auth + <code>membership</code> M2M, RLS, <code>domain_event</code> + command wrapper + CI check, <code>party</code>, soft delete, settings, i18n scaffold, Sentry, email provider + bounce webhooks, notification rows.</li>
+<li><strong>Asset registry</strong> — company onboarding (äriregistri autofill), property + EHR, spaces CSV import + manual forms, attachments (R2), allocations + derived status.</li>
+<li><strong>Clause model, read path</strong> (pulled forward because import needs it) — tree + node-per-marked-item ingestion of the general-terms DOCX, numbering derivation, read-only rendering.</li>
+<li><strong>Import pipeline</strong> — upload incl. ASiC-E unpack → extraction with anchors → LLM structuring (first <code>ChatModel</code> consumer; structured output, versioned prompts) → review UI → manual key-data registration for scans → linking (coverage allocations for haldus/hooldus/kindlustus) → <code>contract_fact</code> seeded from import → <code>key_date</code> records + read-only Kalender + Portfell views + <code>search_index</code> → portfolio health report.</li>
+</ol>
+<p><strong>Exit demo:</strong> a real portfolio imported, reviewed, linked; portfolio, calendar, health report live; every write event-logged, RLS on.</p>
+<h3 id="phase-3-quotes-portal-contract-prep-ai-foundation-wk-59">Phase 3 — Quotes, portal, contract prep, AI foundation (~wk 5–9)</h3>
+<ol>
+<li><strong>Quote loop</strong> — wizard (client autofill, risk report, spaces, pricing/VAT, stepped rent, special-term items, commercial rich text), branded quote PDF, sent-version freezing from the first send, share-link portal (accountless), client accept/propose/decline + comments, Suhtlus messaging, notifications, quote state machine + expiry (worker cron arrives here).</li>
+<li><strong>Contract preparation</strong> — clause editor (TipTap-per-clause; locked üld; generated main terms; quote special terms → Lisa 3 with <code>kirjutab_üle</code>), employment template configured, quote→N draft generation, per-clause comment/accept loop, dashboard + rule-based attention list, omnibox v1.</li>
+<li><strong>AI foundation</strong> — chat UI (SSE), agent loop + read/draft tools with <code>requires_confirmation</code>, entity resolution, <code>load_contract</code> Q&amp;A with validated + stored citations, confirmation/answer cards, eval runner on the golden set, token metering + budgets.</li>
+</ol>
+<p><strong>Exit demo:</strong> full operator↔client loop — quote created by hand <em>and</em> by agent command, link sent, client proposes, operator folds into Lisa 3, draft reaches "all points accepted"; AI answers portfolio Q&amp;A with clickable citations.</p>
+<h3 id="phase-4-lifecycle-signing-automation-pilot-wk-912">Phase 4 — Lifecycle, signing, automation, pilot (~wk 9–12)</h3>
+<ol>
+<li><strong>Signing</strong> — Dokobit hash flow + local ASiC-E, both containers, N signers per party, account-at-signing, archive + visibility rules, frozen numbering.</li>
+<li><strong>Lifecycle automation</strong> — key-date scanning + notifications (90-day defaults), indexation (fixed % + CPI) writing fact versions, contract-end transitions, amendments (annex rounds, early termination), post-signature correction path, one-click renewal.</li>
+<li><strong>AI completion</strong> — remaining tools (amendment drafts, apply-proposal, draft-reply, summaries), smart-dashboard polish, eval pass at target, cost visibility.</li>
+<li><strong>Hardening + pilot</strong> — security review (RLS tests, share-link token audit, authz matrix, upload limits), integration validation where credentials arrived, restore drill, audit "court folder" export + account data export, pilot account seeded with real data, pilot support, handover.</li>
+</ol>
+<p><strong>Exit:</strong> a real contract signed end-to-end in the pilot; Phase 1's acceptance criteria checked off.</p>
+<p>Signing is the main external-dependency risk: <code>FakeSigner</code> keeps Phase 4 development unblocked, real validation gated "where credentials are available" per the contract — so anything Future Invest can initiate early (Dokobit/SK paperwork, DNS) costs zero dev effort and buys lead time.</p>
+<h3 id="open-scope-decisions-future-invest">Open scope decisions (Future Invest)</h3>
+<p>Closed in Phase 1 as part of the acceptance-criteria work. Three yes/no proposals from the MVP review — all rules + jobs over primitives the phases above provide, all yes:</p>
+<ol>
+<li><strong>One-click renewal</strong> — 90 days before end, a ready renewal draft (new period, indexed price, same special terms), not just a notification. A trigger + assembly of existing parts; the landlord's most repeated workflow. (Ships with Phase 4.)</li>
+<li><strong>Portfolio health report after import</strong> — "X lepingut sees · 3 lõpevad 6 kuu jooksul · 2-l puudub viidatud lisa · 4-l pole indekseerimist kokku lepitud." Rule-based; the first "wow" of day one. (Ships with Phase 2.)</li>
+<li><strong>Follow-up autopilot</strong> — 5 days without a client response → queued "Saada meeldetuletus?" + AI-drafted polite nudge. A time rule + the <code>requires_confirmation</code> card. (Ships with Phase 4.)</li>
+</ol>
+<p>Plus the still-open <strong>imported-contract amendment path</strong> (their question 4.2): registration of externally signed amendments ships (§4); the verified-amendment flow remains the post-MVP proposal pending their answer.</p>
+<h3 id="futures-the-architecture-must-not-preclude-and-now-doesnt">Futures the architecture must not preclude (and now doesn't)</h3>
+<ul>
+<li><strong>Counterparty network</strong> — the tenant's free post-signature view of their own contracts: enabled by <code>party</code> + <code>portal_identity</code> + per-user events; MVP ships only a "Powered by ThinkOne" mark + interest list.</li>
+<li><strong>Autopilot homepage</strong> — "AI valmistas ette 4 asja — vaata üle ja kinnita": the <code>requires_confirmation</code> policy field + the confirmation-card pattern.</li>
+<li><strong>Envelope documents</strong> — file + type + state + key dates without the clause model: <code>key_date_kind</code> config + polymorphic <code>key_date.subject</code> + the import machinery.</li>
+<li><strong>Template import / DOCX round-trip</strong> — a new customer's Word template read into üld/põhi/eri structure by the same import machinery (operator confirms); a lawyer's Word redline finds its way back via anchors. On the roadmap before the first external sale; not built now, not excluded.</li>
+</ul>
+</main>
+</div>
+</body>
+</html>

@@ -1,4 +1,6 @@
+# Päris lepingud (isikuandmed) — ainult kohalikuks testimiseks, mitte reposse
+testfailid/
 Thumbs.db
 desktop.ini
-*.tmp
+~$*
 node_modules/

@@ -1,8 +1,531 @@
-# ThinkOne — sessiooni üleandmine (seisuga 10.09.2026)
+# ThinkOne — sessiooni üleandmine (seisuga 26.09.2026)
 
 > See fail on AI-assistendi (Claude Code) sessioonide vaheline üleandmismärge.
 > Tööreeglid elavad `CLAUDE.md`-s (laaditakse automaatselt); siin on sessioonide
 > ajalugu ja nüansid. Kui midagi aegub, uuenda või kustuta julgelt.
+
+## 29.09.2026 (v=727 →) — ÜHENDAMINE kolleegi versiooniga (`demo 4/`, v644 + Kokkulepe; plaan `ThinkOne_uhendusplaan.md`)
+- Plaan on kirjutatud KOLLEEGI vaatest: seal „tema” = meie `demo/`, „meie” = `demo 4/`. Alus jääb meie `demo/`; toome demo 4-st
+  teemade kaupa, meie kujunduskeeles. Kolleegi skripte meil pole — port käsitsi `demo 4/app.js` (v644) koodist. Ühist alust
+  (`demo 3/`, v626) enam pole; lähim on commit 36e94f8 (v626 + meie v627–628).
+- Kasutaja otsused 29.09: läbirääkimine JÄÄB MEIE OMA (Kokkulepet ei tooda) · Avaleht = KOLLEEGI oma · dokumendi päis = meie
+  päiserida + võtmeandmete leht, kolleegilt ainult „muudetud V2” märge · sõnavara kolleegilt (Pakkumine, Seis, teietamine, V2).
+  Mitme pinnaga leping ja Ülevaade jäävad meie omaks (Ülevaatesse ainult kolleegi v644 päris ajalugu).
+- Etapp 1 · arhiiv (v727): `arhiivLoend` kolleegi v627 kujul — seisukiibid (`AR_SEISUD`, `PF_ARH_SEIS`, `pfArhSeis`), aasta
+  grupid, rida kuupäev · kes ja mis · miks · järglane / „Pind N on vaba” (`arhVaba`, meil `lepPindIds`); osapoole/pinna lehel
+  `{ seisud: false }`; endine osapool: samm „Arhiivis” (kord `arh`) + „arhiivis alates”. CSS „AR-CSS v627” kiibid meie keeles.
+  v728 (kasutaja): järglase veerg välja — rida = kuupäev · kes ja mis · miks arhiivis (`arhVaba` eemaldatud).
+- Etapp 2 · AI leht (v729–730): kolleegi „AI v633” moodul (lõppseis v644) asendas meie vana agendi (`agentCtx` … enne „Objekt”):
+  `#/ai` (ja `#/agent`) — vasakul vestluste ajalugu (`thinkone_ai_lood_<ettevõte>`, 3 seemnevestlust), päis „Vaatad: …” + Tagasi,
+  vastus = lause + punktiviited + kaart, täpsustus nuppudena, muutev samm = kinnituskaart (Kinnita · Muuda · Loobu).
+  „Küsi selle … kohta” (`aiKysiNupp`) lepingu/pakkumise/imporditud lepingu riba 1. rea lõpus ja osapoole lehel (`.dok-ylarida`).
+  Abifunktsioonid ajutiselt kaasas (ÜHENDAMINE-plokk: `kpD`, `paevadeVahe`, `P6_THI`, `p6PctM`, `p6Meetod`, `seVaike`) — päris
+  kuju tuleb oma etapis. `ylAndmed` tagastab ka `Rk`. AI tunnus = meie prisma (joon all + helk), mitte kolleegi vikerkaarerõngas;
+  „Küsi …” = kiip; hoveril ei hüppa. AI lehel omnibox peidus (`dash-shell` ka `#/ai`-l).
+- Etapp 3 · Avaleht + portaal + menüü (v731–732): meie „Fookus” (AGENT_PRESETS … View.dashboard.init) → kolleegi „AVALEHT v634”
+  (tervitus · AI-sisend `ai-komp` → `aiAva` · „Vajab tegevust”: kokkuvõtlause, filter Kõik/Kiire/Sinu kord/Korras, triaažiriba,
+  „Järgmisena” fookuskaart, read rühmade kaupa, „N vestlus ootab”, „Tähtajad kalendris”). `AGENT_TAIT`/`LEP_AVA_PUNKT` jäid.
+  Pakkumise/lepingu read tulevad AJUTISELT meie `buildActs`-ist (`p7AvRead` vahelüli; tegusõna ≤ 12 märki, muidu 1. sõna);
+  `p6AvRead` tühi (etapp 7). Portaal = kolleegi „PORTAAL v634” (hero Ootab teid / Ootame üürileandja vastust / Kõik on korras,
+  dokumendid kaartidena, vestlus, tähtajad, kontakt); `p7Samm` vahelüli annab üürniku sammu (ka operaatori eelvaates `#/portaal`).
+  Kasutajamenüü (`renderUserMenu`): „Kliendiportaal · vaata, mida klient näeb” / kliendina „Tagasi operaatoriks”.
+  CSS „AV-CSS v634” meie keeles: sinine taustahelk välja, `av-seg` = meie segmentlüliti, hoveril ei hüppa, vestluse viide neutraalne.
+  Vana Avalehe CSS (dash-*, fookus) on surnud kood — koristada lõpus.
+  v733 (kasutaja: kontseptsioon ja paigutus jäävad, roosakas toon välja, rõhk jääb): `.av-f` = neutraalne `--surface-soft` + serv,
+  rõhk = juhtkaardi prisma-joon all + helk; ikoon neutraalne, toon ainult täpil; `.av-j` = meie kaart (r-lg).
+  v734 (kasutaja: „topelt rgb” — prisma on juba AI-sisendil): fookuskaardil prismat EI OLE; rõhk = tõstetud pind, `--line-strong`
+  serv, `--shadow`, pulseeriv toonitäpp. Reegel: ühel vaatel üks prisma.
+- Etapp 4 · kalender + Suhtlus + Seaded (v735–738):
+  KALENDER (kasutaja: meie ajajoon + kolleegi lisad, ajajoon puhtamaks): liik = sakk arvuga (`pf-tabs kal-tabs`), paremal objekt
+  (kui > 1) · „Kõik · Vajab otsust · Rakendub ise” (`KAL_KIS`, meie `pf-views`) · Loend/Kuu ikoonlüliti; filter katab ajajoone,
+  30 päeva kaardi ja kuuvaate kiibid (`KAL_KT/KO/KIS`). Ajajoon ühes kaardis (`.card.kal-aeg`), tüübiikoonid ja kuuruudud välja,
+  kuu pealkiri ei kleepu (selgroog jookseb läbi), nool hoveril, id vaiksem. Päevad `paevadeVahe`/`kpD` (05.10 = 6 p, mitte 7).
+  SUHTLUS = kolleegi „SUHTLUS v637” (päise lause, otsing, Ootab vastust/Kõik, avatarid, päevaeraldajad, mullid, koostaja + AI
+  mustand). `suhtlusThreads`: üürileandja näeb `lepAruNahtav` (vooru saatmata märkused EI leki), ootel = `aruOotabOp` või
+  kliendi viimane vaba sõnum. Lõime kohal järgmine samm `p8SuhSamm` — AJUTISELT `buildActs`-ist (etapp 5 → p7Samm).
+  SEADED = kolleegi „SEADED v637/v644” (#/seaded/ettevote|dokumendid|automaatika): ettevõtted + aktsentvärv, kasutajad + kutse,
+  eksport eelvaatega (`p8Eksport`, `p8Eelvaade`), mallid + kirjade eelvaated (`seKiriNaidis0` — etapis 6 p8KiriNaidis),
+  `p8MallAva`, üldtingimuste versioonid, pakkumise vaikeväärtused (`seVaike`, `SEADED.vaike`), integratsioonid, teavitused.
+  `p7Silt` = identsus (sõnavara etapis 5). CSS „LK-CSS v637” meie keeles: saatmisnupp 32 px hele ring, automaatika teade ja
+  „Aktiivne” kiip neutraalsed (sinist pole).
+- Etapp 5 · sõnavara, kuupäevad, üks järgmise sammu otsus (v739–742):
+  SÕNAVARA: „pakkumus” → „pakkumine” (kõik käänded, ka „hinnapakkumine”) nähtavas tekstis app.js/data.js/index.html; EI muudetud:
+  marsruudid (`#/pakkumus/…`, `#/portfell/pakkumused`), omaduste võtmed (`pakkumus:`), täpsed väiketähelised võtmesõned
+  (`"pakkumus"`, `"pakkumused"`), regex-alternatiivid, identifikaatorid. Andmeväärtused muutusid järjekindlalt („Pakkumisel”,
+  „Pakkumise kehtivus”); salvestatud seis migreerub (`p7Migreeri`, märk `thinkone_andmever_<ettevõte>` = 643). „Olek” → „Seis”
+  siltides. Kuvanimed `p7Silt` (pill, olekurajad, võtmeandmete leht): „Mustand V1” → „Mustand”, üürnikul „Teie ettepanek”, „Teile
+  saadetud”, „Leping koostatud”; `kordMark` üürnikule „Teie kord”; versioon `verSilt` → „V2”.
+  KUUPÄEVAD: `kpD` (ISO ja pp.kk.aaaa → kohalik kesköö), `paevadeVahe` (ümardatult), `parseEE`/`daysUntil` nende kaudu; vanad
+  `Math.ceil((new Date(iso) - DEMO_TODAY)…)` asendatud.
+  ÜKS OTSUS `p7Samm(kind, doc)` (kolleegi v643, MEIE mudelil): pakkumine (Saada · Vasta · Koosta leping · Meenuta ≤ 7 p · Klient
+  vaatab üle) ja leping (Saada mustand · Vasta üürnikule N punkti → Saada vastused N [meie voorud] · Allkirjasta · akt/arveldus ·
+  muudatusettepanek · Lisa N · Korras + järgmine tähtaeg); üürniku harud (`p7Klient()` = üürnik või portaali eelvaade). Loevad:
+  Portfelli rida (`pfSamm`), Avaleht (`p7AvRead`), portaal (`poSamm`), Suhtlus (`p8SuhSamm`). Vahelülid buildActs-ist on läinud.
+  Kirja põrge (etapp 6) ja vaikus/allkirjastajad/pikendus (etapp 7, `p6AvRead`) lisanduvad.
+- Etapp 6 · kirjad, versioonid, ajalugu (v743–746):
+  KIRJAD (kolleegi Plokk 4 · 4.4): `doc.kirjad` [{liik, teema, tekst, saaja, aeg, olek kohal|porkus, avatud, pohjus, nr}];
+  `p4Kiri` (põrge: vigane aadress / trükiviga domeenis / sama aadress põrkus varem), mallid `p4PakkumiseKiri` (pakkumine ·
+  pakkumine-uus · pakkumine-vastus · meeldetuletus), `p4LepinguKiri`, `p4VastuseKiri` (meie vooru vastus). Saatmine = kiri:
+  pakkumise „Kinnita ja saada” ja uuesti saatmine, lepingu `.send-draft`, `lepVoorSaada` (üürileandja vastus). Pakkumise paanis
+  MEIE kaardid jäid (kolleegi pakkumise juhtkaarti ei toodud): Saadetud-kaart näitab kirja olekut; põrge → „Kiri ei jõudnud
+  kohale” + `p4PorgeVorm` (paranda aadress · Saada uuesti, `p4Uuesti`); ≤ 7 p või vaikus ≥ 5 p → „Tuleta meelde” + `p4Meenuta`.
+  Lepingu juhtriba meta = kirja olek, põrge = sinu kord + vorm. `p4Avas` = üürnik avas lingi. `p7Samm`: põrge = minu (punane,
+  Avalehel Kiire). Käivitusel `p4Taida` (järeltäide + demo põrge PAK-2026-011 andres@mrsafe.example). Ootaja hetktõmmis kannab
+  `kirjad` ja `versioonid` kaasa; `p4Uuesti` kirjutab `lepLive`-i.
+  VERSIOONID (4.3): `l.versioonid` = V1 esimesel saatmisel, iga üürileandja vooru vastus = V(n) (`p4Snap`, `voorud[].ver`,
+  `l.versioon` = „Mustand Vn”, kirja nr = versiooni nr); `p4VerTaida` annab vanadele V1 (`l.v1`-st). Riba: „Versioonid · N →”
+  (`p4VerAva`: V1 · V2 · „Kokku V1 → praegu” = lepDiffHTML; kiri; faktid + punktid sõnatasemel) ja operaatoril „Ajalugu”
+  (`p4Ajalugu`, külgpaneel: kirjad + audit). Punktide paani all versioonide loend. Võtmeandmete lehel „muudetud V2” (`p4-muud`).
+  „+ Uus” = Pakkumine · Leping · Import (objekt Esemete sakis, muudatus lepingus).
+  EI TOODUD (otsus 5 / meie kujundus): kokkuvõtte kaart, pakkumise juhtkaart.
+- Deal room (v747, kasutaja: „säilita võtmeandmed + dokument ja ainult otsusepaan”): üürnikul (`client-shell`) külgriba,
+  omnibox ja „+ Uus” peidus; päis = `p4DrBrand` (üürileandja logo + nimi → #/portaal) + `p4DrShell` (Minu dokumendid · kasutaja ·
+  demos „Tagasi operaatoriks”, hõljuv rollinupp üürnikul peidus). Üürniku pakkumise paanis ainult otsus (lisade kaart välja —
+  lisad on riba pillidel).
+  v748–752 (kasutaja): päise vasakus ülanurgas AINULT ThinkOne logo (kloon külgriba `svg.logo`-st, `.dr-to`; kast tindiga,
+  märk `--on-ink`, sõnamärgi `path` + `polygon` (I-täht) currentColor), klõps → #/portaal. Üürileandja logo ja nime päises EI OLE.
+- Etapp 7a · allkirjastamine (v753, kolleegi Plokk 6 · 6.1–6.2):
+  ANDMED: `ACCOUNT.landlord.allkirjastajad` [Tarmo Sepp] + `esindus: "üksi"`; `c-baltic` (Maatrans) Tarmo Kask + Merike Laan,
+  `esindus: "ühine"` (e-äriregistri juhatus; e-postid `*.example`). Teised kliendid: allkirjastaja = lepingu kontakt.
+  MUDEL: `p6Pool(l, "yl"|"yn")` → isikud (ühine → kõik juhatuse liikmed, muidu kontakt), `doc.allk` [{k, isikId, isik, meetod, aeg}]
+  (doc = leping või Lisa N ring), `doc.allkKutsed` {isikId: aeg}. `p6SlotSync` hoiab vana `doc.allkirjad` [yl, yn] (pesa täitub, kui
+  pool on valmis) — `lepSig`, `ootabMinuAllkirja`, avaleht jne loevad seda edasi. `p6Allkirjasta` → kõik koos → `p6LepJousta`
+  (Kehtiv, pinnad Üüritud) / `p6RingJousta` (meie `ringJousta` + kuud-fakt nihutab `l.lopp`; `ringJousta` ei kirjuta `r.allk`-ga
+  ringil allkirju üle).
+  UI: Dokobiti aken `p6Dkb` (Smart-ID · Mobiil-ID telefoniga · ID-kaart → kontrollkood → valmis); vana `openSign`/`doSign` popup
+  eemaldatud (`openSign()` = `p6Allkiri(CURRENT_LEASE)`; kiirtee `#/leping/ID/allkiri` avab akna, kui minu poolel on allkirjastaja).
+  Juhtriba `allkBar(ring)` (leping ja Lisa N; ühine: „Tarmo Kask allkirjastas — allkirjastab ka Merike Laan”, nupp nimega).
+  Paan: `allkirjadCard(l, ring)` isiku kaupa meie `sg-card` kujul (ühise esindusõiguse vahepealkiri, n/N); kehtival
+  `lepAllkKaart` (allkirjad voldikus + konteinerite read `p6KontRida`: leping + iga jõustunud Lisa N, ikoonnupp → `.asice`).
+  A4-märk `a4SigBadge` isiku kaupa ja valitud Lisa N järgi. Dokumendi allkirjaplokk `p6ShSigns` (iga allkirjastaja nimeliselt).
+  KONTEINER: `p6Laadi` → STORE-ZIP (mimetype esimesena, UTF-8 nimed) + PDF-id (`p6Pdf`, põhileping + lisad + Lisa 3) +
+  `META-INF/manifest.xml` — kontrollitud Pythoni zipfile-ga. Allkirjakutsed `p6Kutsu` (aktsepteerimine, Lisa N kinnitus).
+- Etapp 7b · pikendus, indekseerimine, vaikus, seeme (v754, kolleegi 6.3–6.6):
+  PIKENDUS: `p6PikOotel` (tähtajaline, ≤ 90 p lõpuni, ringi pole, `pikendusLoobutud` pole) → `p6PikValmista(l, auto)` = Lisa N
+  {pikendus: true, faktid: [kuud vana → uus]} (pikkus = algne täisaastates 12–60 k). Juhtkaart `p6PikJuht` (Saada üürnikule ·
+  Vaata lisa · Ära pikenda = `p6PikLoobu`), toimingutes „Pikenda lepingut” (`p6PikRida`), pikenduse ringil muudatusrežiimi/tühistust
+  pole. Üürnik saatmata mustandit ei näe (`p6RingVaade`); saatmine = kiri `p6RingKiri`. Dokument/pill „Lisa N · Lepingu pikendus”.
+  INDEKSEERIMINE: meetod `p6LepMeetod` (Lisa 3 eritingimus „indekseer…” › `l.indeks`), aastapäevad `p6IndeksKp`, möödunud
+  rakenduvad ise `p6IndeksRakenda` → `l.indeks.ajalugu` + teade üürnikule (`p6IndeksTeade`, lisa ei teki). Kuuüür kuupäeval =
+  `lepKuus(l) × p6Tegur(l, d)` (meie pinnapõhised hinnad jäävad); võtmeandmete lehel „üür kuus · indekseeritud pp.kk.aaaa”.
+  TÄHTAJAD: `p6Sync` (router + käivitus) → `p6KdSync` kirjutab KEY_DATES-i (`p6: true`) indekseerimise ja lepingu lõpu.
+  VAIKUS: `p6Vaikus(kind, doc, ring)` (l = saadetud leping, ring = Lisa N kinnitamisel, allk = allkiri venib; ≥ Seaded ·
+  vaikus p) → juhtkaart `p6MeenutaJuht` (mustand + Muuda, Saada meeldetuletus · Mitte praegu = 3 p). Pakkumisel jääb meie
+  „Tuleta meelde” (etapp 6). `p7SammLeping`: vaikus, isikupõhised allkirjad, pikendus, „ei pikendata” → Avaleht/portfell.
+  Avaleht `p6AvRead`: rakendunud indekseerimine (Korras — rakendub ise).
+  SEEME `p6Seed` (käivitusel, ka salvestatud seisule; ainult taeva, p8 Vaba): Maatrans LEP-<aasta−2>-001, Pind 8, algus kuu 1. kaks
+  aastat tagasi (lõpp 90 p aknas), 3 allkirja, 2 rakendunud indekseerimist → automaatika teeb pikenduse mustandi (Lisa 3).
+  `p6Automaatika` käivitusel. Testitud: ühine allkirjastamine (3 allkirja), Lisa N, pikendus lõpuni, meeldetuletus, `.asice`.
+- Etapp 8a · v644 lisad ilma impordita (v755). Otsused: „Vaata üürnikuna” jääb hõljuvaks; „Mis erineb tavalisest” võtmeandmete
+  lehe alla; kolleegi seemneid (PAK-2026-003 + Pind 24, Killa PAK-2026-012) ei tooda.
+  AUDITI PDF: `#/audit` „Ekspordi (PDF)” → `p8Eelvaade` (veerud + 2 rida) → `p6Pdf`. TÕENDITE KAUST: `p8Kaust(lid)` = ZIP
+  (LOEMIND.txt · 01_leping PDF · 02_versioonid/Vn.pdf · 03_kirjad.pdf · 04_allkirjad.pdf · 05_ajalugu.csv · 06_konteinerid/*.asice);
+  operaatori riba pill „Tõendite kaust ↓” (pärast esimest saatmist, Ajalugu kõrval). AI SÕNASTUS: `p8Sonastus(tx)` — palve-sõnad
+  maha, tingiv → kindel (`p8Kindel`), isik 3. isikusse (`p8Isik3`); „Kas saaks meil olla õigus …” → „Üürnikul on õigus …”; küsimus
+  → null (sõnastust ei leiutata). `aiUmber` (Kirjuta üle) ja `aiSonasta` (Lisa 3/N) kasutavad seda, vana lause jääb tagavaraks.
+  ERINEVUSED: `p8Erinevused(l)` (tagatis/tähtaeg vs `seVaike`, Lisa 3 indekseerimine, otstarve, erisused, muudetud sõnastus,
+  eritingimused) → `p8ErinKaart` (`.voti-erin`, ainult üürnik, Saadetud/Allkirjastamisel/Kehtiv), rea klõps valib punkti.
+  SOBIB: üürniku lõimes (üürileandja vastas, punkt lahti) „Sobib” → Lahendatud · selgitatud; voorus läheb märkusena teele.
+  TÄNANE ÜÜR: `lepKuusNyyd` (portfell `kuus` + €/m², osapool `kliendiKuuyyr`, Avaleht `raha`, `leaseMetaBar`). Risk osapoolte
+  loendis tunnuse tekstina („risk madal”), mitte seisu märgina. EI TOODUD: osapoole tähtajad kuukaartidena (meil ajajoon),
+  arhiivi järglane (kasutaja võttis välja), kalendri filter ja mallide eelvaated olid juba etapis 4–5.
+- Etapp 8b · impordi augud + Ülevaate päris ajalugu (v756). Meie impordi funktsioonid olid kolleegi omadega peaaegu identsed —
+  lisatud samadesse kohtadesse; `impKahtlused`/`irKaart`/`irMuu` → `…0` + kolleegi ümbrised.
+  11a ÄRIREGISTER: `p8ArParing` (e-äriregistri autocomplete, võrguta `AL_REG_VARU`) → ülevaatuse „Mis see on?” eraldi rida
+  (`p8ArRida`; olek, „lepingus teise nimega”, ↗ link); uus osapool saab registri nime/aadressi (`p8ArKlient` `impKlient`-is).
+  11b PINNA SOOVITUS: pinna kahtlusel `p8PinnaSoov` → kaart „Kas see on Pind N?” (Jah · Vali muu pind) — AINULT ühese vaste korral
+  (sama m² ±0,15 või registris sama üürnik); T6B-s on palju sama suurusega pindu, siis kaarti pole (tavaline kahtlus jääb).
+  11c TEENUS: `IMP_MUU` + Kindlustusleping/Hooldusleping; `impTuvasta` → `f.muu.teenus` (`p8TeenusParsi`: kindlustaja, reg, periood,
+  makse); ülevaatus `p8IrTeenus`; kinnitus `p8TeenusKinnita` → IMPORDITUD `KIN-/HOO-aaaa-NN` (Periood, Preemia/Tasu) + lõpp kalendrisse.
+  11d KÄSITSI: loetamatu skaneering / tundmatu dokument → „Sisesta käsitsi” (`p8KasitsiHTML`, üks veerg paanis) → `p8Kasitsi` teeb
+  failist lepingu (`f.kasitsi`), ülevaatusel märk `p8KasitsiMark`, kinnitusel parameeter „Allikas”.
+  11e INDEKS: `p8IndeksTxt(f)` (ÜT 5.2 „suureneb Üüripinna Üür … 3%”, THI, „ei indekseerita”, eritingimus) → parameeter
+  „Indekseerimine” enne punktide kustutamist; tervise tähtaeg ainult indekseeritaval (`p8PoleIndeksit`).
+  11f TULEMUS: „N lepingut imporditud · € kuus · registris kokku M kehtivat” (`p8KehtivaidRegistris`); tervis ka ilma uue impordita.
+  11g LISA: `impMojuRead({ m2: p8LisaM2(f) })` → hinnamuutus „Üür: 1 459,20 € kuus · 8,00 €/m²”.
+  12 AJALUGU: `p8HindAjalukku` (impRakendaLisa enne üle kirjutamist) → `x.hinnad`; `p8ImpKuus(x, d)` = hind kuupäeval (viimane
+  lisa-hind ≤ d, siis × (1 + %) iga päris indekseerimise kuupäeva eest pärast seda; `p8ImpIndeks`: „esimene pp.kk.aaaa” või
+  üleandmine + 12 k, kuni lõpuni). Portfelli imporditud rida `kuus` = tänane (`kuusLeping` = lepingu oma), €/m² sama teguriga;
+  võtmeandmete „Üür” kaart = `p8ImpHero` („lepingus X € · N× meetod”); Ülevaade `rentAt` (platvorm `p6KuusProg`, import
+  `p8ImpKuus`, muu vana valem `rentAt0`). `p8ImpMigr` (stardis): vanad impordid saavad „Indekseerimine” klauslikihist
+  (`x.klauslid` PT/ÜT/L*) ja `x.hinnad` `x.muutused` „Üür” kirjetest.
+  TESTITUD (päris failid ainult kohapeal, profiil ja ekraanipildid kustutatud): Evecon P7 + Lisa 3, TSG P8 + Lisa 3, Warrior P9 +
+  Lisa 3, WiSo P3 + Lisa 4/5 — indeks tuvastatud kõigil (ÜT 5.2, 3 %), äriregister päris päringuga, WiSo Lisa 5 hinnaajalugu,
+  Evecon täna 2 623 € (1× 3 %). Kindlustus ja käsitsi vorm sünteetiliste kirjetega.
+  v757 (kasutaja): imporditud lepingu võtmeandmete allikas „Üür/Üürihind → PT 2.4” oli vale — `impAllikas` otsis tekstist ja
+  PT 2.4 lõpus oli järgmise jao pealkiri „3. ÜÜR”. Nüüd enne punkti PEALKIRI, siis tekst ilma lõpu jaopealkirjata → PT 3.1.
+- Surnud CSS koristus (v758, kasutaja): styles.css 6086 → 5377 rida (511 → 452 kB). Meetod: klass on surnud, kui tema nime pole ÜHESKI
+  laetavas failis (app.js, index.html, data.js, klauslid.js, uldtingimused.js, riskiandmed.js) ega kokkupandavana (`eesliide-${`/`" +`);
+  reeglist eemaldati ainult surnud selektorid (elus selektoriga reegel jäi), tühjaks jäänud @media plokid, kasutuseta @keyframes
+  (shimmer, th-pulse) ja orvuks jäänud jaotise kommentaarid. `ai-fab` jäeti meelega (mälu: ülariba AI-nupu taastamine).
+  Kontroll: enne/pärast ekraanipildid 36 vaatest (avaleht, ülevaade, portfell ×3, leping ×2, pakkumine, kalender, Suhtlus, Seaded,
+  osapool, import + laud + ülevaatus, pind, parkimine, AI, audit, objektid, üürnik + portaal, hele teema, mobiil 390 px, diff-,
+  versiooni- ja ajaloo modaal, Dokobiti aken, eksport) — pikslitäpselt samad (v.a kellaaeg).
+
+## 29.09.2026 (v=707–710) — läbirääkimise voorud, etapp 1 (kasutaja: üks voor = üks kiri)
+- Mudel: `l.voor` (kord), `l.pub` (JSON-tõmmis ilma pub/voor/voorud-ita, tehakse vooru alguses), `l.voorud` [{nr, kes, saadetud,
+  pids, refid, v1?}]. Esimene saatmine: voorud=[{nr:0, v1:true}], voor 1 = klient. Vanad Saadetud-lepingud: `lepVoorEnsure`.
+- Vaade: ruuter taastab eelmise vahetuse, siis mitte-omanikul `lepPubPane` (tõmmisele kopeeritakse voor/voorud, v709).
+  DB.save ümbris paneb salvestuse ajaks elava objekti tagasi. `DB.leaseById` tagastab vahetuse ajal TÕMMISE — muutmiskoodis
+  kasuta `lepLive(l)`.
+- Punkti `mutate` toast vooru ajal: „… lisatud · saadad voorus korraga”. Avalehel `id:voor` tegevus.
+- E2E (headless): mustand → saada → üürnik 2 kommentaari (op ei näe, pfSamm/teavitused 0) → üürnik saadab → op näeb kirja
+  (P 3.1, P 5.1) + audit → op vastab + saadab → üürnik näeb vastuseid, „Aktsepteeri leping”; konsoolivigu 0.
+- v711–712 (kasutaja: paan ütles „ootab üürileandja vastust”, kuigi voor saatmata): `lepSaatmata` → npItems rühm `draft`
+  („N saatmata”, pill „Saatmata”), olekurida mõlemale poolele, üürniku lõimes „Ootab üürileandja vastust” asemel täiendamise väli.
+- v713 (kasutaja kavand: ruumi kokku, selge hierarhia): saatmata olek → märge sõnumi all (kell-ikoon, `.th-saatmata`), `np-st`
+  saatmatal punktil ei renderdu; `.np-v2 .th-day` = kuupäev + juuspeen joon; „Lisa” aktiivne alles tekstiga.
+- v714 (kasutaja: sama loogika saadetud märkustel ja üürileandja vaates): `npDetail` teeb `st`-st `noot` (wait/ok/no) →
+  `nootHTML()` lõime sabana või `th-noot-top` voldiku kohal; `st = null` alati; üürniku ootamise mull eemaldatud.
+- v715 (kasutaja): kirja punktiviide (`.voor-ref`) → `lepVoorRef` = `ltreeGo(pid, true)` — valib punkti paanis ja kerib
+  dokumendi kohale (töövaade `data-clause`, A4 `data-aref`).
+- v716 (kasutaja: „ootab üürniku kinnitust” saatmata ettepanekul vale): ettepaneku kaart lõimes = üks kast `.th-ep`
+  (silt „Ettepanek · kuidas vormistatakse” + enne → pärast + plaanilink), joondatud sõnumi tekstiga; `th-live` eemaldatud —
+  olek tuleb lõime lõpu märkest (saatmata → „Läheb üürnikule…”, saadetud → „Ootab üürniku kinnitust”).
+- v717–718 (kasutaja: kokkulepitud lepingu saab kohe allkirjastada): üürniku juhtribal „Allkirjasta kohe” (`#cl-accept-sign`
+  = aktsepteeri → Allkirjastamisel + `openSign()`) ja teisene „Aktsepteeri, allkirjastan hiljem” / „Aktsepteerin kõik punktid”
+  (`#cl-accept-all`); nupud `.g-nupud` täislaiuses; vooru ootamisel peidetud.
+- v725–726 (kasutaja: pakkumus ja leping samas joones nagu imporditud leping + võtmeandmed päises): `lepRibaHTML` ja pakkumuse
+  riba → impordi riba (← Portfell · nr · rada / `.ir-dok` pillid); `votiSeisHTML` + `lepVotiHTML`/`offerVotiHTML` dokumendi veeru
+  algusesse. Kontrollitud: kehtiv leping, mustand, pakkumuse mustand, üürniku pakkumus ja leping, 390 px (ülevoolu pole).
+- v724 (kasutaja: „eritingimus ja see joon näeb tobe välja”): punktide loendis lahendatud eritingimust eraldi (joonega
+  `np-kid`) rida EI OLE — algse punkti detailis kast `.np-eri` („Kehtib eritingimus · Lisa 3 · p1 · ülimuslik” + sõnastus, klõps
+  avab eritingimuse), algne sõnastus „Algne sõnastus · asendatud” (tuhm); tegevust vajav eritingimus = tavaline rida „… · asendab …”;
+  eritingimuse detailis link „Asendab Üld · p 4.3 →”. Must `.overwrite` kiip paanis enam ei renderdu.
+- v723 (kasutaja: „läbirääkimine liiga segane”, valik „Ainult otsusekaart välja”): `const soov = null` → paanis alati
+  „Kuidas lahendame?”; voorud jäävad. Test: valikud nähtavad, „Muudan: üür” vorm ja „Selgitan” → Lahendatud · selgitatud.
+- v719–722 (kasutaja: üürnik kinnitas ettepanekud, aga juhtriba näitas ikka „Saada märkused”): üürnikul, kel pole ühtki
+  lahtist arutelu (`koikKokku`), saatmisriba EI tule — kohe „Allkirjasta kohe”; `lepSaatmata` on sel juhul tühi; aktsepteerimine
+  kirjutab kinnitused viimaseks kirjaks (`voorud[].kinnitus`), `l.voor = null`, `l.pub` kustub. Ettepaneku lahendusel märge ilma
+  isikuta (kinnitas üürnik).
+
+## 29.09.2026 (v=705–706) — esindajad loetavaks (kasutaja: tekstid ei murduks veidralt)
+- `esTabelHTML` tabelist kaherealisteks kirjeteks `.es-list > .es-r`: roll | nimi (paks) / telefon · e-post (`.es-k`, üksused
+  nowrap, murdumine ainult üksuste vahel); väljad: nimi täislaiuses, telefon + e-post all; mobiilis kõik üksteise all.
+- v699–704 `.es-tbl` CSS asendatud v705 plokiga (styles.css lõpus). E2E: mustand, üürnik A4, allkirjastatud, 390 px ✓; vigu 0.
+
+## 29.09.2026 (v=699–704) — poolte esindajad tabelina + väljad (kasutaja: nagu originaalis, üürnik täidab ise)
+- data.js: `ACCOUNT.landlord.kontaktisik` (Taevavärav). app.js: `esVaikimisi`, `lepEsindajad`, `esTekst`, `esTabelHTML`, `esMuudab`,
+  `esSalvesta` (+ l.kontakt sünk); dokumendi tasemel `change`/`click` delegaadid (`.es-in`, `data-es-lisa/del`) — töötab ka pärast
+  A4 lehekülgedeks jagamist. `pohiTehing` P 6.x tekst tabelist; kõik 5 kutsujat annavad `es: l.esindajad`.
+- Vaikimisi rollid tekstina (`ES_VAIKEROLLID`), lisatud real muudetav roll; fikseeritud veerud; mobiilis rida virna.
+- `paginateA4`: plokk üksi lehest kõrgem → `height:auto; minHeight:H` (varem lõigati overflow:hidden-iga).
+- E2E: mustand (2 tabelit, 6 rida, operaator muudab, 6.1 EI märgi „Muudetud”), üürnik Saadetud (ainult yy muudetav, lisa rida),
+  allkirjastatud (0 muudetavat, 2 loetavat), 390 px ✓; konsoolivigu 0.
+
+## 29.09.2026 (v=698) — ülevaade: eelmine ülesehitus tagasi, ainult värvid neutraalseks (kasutaja: „juhtkaart ära, proovi veel”)
+- `git checkout HEAD -- demo/app.js demo/styles.css` (v694 seis; pärast commit'i muutus ainult ülevaade), seejärel styles.css lõppu
+  v698 plokk: `--yl-*` neutraalseks, ala gradient 12 %, etapiraja viimane = ink + `--on-ink` tekst, mobiilis etapid 2 veerus.
+- v695–697 (op-pea päis, arvud-sakid, „Vajab tähelepanu”, sec-h väljas, `objVabad`) EI OLE koodis — kirjeldus allpool on ajalugu.
+- E2E: tume/hele, sakid, 390 px (380), juhtkaarti pole; konsoolivigu 0.
+
+## 29.09.2026 (v=695–697) — ülevaade rakenduse keeles (kasutaja: A + B + C)
+- Arvutused (`ylAndmed`, prognoos, lõppevad, vabad) muutmata; kest: `pea(arvud)` op-pea, `arv()` sakid (aktiivne = joon all),
+  `juht` juhtkaart, kastid (`yl-kastid`/`yl-k`) ja minigraafikud eemaldatud; jaotiste `<header class="yl-p-pea">` tõstetakse
+  väljundis kaardist välja `sec-h yl-sec`-ks (regex `View.ylevaade` lõpus). `objVabad` + `OBJ_SPF` (objekti init klõpsab filtrit).
+- Värvid: `--yl-*` üle kirjutatud (:root ja [data-theme=light]); etapirada ilma clip-path'ita, mobiilis 2 veergu (ülevool 502 → 380).
+- E2E: Taevavärav (4 arvu, juhtkaart → objekt „Vabad” 28 kaarti), sakid, hele teema, 390 px, B11G (skoobi valik) ✓; vigu 0.
+
+## 29.09.2026 (v=694) — imporditud lepingu riba impordi ülevaatuse keeles (kasutaja: pillid + „← Portfell”)
+- Dokumendid tekstilinkide asemel `.ir-dok` pillid (Struktureeritud = `.on`, originaalid/lisad nupud; Word = allalaadimise link);
+  tagasi = `.ir-tagasi` (ikoon + „Portfell”) nagu ülevaatuse „← Import”. Font `--font-ui` (riba on muidu mono).
+  E2E: Maru (5 pilli), Caverion (Word-link), hele teema, 390 px ✓.
+
+## 29.09.2026 (v=693) — imporditud lepingul „algusesse” pill kerimise edenemisega (kasutaja)
+- `View.imporditud` sai sama `#doc-top` nupu (punktiirne riba + % + ↑) mis platvormi lepinguvaade; globaalne kerimiskuulaja
+  ja `docTop()` töötavad muutmata. E2E: peidus algul, 40 % kerimisel nähtav „40%”, klõps → scrollY 0.
+
+## 29.09.2026 (v=687–692) — punkti teksti struktuur: kuvamine + import (kasutaja: „proovime nii”)
+- Kiht 2 (kuvamine, ka vanad andmed): `klStruktuur` + `klKontakt`/`klTabel`/`klRead`/`klLoend`/`klTapid`/`klRidadest`. Maru PT 6.1/6.2
+  → roll · nimi · telefon · e-post ühel real; Caverion Lisa 2 → 5 sagedustabelit jaotiste kaupa (+ märkus), Lisa 3 → nummerdatud
+  loend täppidega, Lisa 4 → hinnakiri (Teenus | Hind), Lisa 5 → kontaktplokid (Hooldaja/Tellija).
+- Kiht 1 (import): `pdfTekst` rea-/veerueraldajad (Caverion Lisa 4: „Tehniku väljakutse tööpäevadel⇥08.00-17.00⇥60,00 EUR”);
+  `impTekstVorm`, `IMP_JAGU_SABA`, 240 → 1500 märki (Nordista/Maru: 54/53 punkti olid varem lõigatud), lisade punktid vormistatud.
+- Regressioon: demo-x (v675, vana pdfTekst) vs uus, 15 päris faili (Nordista, Maru, LEVV, CDR, Evecon, Electric Wings: lepingud,
+  lisad, üleandmisaktid) → v-väljad, punktide numbrid ja lisade mõjud identsed (0 erinevust). Testprofiil + tulemused kustutatud.
+
+## 29.09.2026 (v=685–686) — imporditud lepingu allkirjad platvormi kaardina (kasutaja: sama kujundus sees/väljas)
+- `impAllkirjadCard` + `impAllkSeis` (v685 nimi `impAllkirjastajad` põrkus olemasoleva funktsiooniga → hilisem definitsioon
+  kirjutas üle ja kaart jäi tühjaks; ümber nimetatud v686). Kaart Toimingute järel; „Allkirjad” voldik eemaldatud
+  „Allkirjastatud originaal” kaardist. Hooldusleping: tellija · töövõtja.
+- E2E: Maru (tekstist, 2/2), Caverion (tellija/töövõtja, roll „Caverion, juhatuse liige” alareal), simuleeritud konteiner
+  (Smart-ID/Mobiil-ID · kell · kehtiv · ajatempliga); konsoolivigu 0.
+
+## 29.09.2026 (v=681–684) — kehtiv seis silmapaistvaks (kasutaja: A + B + C)
+- `impSeisHTML(x, kl, T)` asendab lk 1 tabeli: päis „Kehtiv seis · täna” + ese; `imp-voti` 4 kaarti (`imp-vc`); `impAjariba`;
+  teemad; erisused; parandused. `impAllikas`: muutus → „Lisa N ›” (id:dok-LN), muidu PT-st (siis muust mitte-lisa osast) sõna
+  `IMP_TYVI[k]` järgi → „PT 3.1 ›” (k:klKey). Init seob `.imp-src[data-goto]`.
+- Parandused teel: `.imp-v` klassinime kokkupõrge vaate juurega → `.imp-vc`; „Periood” regex `perio`; „+ km” topelt tagatisel;
+  ajariba sildid (grupp 2,5 %, mitte „täna” lähedal, kuju eraldi `<i>`-na); „Hinnad” → Raha; mobiilis numbrid 20 px, sildid peidus.
+- E2E: Maru (16 allikaviidet, PT 3.1 klõps kerib), Caverion (tasu · periood · reageerimisaeg · etteteatamine, tähtajatu riba),
+  hele teema, 390 px ✓; konsoolivigu 0.
+
+## 29.09.2026 (v=679–680) — imporditud lepingu toimik: kõik dokumendid struktureeritult (kasutaja: terviklik pilt + RAG)
+- Enne: klauslikihis ainult põhileping; lisade punktid olid `x.lisad`-is (mitte otsingus), lisa muutus kirjutas parameetri üle
+  (ajalugu kadus), kaasdokument (garantiikiri jms) oli ainult failiviide.
+- Import: `impRakendaLisa` → `muuda()` salvestab `x.muutused`; `impKlLisa` (osa L<nr>); `impDokLisa` (x.dokumendid + osa D<n>,
+  väljavõte 900 märki `f.muu.tekst`); `klOsaLbl`/`klFail` tunnevad L<nr>/Lisa N/D<n>. `impToimikMigr()` stardis (idempotentne).
+- Vaade: `impToimik(x)` (põhileping → lisad nr järgi → kaasdokumendid; ok = struktureeritud, null = joonis); lk 1 „Kehtivad
+  põhitingimused” + `imp-muut` (muudetud Lisa N-ga · kp · enne) + toimiku rida; iga lisa oma leht (enne → pärast tabel + punktid),
+  kaasdokumendi leht väljavõttega. Paanis „Toimik” asendab „Eritingimused” kaardi (klõps kerib lehele / avab joonise).
+- E2E: Maru (4 dokumenti, joonised neutraalsed, Lisa 3 → leht), Caverion (HL + Lisa 1–5), simuleeritud import (Lisa 2 hind →
+  muutused + päritolu tabelis, garantiikiri → D1, `klOtsi('garantii summa')` leiab D1), 390 px ✓; konsoolivigu 0.
+
+## 29.09.2026 (v=676–678) — imporditud leping lepinguvaate mustris (kasutaja: impordi/parema paani keel teistele lehtedele)
+- Vana vaade (hero-summa, faktiplokid, kaardid üksteise all, kokkukeeratud „Kogu leping”) → riba · A4 · paan.
+- `impDokHTML`: lk 1 = päis (osapool, liik, id, sõlmitud, imporditud) + põhitingimuste tabel (+ impordil parandatud); edasi leht
+  osa kaupa (PT/ÜT/L3 või HL/Lisa N), jagu `sh-usec-h`, punkt `sh-up.imp-p` (data-key = klKey, data-txt otsinguks), muudetud
+  punkt rohelise joonega + `chg` kiibid; klausliteta leping → Lisa-punktid või märkus „tekst on originaalis”. `klList` eemaldatud.
+- `impPaanHTML`: arhiivi/üürniku vahetuse märge · Toimingud (originaal, registreeri lisa, pinna leht, konteiner) · Tähtajad
+  (`imp-td`: täpp — täidetud = vajab otsust, tühi = rakendub ise; kuupäev + kalSuht) · Eritingimused (Lisa punktid ↔ L3 klauslid
+  järjekorra järgi, klõps kerib + vilgub) · Allkirjastatud originaal (sõlmitud, imporditud, punkte, allkirjad, esindajad voldikus).
+- Riba: ← Portfell · id · ● Kehtiv/Arhiivis · Struktureeritud | Originaal | Lisa N (sulus osa ära) · otsing + vastete arv.
+- E2E: Maru (otsing „allüür” 3 vastet, eritingimus → 5.2, IMP_FOCUS ÜT|12.3 kerib), Caverion, hele teema, 390 px ✓; vigu 0.
+
+## 29.09.2026 (v=672–675) — avaleht „Fookus” + ülevaade sakkidena, üle võetud `demo-x/`-st (kasutaja tegi teises seadmes)
+- `demo-x/` = täpselt v671 + v672–675 (kontrollitud diffiga: data.js identne, styles.css ainult lõppu lisatud, app.js muudatused
+  ainult avalehe/ülevaate plokkides + 3 konksu: AGENT_TAIT pakkumuse vastuses, LEP_AVA_PUNKT lepingus). Üle võetud app.js,
+  styles.css, index.html (v=675), tegevused-variandid.html, ylevaade-variandid.html.
+- Vana ülevaate abid eemaldatud koos sellega: `taituvusAjalugu`, `pindHoivesKuupaeval`, `yksusKuupaeval`, `nsLayout`/`.nstack`.
+- ÜLE VÕTMATA (viitematerjal, jäi `demo-x/`-i): `design-system/` lisad (audit, style-guide, tokens.proposed …) ja `ux-test/`
+  47 ekraanipilti (clarity-*, goal1-*).
+- E2E: avaleht (Fookus-kaart, agendi mustand, Järgmisena 3), ülevaade (4 sakki, B11G), parkimise haldus ja pinna leht töötavad
+  koos; konsoolivigu 0.
+
+## 28.09.2026 (v=670–671) — vana esemeregistri leht eemaldatud (kasutaja: jõudsin vanale lehele, esemed on portfellis)
+- `View.register` kustutatud; `#/register` → `location.replace("#/portfell/esemed")` (vanad järjehoidjad).
+- Lingid: objekti lehe tagasinupp („Esemed”), töölaua mõõdikud (Vabad pinnad → esemed, Ametikohad → esemed/ametikohad),
+  seadistuse kiip, mitme hoonega pinnalink, ametikoha rea tagavaralink; esemete lehelt „Ava esemeregister →” ära.
+- Murdteed „Portfell › Esemed › Objekt/Pind”; tekstides „esemeregister” → „esemed” / „pinna andmed”.
+- E2E: #/register → #/portfell/esemed, objekti tagasinupp, 0 linki #/register (Taevavärav + B11G). Konsoolivigu 0.
+
+## 28.09.2026 (v=668–669) — parkimise muutmiskohad koondatud (kasutaja: liiga mitmes kohas muudetav)
+- Objekti koha kaart: `parkBlokk` eemaldatud → „Halda kohta →” (`parkHaldaKoht`: haldus, kohad-vaade, koht valitud).
+- Haldus „Kohad”: „Märgi kasutusest välja” (dokumendis keelatud) / „Taasta kasutusse”.
+- Pinna redaktor: `objParkRida` (olemasolev pind + register → rida „nr … · Muuda →” = kohavalija, draft sünkroonitakse);
+  `objCommit` võtab registriga hoone olemasolevate pindade kohad elavast andmest (mustandi koopia ei kirjuta üle).
+  Uue pinna numbrid: registris + mitte teise pinna küljes (teade nimetab pinnad).
+- Lahknevus → „Muuda dokumendis →”; pinna lehe „Lepingus” rida lingiga.
+- E2E: kaart 17 → haldus (17 valitud, väljas-nupp keelatud), 90 väljas/taasta, redaktor p4 valijaga 20 ära → salvestus, p1 puutumata,
+  uus pind nr 18/30 → „nr 18 — Pind 4, nr 30 — Pind 7”. Konsoolivigu 0.
+
+## 28.09.2026 (v=667) — parandus: „Näita pinna kohti” näitas „registris pole kohti” (kasutaja)
+- Põhjus: halduse tagasilink `#/objekt/<id>#parkimine` → marsruut andis id-ks „obj-t6b#parkimine”; vaade langes tagasi OBJEKT-ile,
+  aga `parkRegBind` sai vale id → valiku muutus renderdas tühja registri. `View.objekt` lõikab ankru, init loeb id `[^/?#]+`
+  ja kerib `#parkimine` korral registrini. E2E: tagasilink → kerib registrini, valik p4/p1 töötab ✓.
+
+## 28.09.2026 (v=664–666) — parkimise haldus pindade kaupa (kasutaja: grupeeringud selgemaks, haldus efektiivsemaks)
+- `pkhDraw` ümber: riba „Pindade kaupa | Kohad”, „Lisa kohad” nupu taga (`PKH.lisaLahti`), pinna rippmenüü eemaldatud.
+- `pkhPinnadHTML` + `pkhMini` + `pkhPinnaKohad` (täpne asendus, teistelt pindadelt ära) + `parkPinnaMuuda` (valija, oma kohad
+  hõivest välja, siht = arv → „Vali lähimad” töötab) + `pkhKogumMuuda` (ev/reserv/valjas).
+- Lahknevus: ühe pinnaga leping/pakkumus, mille kohad ≠ pinna kohad → rida; tugev (⚠, ooker), kui kasutab kohta väljaspool.
+- E2E: 38 rida (Pind 1–30 numbrijärjekorras, Büroo 1–5, 4 kogumit), p4 eelvaade, p1 „Muuda” → lähimad → salvestus, reserv +50,
+  objekti „Näita pinna kohti” p4, pinna lehe „Muuda”/„Lepingus”, lahknevus LEP-2026-001 nr 33, 390 px ✓; konsoolivigu 0.
+
+## 28.09.2026 (v=663) — parkimise olekud (kasutaja: EV eraldi, üldkasutatav → reserv ja valitav, Lepingus+Üüritud kokku)
+- `parkHoive`: leping → alati „Üüritud” (+ `allkirjastamata`), reserv → „Reserv” (vaba: true), elektriauto (mitte reservis) →
+  „Elektriauto” (vaba: true). `parkPickUI` lubab `h.vaba` kohti; `parkLahimad` ainult `tyyp === "tavaline" && !uld`.
+- Register: tüüp „reserv” → lipp (`parkReg` migreerib salvestatud kirjed); T6B: EV 31/32/84/85 eraldi, reserv 49/62/63 + inva 1/2.
+- Haldus: „Märgi reserviks / Eemalda reservist”, vahemiku linnuke „Reserv”, tabelis tüüp „reserv” = lipp.
+- E2E: T6B statistika 86/14/6/4/5/0, plaanil EV roheline ja reserv sinine, valikus 31 ja 49 lubatud, automaatvalik 75–78,
+  allkirjastamata lepingu koht = Üüritud + märge. Konsoolivigu 0.
+
+## 28.09.2026 (v=662) — parandus: pakkumuse viisardi pinnaloend jooksis kaardist välja (kasutaja ekraanipilt)
+- Põhjus: v660 parkimiskiipide konteiner kasutas klassi `.pk-list`, mis on juba pinnavalija (`spPicker`) kerimisloend;
+  `overflow: visible` tühistas `max-height`-kerimise. Kiibid → `.pk-kiibid`. Uute klasside kokkupõrkeid rohkem pole (kontrollitud).
+- NB: `pk-*` eesliide on jagatud pinnavalija (pk-row, pk-chip, pk-filter) ja parkimise (pk-host, pk-leg) vahel — uuel klassil kontrolli.
+
+## 28.09.2026 (v=660–661) — parkimisregister, 1. etapp (kasutaja: kuidas parkimiskohad süsteemi luuakse)
+- Mudel: `PARK_REG` (data.js save/load) + `parkReg`/`parkOn`/`parkPlaaniga`/`parkTyypNimi`; `parkHoive` üldkasutatavad registrist;
+  `parkLahimad` registrist (plaanita: pinna kohtade tsoon ees, siis nr). Väravad `parkSvg` → `parkOn`: P 2.2 mall, Lisa 2 (mall +
+  pakkumuse lisad), `parkFix`, pakkumuse paan, pinnamuudatuse vorm, faktisisend, otsusekaart, objekti leht.
+- `parkPlaanHTML` → plaanita hoonel `parkKiibidHTML`; valija/register kasutavad `PARK_KLIKK`. Haldusleht `viewParkHaldus` + `pkhDraw`
+  (View registreeritakse View.pind järel — `View` const on alles rida ~1887!).
+- E2E: T6B regressioon (115 kohta, sama statistika, plaan, „Vali lähimad” 75–78, Lisa 2) ✓; T6B haldus (tsoon/tüüp salvestub,
+  lisamine peidetud) ✓; testhoone: tühi olek → vahemik 1–20 → tabel 21-25 elektriauto + 26–27 pinnale → kohad 1–3 pinnale →
+  pakkumus võtab 1,2,3,26,27 → kiibivalik → Lisa 2 kiipidena → dokumendis kohta ei kustutata → püsib pärast laadimist;
+  pinna redaktor: nr 99 pole registris → viga. Konsoolivigu 0.
+
+## 28.09.2026 (v=658–659) — pinna andmete muutmine pinna lehelt (kasutaja: kus pärast importi pinna andmeid muuta?)
+- Enne: ainult Objekt → Muuda → samm 2; osade jaotust ei saanud muuta; hinnakirja muutus muutis vaikselt avatud pakkumuse hinda
+  (pakkumus loeb `sp.hind`, kui `o.hinnad` puudub) ja üüripinna muutus lepingu/pakkumuse summat.
+- Nüüd: `pindMuuda(sid)` → ühe pinna redaktor; osad `objOsadHTML`/`objOsadSum` (elav summa) / `objOsadNorm` (→ jaotus, muud osad
+  säilivad); lukk `objPindLukk` + `objPindMarge`; `objHindKylmuta` commit'is.
+- E2E: p4 (lepingus) lukk + märge, osade vale summa → viga, õige → salvestus + tagasi pinna lehele, hind 8 → lepingu üür sama
+  (2 548,50); p6 (pakkumus) hind 9,50 → pakkumus jääb 2 664 € (`hinnad.p6 = 7,5`); p1 vaba — lukuta; 390 px ✓; konsoolivigu 0.
+
+## 28.09.2026 (v=657) — pinna olek dokumentidest (kasutaja: tagasi lükatud pakkumus hoidis pinda „Pakkumusel”)
+- Põhjus: olekut kirjutati käsitsi ~10 kohas; tagasilükkamine/tühistamine/aegumine ei vabastanud pinda. `pinnaOlekSync` + DB.save mähis.
+- Parkimishõive ja vana `avaPind` loevad lõppenud pakkumusi `OFFER_LOPP` järgi (varem puudus „Tühistatud”).
+- E2E: tagasi lükatud → Vaba, tühistatud → Vaba, aegunud → Vaba (ja taas saadetud → Pakkumusel), Lisa N ring → Lepingus → tühistus
+  → Vaba, arhiveerimine → Vaba, mustandleping → Lepingus → kehtiv → Üüritud, püsib pärast laadimist; B11G laeb vigadeta.
+- Avatud: saadetud pakkumus, mille kehtivus on möödas, jääb „Saadetud” (automaatset „Aegunud” pole) → pind jääb Pakkumusel.
+
+## 28.09.2026 (v=656) — netopind ja koef eemaldatud (kasutaja: neid ei kasutata)
+- data.js 44 pinnalt `neto`/`koef`; UI: pinnakaart, pinna leht, pinna külgpaan, jagamise vorm (üksusele ei salvestata),
+  objekti lisamise vorm, CSV-impordi tuletus + aliased + vihjed. Jagamise sisemine vahesumma (oma osad) jääb arvutuseks.
+
+## 28.09.2026 (v=653–655) — pinna leht (kasutaja: igal pinnal oma leht — aktiivne leping, toimingud, arhiiv)
+- `View.pind` + marsruut `#/pind/<id>`; `avaPind` suunab pinna lehele (vana otseavamise loogika jäi funktsiooni alles, kasutamata).
+- `pinnaDokRead(s)`: lepingud `lepPindSeos` järgi (endine → arhiivi), imporditud `pindIds`/üürniku järgi, pakkumused `spaceIds`.
+- `pinnaTahtajad`: dokumentide KEY_DATES (pinnamuudatused ainult selle pinna omad) + aktiivse ringi `pinnad` + lepingu lõpp /
+  pakkumuse kehtivus, kui kalendris eraldi kirjet pole. `pindUusPak`, `pindMuudatus` (LEP_FOCUS_ID + muudatusrežiim).
+- E2E: p4 (Üüritud), p6 (pakkumus Saadetud), p1 (vaba → Lisa lepingule LEP-2026-001, eelvalitud → salvestus → leping, pinna lehel
+  „Lisatakse … Lisa 4”, hind Lisa N-st, tähtaeg „Pinna üleandmine”), kaardi klõps, `.lm-pind` link, 390 px ✓; konsoolivigu 0.
+
+## 28.09.2026 (v=652) — pinnakaardil tulev muutus (kasutaja)
+- `pindAjakava(sid)`: jõustunud eemaldus (kpv ≥ täna) → „Vabaneb kpv+1”; jõustunud lisa (kpv > täna) → „Üüritakse alates kpv”;
+  koostamisel ring → „Lisatakse LEP-…-le alates … / Vabaneb …” + „allkirjastamata”. Kaardil `.sp-ajakava` (kalendri ikoon, link lepingule).
+- Test: kolm seisu ✓, kuvamine objekti lehel ✓, konsoolivigu 0.
+
+## 28.09.2026 (v=651) — pinna lisamine/eemaldamine kehtivale lepingule Lisa N-ga (kasutaja: nõustun soovitustega)
+- Mudel: `lepPohiPindIds` (dokument) vs `lepPindIds(l, tana)` (kehtivad = dokument + jõustunud lisa − möödunud eemalda).
+  `lepHind` (lisatud pinna hind ringist), `lepKuus`/`lepM2` täna, `lepTagatis` = dokumendi tagatis + vahed, `lepParkKohad`.
+  Mall/readRows/rebuildPohi/buildPunktid → `lepPohiPinnad` (allkirjastatud P 2.1 ei muutu — testitud).
+- Ring: `r.pinnad`; `pindPunktTekst` (Lisa N lause), `ringItems` kind "pn", loendur, × eemaldab (broneering vabaks),
+  `ringYleRef` märgib p 2.1/3.1/2.2/4.1, `ringJousta` → pinna olek + KEY_DATES „Pinna üleandmine/tagastamine”.
+- Vorm `openPindMuut(lid, lisa|eemalda)` külgpaanis (PM, pmDraw, pmSalvesta): pind, kuupäev, hind, kohad plaanilt, tagatis;
+  eemaldamisel „Tagasta vahe / Jääb tagatiseks”; ainus pind → „Alusta lepingu lõpetamist” (`sulgAlusta`).
+- Pakkumus: `data-lk="lisa"` kui kliendil samas majas kehtiv leping → ring.pinnad (+ pakkumus), LEP_FOCUS_ID + muudatusrežiim.
+  Ringi tühistus vabastab broneeritud pinnad ja taastab pakkumuse „Aktsepteeritud”.
+- Kõrvalparandus: ujuv „Vaata üürnikuna” kattis külgpaani jaluse nupu → `body:has(#side.open) .role-tab { display:none }`.
+- E2E: lisa (Pind 1 → Lisa 4; tulevikus Lepingus, kuupäeval Üüritud, üür 2 548,50 → 6 115,70, tagatis +10 702, kohad liidetud) ✓;
+  eemalda (Lisa 5, vaba, üür/tagatis tagasi) ✓; ainus pind → lõpetamine ✓; pakkumus → Lisa 4 ✓; tühistus ✓; konsoolivigu 0.
+
+## 28.09.2026 (v=649–650) — mitme pinnaga leping (kasutaja: pinnapõhised hinnad, punktid 1–5, operaator valib)
+- NB: pakkumus→leping tegi juba enne N eraldi lepingut („N pinda = N lepingut”) — see on vaikimisi; lisandus ühine leping erandina.
+- Abifunktsioonid (ensureTehing ees): lepPindIds · lepPinnad · lepOnPind · lepPindNimi · tehHind · tehKuus · lepM2 · lepKuus · lepMituHinda.
+  10 hõivepäringut `l.spaceId === x.id` → `lepOnPind`; allkiri (Üüritud) ja arhiveerimine (Vaba) kõigile pindadele.
+- Mall `pohiTehing` saab `sps`: P 2.1 loetelu + kogupind; P 3.1 pindade kaupa kui hinnad erinevad (factMark `hind@sid`, muutmine
+  `.fact-in` käsitlejas), ühtne hind → vana lause; kuusüür/tagatis summast. rebuildPohi hoiab ühtse hinna sünkroonis.
+- Pakkumuse paan: `.lk-seg` (Eraldi · N / Üks ühine leping, eri majad → keelatud) → ühine: hinnad `offerPrice` pinna kaupa,
+  kohad `offerParkKohad`, lisad pinnaplaanidega (`spaceId`). Viisard: pinnapick lülitab (LWIZ.spaces), `data-lwk`, arvutus pindade kaupa.
+- Portfelli „kuus” = `lepKuus` (lepingu tegelik hind; varem pinna hinnakiri `rent(sp)`), m2hind = lepingu hind.
+- Riba: sama numbriga lisad → „Lisa 1 · Pind 1 / Pind 2”.
+- E2E: ühine (P 2.1/3.1, hinnad 7,50/7,00, hind@ 9,00 → summa + tagatis, lisad, olekud) ✓; vaikimisi 2 eraldi ✓; viisard ühine ✓;
+  arhiveerimine vabastab mõlemad ✓; ühe pinnaga lepingu summa muutumatu ✓; konsoolivigu 0.
+
+## 27.09.2026 (v=647–648) — „Tagasi lükatud” välja, „Ei nõustu” leebe (kasutaja)
+- Nähtav tulemus „Jääb samaks” / „Sõnastus jääb samaks”, toon `info` (hall), mitte `no` (punane); juhtriba tone ok.
+- Vana nimekirjast „Lükkan tagasi” (valik, vorm, käsitleja) eemaldatud; alles: Selgitan · Muudan · Saadan lisasse · Soovin ainult vastata.
+- Üürnik saab „jääb samaks” punkti vastates uuesti avada (nagu selgitatud). Uus lahendusTekst eesliide „Jääb samaks — ”.
+- Punktide loendur „N muudetud” → „N lahendatud” (loendas ka selgitatud/samaks jäänud).
+
+## 27.09.2026 (v=646) — üürniku „Soovin muuta” väli oli nähtav ka suletuna (kasutaja: „Saada ei tööta”)
+- Põhjus: `.soov-yy-f { display: flex }` kirjutas `hidden` atribuudi üle → väärtust sai muuta, aga saatmine pidas välja
+  suletuks; ilma tekstita ei juhtunud midagi. Parandus: `.soov-yy-f[hidden], .soov-f[hidden], .soov[hidden] { display: none }`
+  + tühja saatmise teade. Reegel: iga uus `display:flex/grid` komponent, mida peidetakse `hidden`-iga, vajab `[hidden]` reeglit.
+
+## 27.09.2026 (v=645) — „Ei nõustu” ei töötanud faktikaardil (kasutaja)
+- Põhjus: v643 ümberkorraldusel jäi `eiVorm` ühe ploki `const`-iks, faktikaardi plokk kutsus seda väljast → ReferenceError.
+  Parandus: `let eiVorm` ühises ulatuses. Test: faktikaart ja sõnastuse kaart → põhjendus → „Tagasi lükatud” ✓.
+- Õppetund: pärast ümberkorraldust korda KÕIGI kaardinuppude E2E-testi (fakti „Ei nõustu” testiti ainult enne v643).
+
+## 27.09.2026 (v=643–644) — LÄBIRÄÄKIMINE, etapid 2–4 (kasutaja: „tee teised etapid ka ära”)
+- Klassifikaator `soovAnaluus`: fakt (etapp 1) › palve (`SOOV_PALVE`) = sõnastus › küsimus (`SOOV_KYS`) › null (paan nagu enne).
+  „Kas hind võiks olla 7 €?” = soov (palve-sõna võidab küsimärgi). Näidislaused 7/7 õigesti.
+- Sõnastuse kaart: siht-segment, soovitus, AI mustand textarea's (siht vahetab mustandi), Nõustun → `saadaSonastus`
+  (otse/eri) või `saadaLisasse` (Lisa 3 eritingimus sõnastamisel / kehtival ring); Ei nõustu → põhjendus → Tagasi lükatud.
+  `soovPuhas` eemaldab tervituse, „palume lisada, et”, modaalverbi („peaks olema” → „on”).
+- Küsimuse kaart: `aiVastus` (viitab punkti esimesele lausele) → Vasta ja sulge / Vasta, jäta avatuks.
+- Mitu soovi: `soovMuud` (`SOOV_VOTI` märksõnad + `soovLoe`) → rida kaardil → uus arutelu teise punkti juurde (`c.soov`, `eraldatud`).
+- Üürnik: „Soovin muuta: …” (parkimine arvuna — kohad valib üürileandja plaanilt) → tekst „Soovin muuta: X → Y.” + `c.soov`.
+  `soovTuvasta` eelistab: hilisem vaba sõnum › `cmt.soov` › algne tekst.
+- NB: heredoc'i python-string muutis `\b` backspace'iks (0x08) — parandatud; uutes patchides kasuta raw-stringe.
+- E2E (testleping kustutatud): mitu soovi → eraldi P 2.2 ✓, üld → Lisa 3 ✓, põhi P 2.1 → otse ✓, küsimus → Selgitatud ✓,
+  üürniku struktureeritud tagatis 3→1 → kaart „täpne soov” ✓; konsoolivigu 0.
+
+## 27.09.2026 (v=642) — LÄBIRÄÄKIMISE LIHTSUSTAMINE, etapp 1: otsusekaart faktipunktidel (kasutaja)
+- `soovTuvasta`/`soovLoe` (aiSonasta kõrval): hind (€, %, kümnendarv), parkimine (arv + „juurde/vähem”, sõnaarvud), tagatis
+  („3 kuu üürilt 1 kuu üürile” → siht „-le”), tähtaeg (aastaks/kuud, ka „viieks aastaks”), üleandmispäev (pp.kk.aaaa).
+  Näidislausete test: 12/12 õige (sh „Kas saaksite üle vaadata?” → null).
+- Paan (`!kehtiv && fKey && !linked`, arutelu pole „Ootab kinnitust”): `.soov` kaart; Nõustun → `saadaFakt` (vana „Muudan” vormi
+  loogika tõstetud ühiseks funktsiooniks); Muudan → `faktiSisend` eeltäidetud + „Saada vastupakkumine”; Ei nõustu → põhjendus
+  kohustuslik → `lahenda("tagasi lükatud")`. Parkimine: `parkPickUI` eelvalitud (olemasolevad + `parkLahimad`, pehmed lubatud).
+- E2E testleping (PAK-2026-003 põhjal, kustutatud): hind 7,50→7,00 Nõustun ✓, tagatis 3→1 Muudan→2 ✓, parkimine 4→6 plaanil ✓,
+  Ei nõustu ✓, Muud võimalused (4 teed) ✓, konsoolivigu 0.
+
+## 27.09.2026 (v=641) — telefonis pakkumuse dokument ei jookse üle serva
+- Põhjus: `.sh-head` kaks plokki kõrvuti + `.sheet-embed` polster 44 px → parem plokk („Hinnapakkumine” + kuupäevad) 30 px üle serva.
+- ≤600 px: päise plokid üksteise alla (parem plokk vasakjoondusega), polster 26/20, pealkiri 20 px, tabel 12 px.
+  Mõõdetud 390 px: pakkumuse lehel ja lepinguvaates üle serva 0 elementi.
+
+## 27.09.2026 (v=640) — olmeala jagamine ilma ühiskasutuse märketa (kasutaja)
+- Kasutaja: osad pole ühiskasutuses — valik „Ühine” → „A+B”, rea silt „jaotus”; `yhine` lipp ja `spaceParts` „(ühine)” eemaldatud.
+  Arvutus sama: A m² käsitsi, B = ülejäänu.
+
+## 27.09.2026 (v=639) — pinna jagamine: ühine olmeala (kasutaja)
+- Olmeala real kolmas valik „Ühine” (vaikimisi): A m² sisend (vaikimisi pooleks), B arvutatakse; ühisala jaguneb edasi netopinna
+  suhtes (olmeala osa sees). Kontroll: igal üksusel peab olema põhiruum (mitte ainult olmeala).
+- `spaceParts` (data.js) lisab ühisele osale „(ühine)” — pakkumus, leping, pinnakaart. Test Pind 7: A 5,0 / B 10,2 →
+  7A 67,8 + 7B 271,8 = 339,6 m² (= ema), jagamine võeti testis tagasi.
+
+## 27.09.2026 (v=638) — import salvestub partiina, pooleli ülevaatusele saab tagasi (kasutaja)
+- `f.pid` (I1, I2 …): iga üleslaadimine = uus import; impordi laual „Lisa faile” lisab samasse. Vanad failid → `impPidMigr`
+  koondab kuupäeva kaupa (kutsutakse `impToimikud`-is, ka ettevõttevahetuse järel).
+- `#/import`: kaardid (Pooleli / Lõpetatud) — failid, lepingud, kinnitatud/kokku, edenemine (kinnitatud + välja jäetud),
+  viimati avatud, järgmine samm. `#/import/p/<pid>`: senine laud selle impordi kohta; „Eemalda loendist” ainult lõpetatul.
+- Ülevaatus: eelmine/järgmine ja „n / N” impordi sees; tagasi-link = impordi laud; avamine salvestab `root.viimati`.
+- „Jätka” (`impJatkaHref`): avalehe „Vajab tegevust” (rida iga pooleli impordi kohta, pill „jätka”), portfelli riba, tulemuse leht.
+- Test päris failidega: 2 importi, kinnitus → Lõpetatud, püsib reload'i järel. Testiandmed kustutatud (localStorage + IDB).
+
+## 27.09.2026 (v=637) — kiirkontroll: modaalid, menüüd, kitsas ekraan
+- Modaali (pdfmodal) „Sulge” btn-primary → btn-ghost btn-sm (sulgemine pole esmane tegevus; mujal „Sulge” juba kontuur).
+- Mobiil: menüünupp 42 px (--line äär) → 40 px kontuurnupp (--edge, r 8); sahtli sulgemine 38 px ruut → 32 px ikoonnupp.
+- Kontrollitud: muudatuste modaal, „+ Uus” menüü, impordilaud, 390 px portfell/pakkumus/menüü, 1024 px objekt — vigu pole.
+  Kõrvalmärkus (enne olemas, mitte nupud): 390 px pakkumuse A4-dokument ulatub paremalt üle serva.
+
+## 27.09.2026 (v=636) — NUPPUDE KOONDAMINE, samm 5: lülitid ja kiibid
+- Segmentlüliti üks kuju (alamsakkide keel): `pf-view` (oli surface+vari, aktiivne tume/hele täidis), glide-pill `--surface-soft`,
+  `pf-mode` Loend/Kaardid (oli konteiner + täidis), `tabbar` (kalendri Loend/Kuu; inline vari eemaldatud, `pf-sep` eraldaja),
+  `df-tab`, `lm-doc`. Kõigil reakõrgus 16 px → 30 px (link pärinud 1,5 → oli 34).
+- Kiip üks kuju: `preset-btn`, `al-naide` (oli täisümar + joon), `pk-chip`, `ir-dok` (eraldi = katkendäär), `cal-chip` (varjuta).
+- Ese-filter ja Järjesta-valik: vari maha, raadius 8 (nagu kontuurnupp).
+- Mõõdetud: segmendid 30 px (alamsakk märgiga 32), kiibid 28 px.
+
+## 27.09.2026 (v=635) — NUPPUDE KOONDAMINE, samm 4: ikoon- ja saatmisnupud
+- Ikoonnupp: `icon-btn` 34→32, `comp-ic` 34→32, `sb-collapse` 30 (ruut r9, --faint) → 32 ring --muted; ikoon 16 px.
+  (Kokkutõmmatud külgriba `sb-min` sb-collapse jääb oma asukoha-/äärereegliga.)
+- Saatmisnupp: `omni-send` 28 / `comp-send` 36 / `ag-send` 44 → kõik 32, nool 15 px; agendi nupp `I.enter` → `I.up`.
+  Omnibox polster 5/6 → 3/4, et kõrgus jääks 40 (sama mis „+ Uus”).
+- Ikoonide hover-animatsioonid (v633) laiendatud: icon-btn, comp-ic, comp-send, omni-send, ag-send; index.html teema-nupp
+  `data-i=moon`, omni-send `data-i=up`. `rmstep` (reasisene ×) jääb tekstimärgiks.
+
+## 27.09.2026 (v=634) — NUPPUDE KOONDAMINE, samm 3: tekstinupud
+- `steplink` 12/600 (oli 700), hoveril allajoon (offset 3); 7 kontekstipõhist font-size'i kustutatud (11,5 / 12 / 12,5).
+- „Näita kõiki” (`ns-toggle`, oli 11/500 + taust) ja „Soovin ainult vastata” (`hw-only`, 13 muted) = `steplink`.
+- `btn-quiet` (punane): polster 8/16 + min-height 40 — sama kõrge kui naabruses olevad `.btn`-id.
+- Jäid: lepingu riba mono `lt-link`, toimingurida `act-row` (rea keel, mitte link), `sb-reset`, tekstisisene `ar-jarg`.
+- Kontroll: kõik nähtavad steplink'id 12px/600.
+
+## 27.09.2026 (v=633) — ikoonide hover-animatsioonid (kasutaja)
+- app.js: `I`-kaardi svg-d saavad `data-i=<nimi>` (üks tsükkel kaardi järel); index.html jaluse teema/Seaded = moon/gear.
+- styles.css lõpus plokk: nool libiseb, tagasi vasakule, üles/välja diagonaal, pluss/rist/võrk/hammasratas pöörab, kell+vestlus
+  heliseb, silm pilgutab, pliiats kirjutab, dokumendid kalduvad, muu hüppab. Kehtib `.btn`, `.btn-quiet`, `.dm-chip`, `.nav a`, `.sb-item`.
+  Nupp ise ei liigu. prefers-reduced-motion lülitab välja. Kontrollitud headless hover'iga (transform/animation arvutatud stiilis).
+
+## 27.09.2026 (v=632) — kontuurnupp = avalehe kiip, ikoonikastid kadusid (kasutaja)
+- `.btn-ghost`: `--surface` + `--edge` äär, varjuta, kiri 500, hoveril `--surface-soft`; ikoon `--muted` → hoveril `--ink`.
+- Kõigilt `.btn`-idelt kadus ikooni ümber olev kast (svg 15/14 px, `.bic` nool ilma kastita); `:has()` polster 13/10 px.
+
+## 27.09.2026 (v=631) — nupud ei tõuse hoveril (kasutaja)
+- `.btn:hover` translateY eemaldatud (vari jääb), samuti `.dm-chip`, `.res-opt .ro-ic`, `.m-btn .m-ic`. Kaardid (`.pf-card`) ja
+  külgriba ikoonid tõusevad endiselt — need pole nupud.
+
+## 27.09.2026 (v=630) — NUPPUDE KOONDAMINE, samm 2: kontuurnupud
+- 34/38 px kontuurnupud kadusid juba v629 `.btn` min-height'iga → alles 40 ja 32.
+- `btn-soft` → `btn-ghost` (7 kohta, CSS kustutatud); `.coach-f .btn` oma kontuurivariant kustutatud; objekti „Muuda" inline
+  valge stiil (hele teemas katki) eemaldatud.
+- Kõrvalleid: objekti päise pealkiri „Hoone T6B" oli mõlemas teemas nähtamatu (`.obj-hero` `--on-ink` jäänuk) → `--ink`.
+- Mõõtmine: kontuurnupu kujud ainult 40/32 (vahe vaid ikooni/tekstiga polstris). Rühmi kokku 61 → 51.
+
+## 27.09.2026 (v=629) — NUPPUDE KOONDAMINE, samm 1: heledad nupud + tööriistariba
+- Inventuur (headless, 101 vaadet, 1361 nuppu): 44 eri kuju → ettepanek 10 (koondvaade artefaktina, generaator scratchpadis).
+- `.btn` min-height 40 → kaks kõrgust (40/32). `btn-accent` → `btn-primary` (19 kohta, CSS reeglid kustutatud).
+  `btn-loo` ja `role-tab` = `btn btn-primary` (oma visuaalreeglid kustutatud, alles asukoht/pluss-pööre/hõljuva nupu vari).
+  `pf-new` = `btn btn-ghost btn-sm` (kasutaja otsus); `.pf-tabs a` sakistiil tühistatakse `.pf-tabs a.pf-new`-ga.
+- Mõõtmine pärast: heledaid nupuvariante 9 → 2 (40 ja 32 px). Järgmised sammud: kontuur (34/38 → 40/32, btn-soft), siis
+  tekstinupud, ikoon-/saatmisnupud, lülitid ja kiibid.
 
 ## Kontekst ja fookus
 
@@ -10,7 +533,378 @@
   ei muudeta ilma kasutaja palveta.
 - Demo on **raamistikuvaba staatiline SPA**; topeltklõps `demo/index.html` töötab
   alati. Brauseriautomaatika/ekraanipiltide jaoks `node serve.js` → localhost:8471.
-- Cache-versioon praegu **v=426** (kõik VIIS viidet index.html-is sünkroonis: styles + 4 js).
+  **HOIATUS (17.09.2026):** port 8471 oli hõivatud TEISE ThinkOne koopiaga (v=436, `onboarding.js` +
+  `negotiation.js`) — enne testimist kontrolli `curl localhost:8471 | grep app.js`; vajadusel serve.js koopia
+  teisel pordil (`path.resolve` ROOT-ile, muidu Windowsis 403).
+- Cache-versioon praegu **v=628** (v627–628: impordi kinnitus → kohe järgmine + kviitung; v622–626: „demo 3" üle võetud 26.09; v620–621: ajajoone hover valge kaart, avatud sündmus üks kaart; v617–619: kalender ajajooneks; v616: kaardiruudustik `minmax(0,1fr)` — pikk järgmise sammu lause ei venita veergu servani; v615: osapoole lehe veerud joondatud — parem veerg „Andmed" pealkirjaga, dokumendikaardid ilma sisenihketa; v614: Ese-filter tööriistareale, Seis-filter maha; v607–612: osapooled rollidega, arhiiv, neli märki, üks kaardimudel; v606: kinnitamine jääb impordi lauale; v604–605: ülevaatuse paan selgemaks; v603: impordi laua tööriistariba; v602: pinna olek dokumentidest; v600–601: impordi kinnitustoimingud; v595–599: lepingute import päris üürilepingutest; v594: jagada saab ainult mitme ruumiosaga pinda; v592–593: pinnad 2, 4, 5, 6, 22 vabad + salvestise migratsioon; v588–591: pinna jagamine üüriüksusteks; v586–587: parkimise vaikejaotus pindade vahel + pindade import T6B struktuuris; v577: portfelli alapealkiri eemaldatud; v579–581: saki põhinupp sakireal paremal — päise kõrgus igal sakil sama, hüpet pole; v582: ilma välise pillita — ikooniruut + tekst `--ink`) (kõik KUUS viidet index.html-is sünkroonis: styles + 5 js, sh `riskiandmed.js`).
+- **v=585 — sisukord eemaldatud** (kasutaja: liiga kirju): `#ltree` märgendus lepinguvaatest ära (funktsioonid jäävad,
+  `ltreeInit` väljub kohe; ↑/↓ punktide vahel enam ei tööta). Edenemisnäidik kolis „algusesse" nupule: `#doc-top` = pill
+  (punktiirne riba `--p` · protsent · ↑), nüüd lepinguvaate tasemel (ka mustandis), ilmub > 320 px kerides.
+- **v=583–584 — tagasi portfelli:** vana lepingute leht `#/lepingud[/filter]` suunatakse routeris `#/portfell/lepingud`-ile
+  (mustand/läbirääkimisel/allkirjastamisel → Läbirääkimisel; `history.replaceState`); imporditud lepingu, töölepingu ja viisardi
+  tagasi-nupud → „Portfell". Murupuru esimene osa („Portfell" / „Minu dokumendid") on link saki juurde, kust dokument avati
+  (`navSubOf`: leping/imp → lepingud, pakkumus → pakkumused, klient → osapooled, objekt → esemed).
+- **v=578 — portfelli „Kliendid" → „Osapooled"** samas `.pf-panel` kujunduses: kliendid + imporditud lepingute pooled, keda
+  kliendiregistris pole (nt Caverion = Teenusepakkuja); roll alamvaadetena (Kõik · Üürnikud · Kliendid · Teenusepakkujad,
+  `#/portfell/osapooled/<roll>`); veerud Osapool · Roll · Lepinguid · Tasu/kuu (kehtivad + imporditud) · Riskiskoor ·
+  Viimane suhtlus · ↗; jalus summaga. Vana `#/portfell/kliendid` → alias; kliendi lehe tagasi-nupp „Osapooled".
+- **v=576 — kolleegi auditi parandused (partii 1 + 2):**
+  sisu: esmakäivitusel kehtiv leping `seedKehtivLeping` (Killa PAK-2026-007 → LEP-2026-001, allkirjad, parkimiskohad
+  `parkLahimad`; `DB.FRESH`), täituvus 89 → 80 → 84 %; imporditud punktide arv klauslikihist (LEP-2023-029: 132), kihita
+  lepingul aus tekst; poolte punkt originaalist siltide kaupa + „sõlmimise aegsed andmed" (`klPooledHTML`); README uuendatud.
+  Portaal: kliendivalija ainult operaatori eelvaate ribal (`.po-preview`, „Ava kliendina"), üürnik valijat ei näe.
+  Ligipääsetavus: omnibox/agent/komposer `:focus-within` rõngas (helk jääb); `--faint` 64 % tume / 55 % hele, heleda
+  `--amber` 52 % (AA); vaatevahetusel `#sr-live` teade + fookus `#app-view`-le. Eskeipimine: omnibox, avalehe tegevused,
+  võtmekuupäevad. Partii 3 (tokenite/komponentide dokument Mattiasele) jäi hilisemaks.
+- **v=575 — portfelli uus paigutus (kasutaja eeskuju):** päis „Portfell" + alapealkiri, saki põhitegevus paremal (`Uus leping` /
+  `Uus pakkumine` / `Lisa objekt`); allajoonitud sakid arvudega (`.pf-tabs`); roheline riba (`.pf-signbar`: pealkiri + alarida +
+  „Vaata ja allkirjasta →" / „Vaata ja tegutse →"); kõik ühes paneelis `.pf-panel` (otsing + loend/kaardid · alamvaated · kiibid ·
+  tabel · jalus „N lepingut · Kokku kuus X €"). Lepingute veerud: Klient/leping · Ese (tüüp + imporditud alareal; tüübifilter) ·
+  Tasu/kuu · Periood (algus/lõpp kahel real; sort `psort`) · Olek · ↗ (`I.ext`; allkirja ootel roheline „Allkirjasta").
+  Pakkumused samas paneelis (`offerTableHTML(f, true)` + jalus). Ikoonid `I.ext`, `I.sign`.
+- **v=574 — pakkumuste riba „Näita"** (nagu lepingutel): üks tegevust vajav pakkumus → roheline tegevusnupp; mitu → „Näita"
+  → `#/portfell/pakkumused/tegevus` (uus `OFFER_FILTERS.tegevus` „Vajab tegevust", arv ja read `offerTegevus` järgi, prioriteedi
+  järjekorras; kiip on nähtav ainult siis, kui filter on aktiivne — esimesena).
+- **v=572–573 — pakkumuste tabel: olek ja järgmine samm eraldi:** veerg „Olek" = ainult pill; uus paremale joondatud veerg
+  „Järgmine samm" = väike nupp (esimene prioriteet — kliendi ettepanek — roheline, teised ghost) või vaikne „ootab klienti · N p".
+- **v=568–571 — pakkumuste kiirteed** (kasutaja, nagu lepingute „Allkirjasta →"): `offerTegevus(o)` = mis ootab üürileandjat
+  (Kliendi ettepanek → „Vasta kliendile", Aktsepteeritud ilma lepinguta → „Loo leping", Mustand → „Saada kliendile"). Olekulahtris
+  kiirtee `#/pakkumus/ID/vasta|leping|saada` (marsruut lubab järelliidet; init puhastab URL-i, fookus + `.go-pulse` õigel väljal:
+  `#op-reply` / `#to-lease` / `#send-offer`). Portfelli sakis pealkirja all `offerTegevusRiba` + otsing; saki arv = `offerTegevus`
+  arv. „Pooleli" sisaldab nüüd Aktsepteeritud (ootab lepingut), „Lõpetatud" enam mitte. Saadetud: „ootab klienti · N p" (≤ 3 p ooker).
+- **v=567 — tuhandeeraldaja alati:** `eur()` (data.js) vormindab `useGrouping:false` + ise lisatud murdumatu tühik iga 3 numbri järel
+  (ka 4-kohalised: 1 328 €, 3 215 m²); EHR-i pindalad objekti lehel läbi `eur(…, 0)`. Hinnasisendid (€/m² < 1000) ei mõjutu.
+- **v=566 — portfelli filtrid veerupäistes** (kasutaja): Lepingud-saki tööriistaribal ainult otsing + 4 vaadet arvudega
+  (Aktiivsed · Läbirääkimisel · Lõppevad · Arhiiv) + kaart/loend. Tüübikiibid ja „Imporditud" vaade kadusid → `PF_COLS` päised:
+  Tüüp (vertikaal + allikas platvorm/imporditud, `PF_TYPE`/`PF_IMP`), Olek (mitmikvalik `PF_OLEK`), Klient/€ kuus/Algus/Lõpp
+  sorteerivad (`PF_SORT`). Popover `.th-pop` (`pfHeadBind`, sulgub väljaspool klõpsu / Esc). Kaardivaates sama päiserida
+  (`.pf-colbar`); aktiivsed filtrid kiipidena `pfChips` (× / „Tühjenda kõik"). Vana `#/portfell/lepingud/imporditud` → allikafilter.
+- **v=564–565 — plaan avaneb PDF-ina (kasutaja: PDF on selgem):** `openPdf` täisekraanil = PDF-raam `#view=Fit&toolbar=0&navpanes=0`
+  (terve leht mahub, vektor terav); PNG-eelvaade jääb ainult kehtiva lepingu dokumendiveergu (`pdfEelvaade`). CSS: tühi `.pdfhtml`
+  on `pk-max` režiimis peidus (muidu võttis pool akna kõrgusest).
+- **v=563 — plaanide eelvaated teravaks:** `lisad/pinnad/*.png` + `T6B_parkimisskeem.png` uuesti 3600 px laiusega, 64-värviline
+  palett (MEDIANCUT, ilma ditherita) — 2× resolutsioon, kokku 6,2 MB (enne 6,7 MB 1800 px). Modaalis `object-fit: contain`
+  100 % kastist. Vektor-SVG oleks olnud ~4,6 MB/plaan — liiga raske. Importitud skaneeringud jäid 1800 px.
+- **v=562 — plaan-PDF avaneb tervikuna:** `openPdf` täisekraani režiimis (`pk-max`) näitab PDF-i asemel sama nime `.png`-d
+  (`.pdf-img`, mahub laiuse JA kõrguse järgi); pildi puudumisel PDF-vaatur `#view=Fit`. „Ava uues vahekaardis" = originaal-PDF.
+- **v=561 — hoone kaart** (`objMiniCard`, kasutaja eeskuju): ikoon + nimi, täituvus % ja riba paremal; kaks suurt numbrit
+  (Üüritulu € / kuu, Vaba pind m² · N pinda); jalus kalendriikooniga „Järgmine tähtaeg: 30.09 · tüüp" (sama aasta → pp.kk).
+  Kasutusel Portfell › Esemed ja Ülevaates (≥ 2 objekti).
+- **v=560 — pakkumuse ülaosa nagu lepingul:** tagasi-nupp + nupurida + `.cl-track` asendatud `.lep-riba`-ga: `PAK-… ✓ Mustand —
+  ● Saadetud — ○ …` (kliendil lühem rada; „Kliendi ettepanek" ooker, lõppolek punane hetkesammul) + „Muudatused · N →",
+  „Eelvaade · prindi / PDF", lisad (`openOfferLisa`) ja seotud lepingu link. `#offer-diff-n` id säilib (init uuendab arvu).
+- **v=557–559 — laiad sisud üle ekraani:** `pdfMax(on)` paneb modaalile `.pk-max` (≈ kogu aken, 14 px äär); parkimise aknad
+  (`openParkLisa`, `parkPickUI`, `parkEelvaade`) ja plaani-PDF-id (`openPdf`: pinnad/…plaan/parkim) avanevad nii, plaan skaleerub
+  akna kõrgusesse (flex; JS-i `display:block` kirjutatakse CSS-is üle). `pdfKind` lähtestab (dokumendid jäävad 1100 px).
+- **v=555–556 — parkimiskohad läbirääkimisel valikuga:** üldine valija `parkPickUI` (siht = kohustuslik arv või null = vaba arv,
+  `onSave`); `faktiSisend("parkimine")` = peidetud väli + „Vali kohad plaanil" (`parkFaktValik`) — ettepanek kannab `parkKohad`,
+  vana/uus tekst numbritega; kinnitusel `f.parkKohad = ep.parkKohad`; muudatusringi fakt kannab samuti kohti. Lepingu mustandi
+  P 2.2 ja ühe pinnaga pakkumuse arv ei ole enam numbrisisend (tuleb valikust). Üürnik: „Vaata kohti plaanil" (`parkEelvaade`).
+- **v=551–554 — parkimiskohad eraldi esemena** (kasutaja): `PARK_SVGS["obj-t6b"]` (juurkausta parkimisplaan.svg sisseehitatuna,
+  „Pind 19" silt → „Pind 20"; data.js IIFE ekspordib `PARK_SVGS`, `PARK_MUUD`). `parkInfo` loeb SVG-st kohad (nr, ligipääsetav,
+  keskpunkt) ja pindade uksed; `parkHoive` tuletab olekud (Üüritud/Lepingus/Pakkumuses/Kasutusest väljas); `parkPlaanHTML`
+  värvib genereeritud `<style>`-iga (`--pk` muutuja); objekti lehel `parkRegisterHTML` + `parkRegBind` (ainult registriplokk
+  renderdub uuesti). Pakkumuse mustandis rida „Kohad plaanil" (`parkPick('o')`), lepingu P 2.2 mustandis „määra kohad plaanil"
+  (`[data-parkpick]`), Lisa 2 kõikjal `park:` (`parkFix` teisendab vana staatilise T6B_parkimisskeem.pdf viite), kehtival
+  lepingul „Vaheta kohti" (arv sama). Pakkumuse versioonid/diff kannavad `parkKohad`. B11G-l plaani pole → vana käitumine.
+- **v=549–550 — pindade oma plaanid:** `pindade-plaanid/` (kasutaja, 34 SVG + kõik pinnad; gitignore'is, ~160 MB) →
+  headless Chrome print-to-pdf (vektor, ~380 KB) + pymupdf PNG-eelvaade 1800 px → `demo/lisad/pinnad/T6B_Pind_NN.pdf/.png`
+  (NN = 01…30, B1…B5) ja `T6B_koik_pinnad.pdf` (objekti üldplaan). Iga pind: `plaanFail` → pakkumuse ja lepingu Lisa 1 on
+  pinna oma plaan (valitud pind kollasena). `plaanFix`: vanad salvestatud Lisa 1 üldplaani viited → pinna plaan; `load()`
+  täiendab salvestatud pindu `plaanFail`-iga ja viib vana üldplaani tee uuele. NB: pymupdf SVG-renderdus on vale (mustad
+  alad) — kasuta Chrome'i. Pind 19 plaani pole (alusplaanil ühine Pind 20).
+- **v=548 — lisa eelvaade pildina** (`pdfEelvaade`): kehtiva lepingu dokumendivalijas näidatakse PDF-lisa kõrval olevat
+  sama nimega `.png`-d (täislaiuses, ei keri, PDF-vaaturi tumedat raami pole); pildi puudumisel varuvariant = PDF-raam.
+  PNG-d tehtud pymupdf-iga 1800 px laiuseks: `lisad/T6B_parkimisskeem.png`, `T6B_pinnaplaan.png`, `importitud/P29_parkimine.png`,
+  `importitud/T6B_pind_29_plaan.png` — PDF-i muutes genereeri PNG uuesti.
+- **v=547 — lepingu nr, olekurada, muudatused ja dokumendid ALATI dokumendi kohal** (`.lep-riba`, ka laial ekraanil);
+  puus on ainult sisukord + edenemisriba (puu „Leping" ja „Dokumendid" plokid eemaldatud).
+- **v=545–546 — akna suuruse muutus:** A4 ümbermurdmine (resize) taastab nüüd märgised (`a4Marks`), allkirjade märgi
+  (`a4SigBadge`) ja puu nähtavuse. Vana päis (`.lep-head`) on alati peidus; kitsal ekraanil `.lep-riba` — lepingu nr + olekurada
+  + „Muudatused · N" + lisad monospace-ribana (`lepPeaOsad` = puu tipu ja riba ühine sisu).
+- **v=543–544 — portfellist otse dokumenti** (kasutaja): kaardi/rea klõps avab kohe lepingu, pakkumuse, imporditud lepingu
+  (`r.href`); eelvaateid (`pfExpand`, `pfPreview`) ja pinnapaneeli (`openSpacePanel`) hetkel ei avata, funktsioonid jäävad koodi.
+  Pinnakaart (`avaPind`): leping › aktiivne pakkumus › imporditud leping › vaba pind = uus pakkumus pind eelvalitud (`PRE_SPACE`);
+  hõivatud ilma dokumendita → teade.
+- **v=542 — allkirjade märk A4-paberi ülanurgas** (`a4SigBadge`, pärast lehtedeks murdmist): allkirjastamisel ja
+  allkirjastatud lepingul „○ Üürileandja · ✓ Üürnik · 1/2" (roheline linnuke = allkiri olemas, katkendring = puudu,
+  „(sina)" oma poolel, nimi + aeg vihjena); 2/2 roheliselt.
+- **v=541 — puhas lepinguvaade** (kasutaja otsus): päis (`.lep-head`) on peidus, kui puu on nähtaval (`body.lt-on`, seab
+  `ltreeLayout`). Puu tipus „Leping": number, olekurada ✓/●/○ (kehtival üks olekurida), lõpetamise märge, „Muudatused · N →";
+  puu lõpus „Dokumendid" (`lepDokumendid` — kehtival dokumendivalija, muidu avab lisa). Kitsal ekraanil jääb vana päis.
+- **v=533–537 — lepingu puu (sisukord) dokumendi kõrval** (kasutaja eeskuju): `#ltree` akna vasakus vahealas (fixed,
+  `ltreeLayout` — v540: kitsas — laius ≤ 168 px, 11,5 px mono; peidus, kui külgriba ja dokumendi vahel on < 170 px). Monospace, „└" harud; v538 „nagu nav": tekstina AINULT
+  jaotiste pealkirjad, punktid numbrireana nende all (`.lt-n`); Üldtingimuste jaotiste numbrid ainult aktiivses jaotises; Lisa 3 → 1, 2, 3…
+  Jooksev punkt hele (`ltreeSpy`: 35 % joon, valitud punkt eelistatud kui ekraanil), punktiirne edenemisriba + %,
+  ↑/↓ valib eelmise/järgmise punkti (`ltreeKey`; paani tühi kommentaarikast ei blokeeri). Klõps puus = punkti valik paanis
+  (jaotis → esimene punkt). Töötab mõlemal poolel, A4- ja mustandivaates.
+- **v=526 — üürnik näeb lepingut ALATI A4-dokumendina** (kasutaja otsus 23.09): läbirääkimistel (Saadetud, Kõik aktsept.)
+  sama A4 kui allkirjastamisel (`a4Koik`); mustandi töövaade (`renderPunktid`, `[data-clause]`) on ainult üürileandjale.
+  A4-s on punkt klõpsatav (delegeeritud kuular `#a4-wrap`-il → `togglePunkt`), valitud punkt `.a4-sel`, lahtise aruteluga `.a4-open` (v532: neljakandiline raam ala SEES; ala jagab punktidevahelise ruumi pooleks — padding + sama negatiivne margin: osapooled 10 px, üldtingimuste read 8 px külgedel, Lisa 3 loend 3,5 px — naaberalad ei kattu, tekst ja lehtedeks murdmine ei nihku; hover 60 ms; prisma-helki siin EI kasutata, kasutaja otsus)
+  (`a4Marks()` pärast lehtedeks murdmist ja iga valiku järel). Kehtib ka kehtiva lepingu A4-vaates.
+- **v=523–525 — arutelu ajajoonena** (kasutaja eeskuju). Paani lõimes ühendab avatarid peen vertikaaljoon, iga päeva ees on
+  eraldaja „23. september 2026" (`thDays`, kaardid kannavad `data-day`), oma sõnum on „Nimi · sina". Lahendus on ajajoone viimane
+  sündmus: „Punkt selgitatud" + kellaaeg · „Põhjendus: …" · „Tarmo Sepp · üürileandja". Suletud arutelu voldik on kaart
+  (`.np-box`): „Arutelu ja ajalugu" vasakul, „N kommentaari ⌃" paremal.
+- **v=522 — PÄRIS pinnad t6b.ee-st** (loetud 23.09.2026): `SPACES` = 29 pinda (1–18, 20–30; Pind 19 kodulehel puudub)
+  + 5 bürood (`bu1`–`bu5`, nr „B1"…), kokku 7775,3 m²; m², osad (`jaotus`), parkimine ja hinnaastmed kodulehelt, elekter hinnang.
+  „Hõivatud" → Üüritud (tenant null). Päris vabad 2, 4, 5, 6, 22 kannavad demo pakkumusi: Future Invest mustand **Pind 22**
+  (oli 12), ONRY Pind 2 (oli 3), Maatrans Pind 5 (oli 1), Killa 4, MR Safe 6. `vabanes` (4–6: 31.05.2026) → täituvuse ajalugu.
+  `SPACES_SEED` versioon: vana salvestatud pinnastik asendub seemnega. Agent tunneb „pind N" / „büroo N" / „bN" (`spaceFromText`).
+- **v=518–521 — „Kuidas lahendame?"** (kasutaja eeskuju, asendab v517 „Sinu vastus + Muud tegevused"). Operaatori lahtisel
+  arutelul on valikuread (`.hw-opt`): Selgitan tingimust (sulgeb „Selgitatud") · Muudan sõnastust/fakti · Saadan Lisa 3-sse ·
+  Lükkan tagasi + link „Soovin ainult vastata". Valik avab vormi SAMAS kohas: „← Tagasi", rasvane silt („Vastus üürnikule" /
+  „Selgitus üürnikule" / „Põhjendus üürnikule"), tekstikast, märkus, täislaiuses roheline nupp („Saada vastus" jätab arutelu
+  lahti). Sinu käigul on „Kehtiv sõnastus" voldikus (`.np-curf`); paani lõim on lame: initsiaalid · „Nimi · üürnik" · täna ainult kellaaeg.
+- **v=517 — „Lahenda" menüü asemel vastamise plokk** (kasutaja eeskuju). Operaatori lahtisel arutelul (`bindThreadActions`,
+  `openThread`): „Sinu vastus" tekstiväli + [Vasta ja lahenda] (= `lahenda(cmt,"selgitatud",…)`, sulgeb kohe) + [Vasta]
+  (sõnum, arutelu jääb lahti) + märkus; `details#res-panel` „Muud tegevused": Muuda sõnastust / „Muuda: <fakt>" (FORMS.muuda),
+  Saada Lisa 3-e (FORMS.eri), Lükka tagasi (FORMS.tagasi, põhjendus kohustuslik → `#res-rej`). Vana „vasta" vorm + linnuke
+  eemaldatud. Rea pill „Sinu kord" (uus STATUS + `stIcon` kuju `clock`), kui käik on sinu; lahtise arutelu korral on lõim
+  paanis otse (mitte voldikus) ja sinu käigul olekurida ei korrata.
+- **v=514–516 — punktide paan kasutaja eeskuju järgi.** Päis „Punktid" + kokkuvõte („1 sinu kord · 1 ootab · 1 muudetud")
+  + joon; grupisildid (SINU KORD / LAHENDATUD…) maha, järjekord jääb. Rida: `.np-rt` = „Punkt 2.2" silt + rasvane
+  pealkiri, staatus pehme pillina, nool; read eraldab joon. Lahti (`npDetail` redigeerimata olek, `.np-v2`):
+  „Kehtiv sõnastus" kast (`.np-cur`) → ülekirjutuse märgid + Muuda/→ Lisa 3 → `details.np-cmp` „Võrdle varasema
+  sõnastusega" (diff v1/mall → kehtiv) → olekurida `.np-st` (ok/wait/no: „Muudatus kinnitatud · Tarmo Sepp · üürileandja
+  · 23.09.2026 kell 21:15" / „Arutelul · Sinu kord") → `details.np-more` „Arutelu ja ajalugu · N kommentaari"
+  (lahti, kui arutelu käib; sees lõim + sõnastuse ajalugu). Aruteluta punktil lõim + kommentaariväli otse.
+  `.ce-foot` on `.np-thread`-is väljaspool voldikut (bindThreadActions). Uued ikoonid `I.clock`, `I.swap`, `I.checkc`.
+- **v=509–513 — paani pealkirjad ühtsed, kompass maha.** Paremas paanis kõik plokipealkirjad (juhtriba `.g-kes`, `.side-h`,
+  `.doc-title`, `.np-head > .overline`, kaardi esimene `.overline`) = 15 px / 700 / tavakiri / `--ink` (varem 4 stiili).
+  Juhtriba kursorit jälgiv kompass (`.g-nav`/`.g-needle` + mousemove-skript) EEMALDATUD. „Sinu kord" (`.guide.me`)
+  prisma-helk on nüüd pealkirja all (`.g-kes::after` joon + `::before` hägu); kaardi alumise serva helk juhtribal
+  välja lülitatud (`.guide.guide.me::after/::before { content:none }`; `.turn-glow` kaartidel jääb). Paani kaartidel
+  ühtne polster 18/20 px (`.cl-side .guide, .cl-side .card.pad`), läbirääkimiste plokk samal teljel, `.np-head` polster 0.
+- **v=507–508 — punkti tekst on paanis tagasi** (kasutaja: kommenteerides peab tekst olema kohe näha; tühistab UX V3).
+  `npDetail`: muutunud punktil diff, muidu `.np-word > .np-text` plokk (pind, max 260 px, keritav). Dokumendi
+  `punktPill` „Sõnastus muudetud" järgib v1-t (mustandis tehtu ei ole pärast saatmist enam „muudetud").
+  Lisa 2 parkimisskeem: `demo/lisad/T6B_parkimisskeem.pdf` genereeritud juurkausta `parkimisplaan.svg`-st
+  (A4 rõhtpaigutus, vektor, headless Chrome `--print-to-pdf`, SVG inline'is).
+- **v=506 — muudatuste jälgimine algab esimesest saatmisest.** `.send-draft` (Mustand V1 → Saadetud) kutsub
+  `lepV1Snap(l)` → `l.v1 = { aeg, tekst:{id}, hist:{id: muudatuste arv}, eri:[id] }`. `lepJalgib(l)` (v1 olemas VÕI
+  staatus ≠ Mustand V1 — vanad v1-ta saadetud lepingud jäävad malli-võrdlusele), `muutusV1(l,p)`, `v1Hist(l,p)`.
+  Kasutavad: `lepDiffItems` (+ modaali tekstid „saadetud versioon", sakk „Saadetud"), päise nupp (mustandis puudub),
+  `npItems` (arutelude-väline muutus ainult pärast v1-t), `npDetail` diff „saadetud → kehtiv" ja ajalugu.
+  CLAUDE.md reegel v441 uuendatud.
+- **v=504–505 — eritingimus pesastub ülekirjutatava punkti alla** (paani Punktid). `renderNegoPanel` koostab
+  „üksused": vanem (punkt) + lapsed (eri, mille `kirjutabYle` = vanema id). Laps `.np-kid` (↳ ühendusjoon `::before`),
+  vanem `.np-par`; kui vanemal oma tegevust pole, on ta kontekstirida `.np-ctx` (tuhm, pill puudub). Üksus läheb
+  kiireloomulisema liikme gruppi (mine > wait > done); grupi arv loeb päris ridu (kontekst ei loe).
+  `shown`-hulk asendab `it.list` kontrolli (kas valitud punkt on loendis renderdatud).
+- **v=503 — üks klõps: ava + näita dokumendis** (kasutaja: eraldi nupp on lisaliigutus). `.np-goto` nupp on EEMALDATUD.
+  Paani real `togglePunkt(id, {scroll:true})` avab sisu ja kerib dokumendis punktini: klikitav dokument → `selectPunkt`
+  scroll; A4-vaade (allkirjastamisel/kehtiv) → `gotoA4` (kehtival vahetab vajadusel dokumendi). Sulgemine ei keri.
+  Akordionis `.np-dh` peidetud (rida ütleb viite ja pealkirja). v499 nupu kirjeldus allpool on aegunud.
+- **v=499–502 — „Näita dokumendis" nupp ja kitsas paan.** `.np-goto` on tekstiga nupp (silma-ikoon + „Näita dokumendis",
+  pill), akordionis sisu esimene rida (varem ainult nool rea serva all — ei saadud aru). 1440–1519 px vahemikus (paan
+  340 px) on punktirida kaherealine: viide + staatus + nool üleval, pealkiri all (varem lõigati „Eritingi…").
+  NB: reeglid on `.np-list .np-row` spetsiifilisusega, sest baasreegel `.np-row` on failis meediapäringust hiljem.
+- **v=498 — „Näita dokumendis" ka A4-vaates** (allkirjastamisel + kehtiv). A4 read kannavad `data-aref` = punkti id
+  (`leaseSheetHTML`: pooled `pohi:P 1.1/1.2`, põhitingimuste `tr`, üldtingimuste `.sh-up`; `lisa3SheetHTML`: `li`).
+  `gotoA4(id)` → `a4Flash` (keri keskele + `.a4-flash` 1,8 s); kehtival lepingul vahetab vajadusel `LEP_DOC_SEL`
+  (eri → „lisa3", muu → „leping") ja keritakse pärast `paginateA4`-t (`A4_GOTO`). `a4Has(l, p)`: nool ainult punktidele,
+  mis A4-s on (pohi, uld, kinnitatud eri). Lisa N (muudatusring) punktidel sihtmärki veel pole.
+- **v=496–497 — kehtiva lepingu paani vahed.** Toimingud + „Kehtiv leping" kaart on `.side-stack` konteineris
+  (grid, gap 18 px, margin-top 18 px); `.side-stack > .card { margin-top: 0 }`, sest `toimingudCard` kannab
+  inline'is `margin-top:18px` (muidu esimene kaart oli 18 px madalamal). Uued kõrvuti kaardid pane sama konteinerisse.
+- **v=493–495 — punktide paan on akordion.** Valitud punkti sisu (`npDetail`) renderdub OMA rea alla (`.np-list .np-detail`,
+  vasak joon, `np-in` animatsioon), real nool `.np-chev` + `aria-expanded`. `togglePunkt(id)`: sama punkti teine klõps
+  (paani real või dokumendi `[data-clause]`-il) sulgeb sujuvalt (`.np-closing` max-height → 0, 200 ms; reduced-motion
+  → kohe). `selectPunkt` jääb programmilisteks valikuteks (REOPEN, gotoClause). Akordionis peidetakse `.np-dh` kordus
+  (viide + pealkiri on real); „Näita dokumendis" (`.np-goto`) eemaldatakse, kui dokumendis pole klikitavat punkti
+  (allkirjastamise A4-vaade).
+- **v=491 — teise poole allkiri nähtavaks.** `lepSig(l)` = {yl, yn}, `ootabMinuAllkirja(l)` (üürnik allkirjastas,
+  üürileandja mitte). Lepingu paanis juhtriba all `allkirjadCard(l)` (2 rida ✓/○, „(sina)", 1/2) ja juhtriba ütleb,
+  kes/millal/millega allkirjastas. Avalehe „Vajab tegevust": „X allkirjastas — sinu allkiri puudu" (pri −1, esimesena)
+  ja „leping valmis allkirjastamiseks" (pri 1). Portfell: kaardil/loendis `.pill-sig` „Üürnik allkirjastas" + nupp
+  „Allkirjasta"; lepingute saki kohal `.pf-signbar` igas vaates. KIIRTEE: `#/leping/ID/allkiri` (marsruut lubab
+  sufiksi) → `View.leping.init` puhastab aadressi (`history.replaceState`) ja avab `openSign()`, kui oma allkiri puudu.
+- **v=490 — Portfelli navigatsioon ühes kohas** (kasutaja otsus 23.09): külgriba alamlingid (Lepingud / Pakkumused /
+  Kliendid / Esemed) eemaldatud, valik käib lehe sakkidega (`.tabbar`). Loendurid `PF_COUNTS` → saki märk `.tb-n`;
+  külgriba „Portfell" näitab summat. Üürileandja päris kontakt (`varne@futureinvest.info`) JÄÄB — kasutaja otsus
+  23.09: klapib repos olevate imporditud lepingute PDF-idega (auditi #5 suletud).
+- **v=489 — UX-testi jäägid.** Kõik natiivsed `confirm()`-id → `askConfirm(msg, okLbl)` (Promise, `.cfm` modaal,
+  Esc/taust = loobu, Enter = kinnita; käsitlejad on `async`), „Lähtesta demo" → `askReset()`. Riskiraport:
+  müügitulu tulbad (`rkYears`, `.rky*`) eemaldatud, majandusnäitajate tabel on ruudustikus nende kohal (`.rk-e`).
+  Operaatori läbirääkimispaanis kiibid „Ettepanekus: Hind / Parkimiskohad / Rendiperiood" (`.nego-jump`,
+  `[data-jump]` → keri + `.jump-flash` + fookus); mustrid on kitsad (tagatise „3 kuu üürilt" ei anna vastet).
+  Kehtival lepingul paanis toimingud + allkirjad ENNE punktide ajalugu. Suhtluses vastamata lõim ≥ 3 p →
+  „ootab N p" (`.sl-age`). Poolte kaardil e-post murdub `@` juures (`<wbr>`).
+  **Kontrollitud:** kõigi klientide aadressid klapivad äriregistriga (UX-leid V12 aadressi osa ja auditi #27 olid ekslikud).
+- **v=488 — pakkumuse viisard 3 sammuks.** „Ülevaade" samm eemaldatud (kordas mustandi lehte): 3. sammu nupp
+  „Loo pakkumuse mustand" (`#w-finish`) loob pakkumuse kohe. Rendiperiood (vaikimisi `WIZ.months` 60) valitakse
+  MUSTANDIS pinnatabeli all parkimiskohtade kõrval (`.period-in`, ainult `canEditPrice`; muidu tekst) — muudatus
+  käib `mutate` kaudu, versioonidiff näeb „Rendiperiood". `.wiz-review`/`.wiz-side` stiilid eemaldatud.
+- **v=487 — UX-testi parandused** (`demo/UX-KOKKUVOTE.md`/`.html`, pildid `demo/ux-test/`). Agent vastab portfelli
+  ANDMETEST (`agentKdAnswer` tähtajad, `agentVabadAnswer`, `agentTaituvusAnswer`), tundmatule → `agentFallback`
+  (näidisküsimused); pakkumust alustatakse ainult selge verbiga (loo/koosta/tee … pakkum), kliendita küsitakse
+  „kellele"; `AG_SPEED` 0.15 (animatsioon ~0,5 s); uus küsimus luba ootava toimingu ajal jätab selle tegemata,
+  jooksu ajal läheb `AGENT.queue`-sse. Täituvuse ajalugu arvutub hõivetest (`taituvusAjalugu`/`pindHoivesKuupaeval`,
+  seemne massiivid `TAITUVUS_AJALUGU`/`taituvusAjalugu` on nüüd kasutamata). `fmtShort` lisab aasta, kui ≠ jooksev;
+  avalehe võtmekuupäevad sorteeritud, möödunu `.kd-date.past` „· möödas". Allkiri on KAHEPOOLNE: `l.allkirjad`
+  = [üürileandja|null, üürnik|null], `Kehtiv` alles kahe allkirjaga, juhtriba „Ootab üürnikku/üürileandjat";
+  üürileandja allkirjastaja = Tarmo Sepp (oli „Margus Varne"). Faktimuutuse diff-kirje: `rebuildPohi(l, {noLog})`
+  + üks kirje „Tarmo Sepp (üürileandja) · kinnitas …". Lisa 3 sõnastamine on PAANIS (`npDetail` eriEdit,
+  `eriAI`/`eriOK`), dokumendis sõnastamisel eritingimus loetav, `toLisa3` ei keri (`LEP_SEL_PUNKT`).
+  Viisardi riskisamm näitab avaandmete tulemust kohe (`riskPohjus` = „KESKMINE, sest …"), vahelejäetud samm
+  `stepperHTML(…, skip)` ilma linnukeseta; riskiraporti skaala „0 · kõrge risk / madal risk · 100" + põhjus;
+  `CLIENTS[].risk.kuupaev` nihutatakse (`shiftStoryDates`). Korduste eemaldus: lepingu ülarida ilma versioonita,
+  dokumendi päise olekumärk maha, vihjed (`coachFor`) peituvad pärast esimest renderdust, „Kolm teed edasi" maha,
+  paan ei korda muutmata punkti teksti, lahtise arutelu korral ainult „Lahenda", kliendi otsusekaardi
+  „Alusta läbirääkimisi" peidus kui kast lahti, ühe objektiga Ülevaates „Objektid" plokk maha, kliendile
+  „Muudatused" alles siis, kui on muudatusi. Rollinupp ainult pakkumuse/lepingu vaates (`body.role-ctx`),
+  paanis 88 px alumine ruum; rollivahetus kerib üles ja kustutab teated; kliendi murupuru „Minu dokumendid ›".
+  Paigutus: murdepunkt 1440 (oli 1280), 1440–1519 px paan 340 + polster 24 (täis-A4). Mobiil: olekurajal
+  ainult hetkesamm sildiga, `.cl-layout > * { width:100% }`, `.doc` kerib tabelit, teemalüliti sahtlis (`.sb-theme`).
+  Vale kliendi ID → `notFound`. Imporditud lepingu päises `.imp-next` (järgmine sündmus).
+  (Otsused tehtud v490-s — vt ülal.)
+- **23.09.2026 — korrastus pärast kaustade/seadmete vahel liigutamist.** Töökoopia = HEAD (v486),
+  `main` tõmmatud fast-forwardiga samale commitile (varem 29 commiti maas). `demo/AUDIT.md` (22.09
+  audit, v485 → parandused v486) on nüüd repos; lahtised auditi punktid (#13 CSS-i ülekirjutuskiht,
+  #14 A4 murdepunkt 1280 vs ~1514 px, #16–#21, #27) ootavad otsust. `demo/lisad/T6B_parkimisskeem.pdf`
+  on nüüd vektor-versioon (88 KB, endine 3,3 MB raster „P_29_parkimine"). `demo/design-system/`
+  (TEISE koopia hele/petrooleum kujundussüsteem, kuskil viitamata) läks `_arhiiv/`-i.
+  `demo/README.md` kodeering parandatud (oli cp1257-mojibake) ja faililoend ajakohastatud.
+  `.gitignore` sai `.claude/` ja `~$*` (Office'i lukufailid).
+- **v=486 — auditi parandused** (`d98a707`): `escH` katab `& < > " '` ja ~40 renderduskohta on escape'itud,
+  `plainIn()` puhastab lühiväljad sisestamisel; puuduv `openLepingPunkt` lisatud; `save()` salvestab
+  `KEY_DATES`-i (`keyDates`); „Lähtesta demo" puhastab ka `thinkone_seaded` + `thinkone_notif_read`
+  (võtmed tuletatakse `COMPANIES`-ist); `DB.save` hoiatab täis localStorage'i korral; `fmtISO()`
+  asendab `toISOString()` (UTC-nihe); `migratePunktid()` tagab `p.muudatused` massiivi; petrooleumi
+  ja valge-helgi jäägid tokeniteks (`--hl-top`). Detailid: `demo/AUDIT.md`.
+- **v=485 — riskiraport PÄRIS avaandmetega + lepingu lõpetamine ja arhiiv** (`54c2256`): `riskiandmed.js`
+  genereeritakse `tools/riskiandmed.py`-ga; `l.sulgemine` (akt → üürniku kinnitus → lõpparveldus),
+  arhiveeritud leping on kirjutuskaitstud (`lepSigned`/`lepArh`). Reeglid CLAUDE.md-s.
+- **v=463 — pakkumuse versioonid ja muudatused** (`07d2b9f`): iga saatmine salvestab versiooni,
+  päises „Muudatused · N" (sama modaal kui lepingul), üürniku otsusekaardil „Uuendatud · vN" + eelmine
+  hind läbikriipsutatult; parkimiskohtade arv muudetakse ainult üüripindade plokis; lisasid saab
+  eemaldada/lisada (Lisa N) ja need kanduvad lepingusse; üleslaaditud PDF-id avanevad eelvaates.
+- **v=454 — ootamise juhtkaart juhtivaks, „Vaata üürnikuna" juhtribalt maha.** Kasutaja: nupp pole
+  oluline (rollivahetus on püsinupp all paremas nurgas, `.role-tab`) ja info peab juhtima. `bar()` sai
+  viienda parameetri `meta` ja lisab `wait`-olekus märgutule; `.g-live`/`.g-meta` stiilid on nüüd üldised
+  (`.guide .g-live`), ootamisel merevaigune `wait-pulse`. Tekstid ütlevad, MIS JUHTUB JÄRGMISENA: „Lisa N
+  (n punkti) on üürnikul kinnitada. Pärast kinnitust ilmub siia allkirjastamise nupp" + meta-rida
+  (kellele saadetud, et leping kehtib muutmata kujul kuni Lisa N allkirjastamiseni). `asClient` kustutatud.
+- **v=453 — keritud riba on dokumendist laiem.** `.lmeta.stuck` saab `margin-left/right: -18px` (`.view`
+  polster on 36 px, seega mahub) — riba 830 px vs dokument 794 px, mõlemal pool 18 px üleulatust. Nii loeb
+  ta dokumendi KOHAL hõljuva ribana ega sulandu lepingu servajoonega. Marginaal on üleminekus kaasas.
+- **v=452 — faktiribale pind, keritult ka üürnik.** Uus fakt „Pind" (nimi + tüüp) on alati. Üürniku
+  nimi (`.lm-co`) on peidus `max-width: 0; opacity: 0; margin-right: -28px` (viimane sööb flex-vahe) ja
+  ilmub sujuvalt ainult `.lmeta.stuck` all — üleval seisab sama nimi juba `h1`-na, seega dubleerimist ei teki.
+- **v=451 — allkirjastamine popupis, paanis ainult nupp.** `signPanel` (dokumendid + meetod + nupp
+  paremas paanis) asendus `signModalHTML` + `openSign()`/`closeSign()`-iga: juhtribal on ainus nupp
+  „Allkirjasta leping", modaal (`.signpop`, z 75 — dokumendi eelvaade z 80 avaneb selle PEALE) hoiab
+  allkirjastatavate dokumentide loendit, meetodivalikut (`.m-btn`) ja kinnitust (`#do-sign` → `doSign`).
+  Sulgub Esc-iga, taustaklõpsuga, ristiga ja allkirjastamise lõpus (`closeSign()` enne `router()`).
+- **v=450 — ootemärguanne lõime jätkuks (v444 merevaigune kast tagasi pööratud).** Kasutaja: „AI slop".
+  `.th-wait` ei ole enam hoiatuskast: katkendjoonega VARI-MULL üürileandja kohal (maja-ikoon rõngas),
+  pealkiri + kolm kirjutamispunkti (`.th-dots`, 1,5 s hüpe 0,18 s vahega) ja aeglane madala kontrastiga
+  helk üle kaardi (`::after`, 3,6 s). Taane 32 px = sama, mis vastusemullidel, nii et ta seisab lõime sees.
+  Tähelepanu tuleb liikumisest, mitte värvist; `prefers-reduced-motion` seiskab mõlemad animatsioonid.
+  Samas versioonis: `.np-row` viiteveerg `minmax(44px, auto)` + `.np-ref` max 86 px ellipsiga — pikk
+  viide („Lisa 3 · p1") kattis varem pealkirja.
+- **v=447/449 — faktiriba kleebib ülariba alla.** `.lmeta { position: sticky; top: var(--hd-h) }`,
+  z-index 15 (ülariba 20, paan 18). Keritud olekus lisab globaalne scroll-kuulaja (sama, mis juhib
+  `#doc-top` nuppu) klassi `.stuck`: väiksem polster, vari, ülaserv sulandub ülaribaga (ümarad nurgad
+  ainult all). Lävi loetakse elemendi enda arvutatud `top`-ist, mitte `--hd-h`-st. NB: klassi lülitus
+  käib `requestAnimationFrame`-is — taustavahekaardis (brauseriautomaatika) see throttle'itakse ja
+  klass uueneb alles esimese renderduse järel; päris vaates on korras.
+- **v=445/446 — Tehing ja Lisad paanist päise faktiribale.** Kasutaja: paan peaks olema toimingute jaoks.
+  Uus `leaseMetaBar(l)` (`.lmeta`) seisab `.page-head` all igas olekus ja mõlemal poolel: neli fakti
+  (üür kuus · tähtaeg/kehtib kuni · üleandmine · tagatis) + dokumendikiibid. Kehtival lepingul kiibid
+  VALIVAD keskmises veerus näidatava dokumendi (`lepDoc`/`LEP_DOC_SEL`, aktiivne = tume tindikiip);
+  mujal avavad modaali (`openPdf` / `openLisa3` / `openLisaN`). Paanist eemaldatud: Tehing-kaart,
+  Lisad-kaart ja `dokumendidCard`. Surnud koodina kustutatud `dokumendidCard`, `dpGlide`/`DP_GLIDE`
+  ja `lepStatRow`; `signCard` ning `signPanel` ei korda enam numbreid.
+- **v=444 — „Ootab üürileandja vastust" märgatavaks.** Vaikne hall `.th-wait` kast luges märkamatuna
+  (kasutaja pilt). Nüüd sama merevaigune keel kui ootejärgul: vasak värviserv, ikoonketas, rasvane
+  pealkiri + selgitusrida (`.th-wait-s`) ja pulseeriv märgutuli (`.th-wait-d`, austab reduced-motion).
+  `margin-top: 14px` hoiab ta eelmisest mullist lahus. Kasutuses kahes kohas: punkti lõime jalam ja
+  pakkumuse kliendivaade.
+- **v=441/443 — kogu lepingu diff ühe klõpsu kaugusel.** `openLepDiff(id)` avab `#pdfmodal`-is
+  `lepDiffHTML(l)`: kokkuvõtteriba (muudetud punktid · eritingimused · ülekirjutused · ringid),
+  ÜKS lüliti „Muudatused / Mall / Kehtiv" (`LEP_DIFF_MODE`, `bindDiffTabs`) ja plokid — punkti
+  sõnadiff + muudatuste ajalugu (`VIIS_LBL`), Lisa 3 eritingimused ülekirjutuse märkega, Lisa N ringid
+  lingiga `openLisaN`. Sisenemispunkt on `.page-head` paremas servas (igas olekus, ka Kehtiv/
+  Allkirjastamisel, kus dokument on A4-lehtedena ja `.doc-head` puudub) — TEIST nuppu ei lisata.
+  `rebuildPohi` kirjutab nüüd faktimuutuse punkti ajalukku (`viis: "fakt"`), muidu poleks hinna- ja
+  tähtajamuutus koondvaates nähtav (tekst järgneb vaikselt malli sõnastusele). Modaali ülarea silt
+  käib sisuga kaasa: `pdfKind()` (#pdfkind index.html-is).
+- **v=440 — lõime jalamilt aktsepteerimisnupp maha.** Lahendatud punkti lõimes oli `#acc-inline`
+  („Aktsepteeri leping — liigu allkirjastamisele"), mis vaid klõpsas juhtriba nuppu `#cl-accept-all`.
+  Kasutaja: nupp on üleval juba olemas. Jääb ainult INFO `.fin-cta` reana: „Kõik punktid on praegu
+  kokku lepitud". Tegevus elab ühes kohas — juhtribal paani ülaosas.
+- **v=437/439 — esmakordne vihje (coach mark) juhtriba juures.** `coachFor(id)` renderdab plokile
+  järgneva selgituse (nool ülal), `bindCoach()` (kutsutakse `router()`-is pärast `route.init`) märgib
+  selgitatava ploki `.coach-lit` rõngaga ja seob „Selge" nupu; sulgemine kirjutab id-i localStorage'i
+  võtmesse `thinkone_tips` ja rida kokkub. Kolm vihjet `COACH_DEFS`-is: `juht-klient-leping` (üürnik
+  avab saadetud mustandi), `juht-op-mustand` (operaatori Mustand V1), `otsus-klient-pakkumus` (üürniku
+  otsusekaart pakkumusel). NB: klassinimi `.tip` oli juba hõivatud (hover-tooltip `data-tip` atribuudiga,
+  styles.css ~2143) — uus komponent on `.coach` / `data-coach`, ärge nimetage tagasi. „Lähtesta demo"
+  kustutab ka `thinkone_tips`, nii et demo saab vihjetega uuesti läbi mängida.
+- **v=436 — arutelu lõpp ja ootejärg: kummitempel välja, lõpuriba sisse.** `.th-stamp` / `.th-verdict`
+  (mono, kaldu, VERSAALIDES tempel kaardi nurgas) on KUSTUTATUD — kasutaja: „templid pole head, aga
+  esile on vaja tuua". Asemel: (1) lahendatud arutelu lõpetab `.th-out` — täislaiuses riba värvilise
+  vasaku serva, ikooniketta, otsusesõna (13,5 px, 700, staatusevärv), põhjenduse ja „Lõpetas …" reaga;
+  värv staatuseperest (`ok` roheline · `info` sinine · `no` punane), laiem kui astmelised sõnumikaardid,
+  nii et lõim lõpeb nähtavalt. (2) „Ootab kinnitust" EI ole enam otsus vaid elav olek: `.th-live`
+  pulseeriva merevaigu punktiga seisab sõnastuse EES ja ütleb rolli järgi „Ootab üürniku/sinu kinnitust";
+  kaardil merevaigust vasak serv (`.th-card.th-dec.wait`). Pulss austab `prefers-reduced-motion`.
+  Paani grupipäis „Lahendatud · muudetud" → „Lahendatud ja muudetud" (vana luges nagu üks staatus).
+- **v=434/435 — pinnavalik: filter ees + kompaktne detailne rida.** Mõlemas viisardis (hinnapakkumine
+  `WIZ.step 3`, üürileping `LWIZ.step 2`) renderdab valiku üks jagatud komponent `spPicker(free, {attr, isSel})`
+  + `spRowHTML` + `bindSpPicker` (app.js, `occupiedSpacesNote` kõrval). Filter (otsing · maja kiibid ·
+  tüübi kiibid · loendur) ilmub, kui vabu pindu on üle nelja; filtreerimine käib DOM-is klassiga `.pk-off`,
+  ilma uuesti renderdamata. Olek elab mooduli tasemel (`SP_FILTER`, `SP_SCROLL`), sest viisard renderdab
+  end igal valikul uuesti — nii püsivad nii filter kui kerimiskoht; `spFilterReset()` viisardi avamisel.
+  Rida on üherealine veerustik (nimi+tüüp+maja · m² · €/m² · parkimine/elekter · üür): 80 px → 49 px,
+  11 pinda 880 px → 539 px, nimekiri ise `max-height: min(46vh,430px)` (u 8 rida korraga), nii et
+  viisardi nupud jäävad nähtavale. ≤900 px kaherealine grid (`grid-template-areas`), €/m² ja lisad teisel
+  real. Pakkumuse „+ Lisa pind" nimekiri sai samuti kõrguslae. Kasutatav abifunktsioon: `spEsc` (`escHtml`).
+- **v=433 — kontoloome samm pakkumuse aktsepteerimiselt maha.** Kliendi „Aktsepteerin pakkumuse" viis
+  varem lahti vormi `#cl-konto-area` (esindaja, isikukood, e-post, telefon) ja alles „Loo konto ja
+  aktsepteeri" muutis oleku. Nüüd aktsepteerib üks vajutus kohe (`#cl-accept` → `mutate`), `cl.konto`
+  väli enam ei teki (teavituste meiliaadress kukub tagasi `c.epost` peale, `c.konto` lugemine jäi
+  ühilduvuseks alles). Operaatori „Ootab kliendi otsust" tekst uuendatud: konto tekib alles lepingu
+  allkirjastamisel. Spets 7.2 kirjeldab veel vana voogu — spetsifikatsioonifaili ei muudetud.
+- **v=432 — kommentaarid KÕIKJAL paremas paanis.** (1) Pakkumuse läbirääkimised (`negoPanel` + ajaloo
+  voldik `negoHist`) kolisid dokumendi veerust `.cl-side` ülaossa, „Teie otsus" / kokkuvõttekaardi kohale;
+  CSS-i lisatud kitsam variant (`.cl-side .nego-panel`, `.cl-side .nego-body`, `.cl-side details.nego-hist`).
+  (2) Kehtiva lepingu punktilõim käib nüüd samuti paanis: `#np` renderdub KÕIGIS olekutes, `openClause` ja
+  inline `.clause-expand` on kustutatud, `gotoClause(id)` = `selectPunkt(id, {scroll:true})`, `[data-ecmt]`
+  avab paani. Muudatusringi vorm (Lisa N) elab paani lõimes. Kontrollitud brauseris: pakkumus operaatori ja
+  üürniku vaates, lepingu mustand, kehtiv leping muudatusrežiimis; konsool puhas.
+- **v=431 — juhtriba SAADETUD-signaal.** Operaatori vaates olekus „Saadetud" ei kasuta juhtriba enam vaikset
+  `wait`-varianti (kasutaja: märkamatu), vaid `sentBar()`-i: hele saatmisikoon (`.guide.sent .g-ic`), silt
+  „SAADETUD ÜÜRNIKULE", pulseeriv sinine märgutuli (`.g-live`), metarida `Saadetud <aeg> · <versioon> ·
+  <üürniku kontakt>` ja „Vaata üürnikuna" nupp. Saatmise aeg salvestub `l.saadetud` väljale `.send-draft`
+  käitlejas. Prisma-helk jääb ainult „sinu kord" olekule.
+- **v=429–430 — ÜKS KESKTELG: omnibox JA sisu külgriba ja paani vahelises alas.** Dokument tsentreerub
+  `.main` sees (`margin-inline: auto`), omnibox nihkub `body.has-panel .omni-center { margin-right: var(--panel-w) }`
+  võrra (ülariba grid `1fr auto 1fr` → keskmine veerg poole paani jagu vasakule); ≤1280 px tühistatakse.
+  Lisaks v429-st: ülariba polster sümmeetriline (0 26px) ja „Uus" nupp `position:absolute` omniboxi kõrval
+  (≥1281 px, mitte avalehel/portaalis), et otsingupill ise oleks keskteljel.
+  Mõõdetud: 2560 px → omnibox ja dokument mõlemad 1199 (õhku 554/554); 1420 px → mõlemad 634.
+  ÄRA proovi akna-keskjoondust (v427) ega vasakjoondust (v425) — mõlemad said tagasi lükatud.
+- **v=427 — dokument AKNA keskteljel.** Teekond: v424 keskel paanist vabas alas (kasutaja: „ei ole keskel",
+  sest 1440 px ekraanil täidab A4 kogu vaba ala) → v425 vasakule (võeti tagasi) → v426 revert → v427.
+  Nüüd nihkub `body.has-panel .view` `50vw - a4/2 - 36px - sb-w` võrra; min/max hoiab veeru paani alt
+  eemal. Murdepunkt 1100 → 1280 px, sest kitsamal ekraanil jääks dokument 400 px paani kõrval liiga kitsaks.
+- **v=424 — PAIGUTUSREEGEL (vt CLAUDE.md):** paan akna paremas servas (fixed), sisu keskel, dokument A4
+  (`--a4`). Vana `.cl-layout` grid (`1fr 300px` / `.cl-nego 1fr 380px`) on asendatud; `.cl-nego` klass
+  jäi markupisse tähistuseks, aga laiust enam ei muuda. `.view` kitseneb dokumendivaadetes A4 + 72px
+  peale, et päis, olekurada ja dokument oleksid ühel joonel.
+- **v=423 — TUME TEEMA (kardinaalne kujundusvahetus, codedvisuals.com eeskujul).** Kogu palett elab
+  `styles.css` tokenites: `:root` = tume, `[data-theme="light"]` = hele (vt CLAUDE.md disainikeel).
+  Komponendireeglid on tokenipõhised — värvi ei kirjutata enam reeglitesse. Erandid, mis jäid teadlikult
+  literaaliks: `--stone` märgise tekst (`#fff`), prindivaade (`body`/`.sheet` valge + must tekst),
+  PDF-vaaturi taust. Filmitera (`body::after`) on `display:none` — tumedal lõuendil luges mürana.
+  Teemalüliti: ülariba `#theme-btn` → `toggleTheme()` app.js-is.
+- **v=422 (17.09.2026):** `doSign` allkirja aeg oli `NOW_EE() + " 14:05"` → topelt kellaaeg („… 19:28 14:05") lepingu
+  allkirjaplokis; nüüd `NOW_EE()`. Sama muster on veel suhtluse vestluses (`vestlus.push … NOW_EE() + " 11:0…"`), parandamata.
+  PDF-eksport: headless Chrome `file://` + `leaseSheetHTML` + `lisa3SheetHTML` + `@page A4` → `Page.printToPDF`
+  (Lisa 1/2 on eraldi PDF-failid, eksporti ei liideta).
 - **Reaotsad (10.09.2026):** töökoopia `demo/*` on nüüd LF-iga (teine tööriist kirjutas LF; git `autocrlf`
   normaliseerib commit'il). Patch-skriptid tuvastagu reaots dünaamiliselt (`s.includes("\r\n")`), mitte eeldagu CRLF-i.
 - **Teine tööriist (ChatGPT) töötab samas töökoopias** (v390–406) ja EI kirjuta HANDOFF-i — pärast tema sessiooni
@@ -36,104 +930,206 @@
 - Git-ajalugu on parim muudatuste kroonika: `git log --oneline` — iga samm on
   eraldi commit'itud eestikeelse selgitusega.
 
-## 11.09.2026 (v=426) — TEEMAKIHT „Medi-joon" (roheline raam, pillid, Poppins)
 
-Kasutaja saatis teise viite (Medi tervisedashboard) ja palus sama puhast joont, värvid võivad olla samad. Rakendatud
-`styles.css` LÕPPU eraldi plokina (tokenite ülekirjutus + kesta/komponentide reeglid), et seda saaks ühe kustutusega tagasi
-võtta. Sisu: `.app` 16 px polster + 16 px vahe, `.sidebar` roheline 28 px plaat (sticky, `calc(100dvh - 32px)`), `.topbar`
-+ `.main` kreem plaat (28 px ülemised/alumised nurgad), logo valge (lg-box rect valge, path roheline), nav valge/.82,
-aktiivne rgb(255 255 255/.18) + oranž täpp (`::after`, peidus kui `.count`), otsing/nupud/väljad/kiibid pillid, kaardid 24 px
-servata, tabelipäis kriipsjoonega, graafik roheline + kriipsjooned + oranž hetkepunkt, `.lmonths .now` oranž, `.hbubble` valge
-tooltip, roheline fookuskaart (`.met-grid > .met:first-child`, `.cl-side .card:has(.pc-big)`), Poppins pealkirjades
-(fondilink index.html + kujundus.html). ≤1024 raam ilma polstrita, sahtel roheline. Kontrollitud: ülevaade, pakkumuse detail,
-avaleht. app.js: graafiku gradient rohekaks.
+## 26.09.2026 (v=622–626) — „DEMO 3" ON UUS ALUS
 
-## 11.09.2026 (v=425) — VIITE ELEMENDID: avatarid, kiibipilved, väärtus-enne-silti, delta, tilaala
+- Kasutaja: kaustas `demo 3/` on väga hea versioon → `demo/` kirjutati selle sisuga üle (robocopy /MIR, 0 kustutatud faili;
+  app.js/data.js/styles.css/index.html baidi kaupa identsed). `demo 3` on meie v621 edasiarendus; `demo 3/` jääb lähtekoopiaks.
+- **v622 import lepingu kaupa:** laud rühmitab failid toimikuks (leping + lisad + kaasdokumendid), ülevaatus samm-sammult,
+  tulemus + portfelli tervis; tekstikihita PDF → Tesseract.js (eesti keel, cdn.jsdelivr.net, laetakse vajadusel) — sõnakastid
+  annavad samad ankrud ja kindluse; allkirjad XAdES-ist koos meetodiga (ID-kaart / Mobiil-ID / Smart-ID), ajatempel;
+  kinnitamine ka hulgi tagasivõetav; impordis kinnitust ootavad lepingud registris veel ei paista. Imporditud lepingu vaates
+  „Impordil parandatud" rida ja väljaspool platvormi allkirjastatud lisa sidumine.
+- **v623 „Alusta · 10 minutit":** uus ettevõte „Uus konto" (`COMPANY_ID === "uus"`, tühjad massiivid, `OBJEKT` = `obj-none` kohatäide,
+  esimene kinnitatud hoone saab OBJEKT-iks); `#/alusta` 4 sammu (äriregister → EHR → pinnad tabelist → impordilaud); `PINNAD_NAIDIS`
+  (data.js) annab T6B pinnad CSV-na; tühjal kontol ütleb iga põhileht, kus seadistus pooleli on; klientideta kontol klientroll
+  langeb operaatoriks.
+- **v625:** kalender ajajoonena uue kujuga (kuupäev · selgroog · sündmus · aeg · nool, „Täna" joon, 30 päeva telg); osapoole leht
+  (päis + kolm arvu, juhtkaart reana, dokumendid, tähtajad ajajoonena, arhiiv; paremal kontakt · allkirjastajad · riskiraportid);
+  avalehe tegevused kasutavad Kord-märki (`v625-k2`), osapoole seis = riskitase (`v625-k3`).
+- Uued viitefailid kaustas (rakendus neid ei lae): `pdf.css`, `muudatused.html`, `MVP DESIGN.docx`, uuendatud `kujundus.html`;
+  `lisad/T6B_parkimisskeem_uus.pdf`; `.claude/launch.json` (python http.server 8765).
+- Kontrollitud (headless Chrome): kõik põhivaated + Uus konto `#/alusta`, 0 konsoolivea.
+- **v627–628 (kasutaja):** ülevaatuses „Kinnita leping ja järgmine" ei näita enam 0,9 s vahekaarti (`IMP_UI.tehtud`), mida ei
+  jõudnud lugeda — liigub KOHE järgmise toimiku juurde ja selle paani ülaossa jääb kviitung (`IMP_UI.kviitung`, `irKviitungHTML`):
+  „Eelmine: <nimi>" · LEP-id · registris · pind · tähtajad · „Ava" · „Võta tagasi" (`impKviitungTagasi` → `impTaasta`). Kviitung kaob
+  järgmise otsusega (`impOtsus`, `impJata`) või uue kinnitusega; ühe kinnituse eraldi toasti enam pole (hulgikinnitusel jääb).
+- **Claude Designi katsepakk (`demo/design-system/`):** `tokens.css` (kaks tokeniplokki muutmata), `components.css` (215 reeglit —
+  ainult need, mis katse komponentidele demos rakenduvad, algses järjekorras; valitakse brauseris `el.matches`-iga, teemaatribuut
+  ja pseudoklassid maha võetud), `previews/` 7 lehte (Värvid, Kiri, Neli märki + sakid + külgriba, Nupud, Portfelli kaart, rida,
+  Juhtkaart) mõlemas teemas päris märgendusega, esimene rida `<!-- @dsCard group="…" -->`. Generaator `tools/` (ei lähe üles).
+  **Sünkitud (26.09):** Claude Designi projekt „ThinkOne demo" (https://claude.ai/design/p/9ae0e3de-c685-4f5d-8701-91d8d7a4e735).
+  Kuju „tokenid + CSS-klassid": tühi `_ds_bundle.js` (0 komponenti), `_ds_bundle.css` = kogu demo `styles.css`, kaardid
+  `guidelines/cards/`, README = `.design-sync/conventions.md` (klassisõnavara agendile). Ehitus `tools/bundle.mjs`, märkmed `.design-sync/NOTES.md`.
+## 25.09.2026 (v=617–619) — 3. MIGRATSIOON STEVENI DEMOST: kalender ajajooneks (2.5)
 
-`avatar(name)`/`initials()` app.js-is (`.av-i` helesinine ring + koobalt-initsiaalid): pakkumuste tabeli klient-lahter (`.ent` = avatar + nimi + kontakt) ja suhtluse loend. Täituvuse hero all `.delta.up/.down/.flat` (pp eelmise kuuga, `objektAjalugu` viimane väärtus). Kiibipilved: `.pf-view/.tabbar a/.offer-filters a` valimata = primary-subtle + koobalt, valitud = koobalt (tabbar ilma valge kestata, `.pf-sep` peidus). Suhtluse valitud vestlus `.sl-row.sel` = koobalt-kaart valge tekstiga. `.met` = väärtus enne silti (flex order). Tilaala: `.obj-add`, `.obj-upload input[type=file]` dashed. Tume tooltip: `.hbubble`, `.tip::after`, `.lchart .pt.now` = `--color-text`.
+- Loendivaade on AJAJOON: üks pidev selgroog (`.kal-aeg::before`) läbi kõigi kuude, iga rea ees täpp (`.kal-tl-p`):
+  täidetud merevaik = vajab otsust, tühi ring = rakendub ise (`kalIse`: indekseerimine, katseaeg, tagatise korrigeerimine).
+  Möödunud read (`.moodas`) tuhmuvad. Rühmad on kuude kaupa (varem „See nädal" + aastad); kuu pealkiri kleepub ülariba alla
+  (`.kal-kuu-h` sticky, vasak riba läbipaistev, et selgroog ei katkeks).
+- Üleval kaart „Järgmised 30 päeva": kuni 4 lähimat tähtaega (päevi jäänud · ikoon · tüüp + objekt · kuupäev · olek) + legend;
+  klõps kerib ajajoonel sama sündmuseni ja avab selle detaili.
+- Sündmuste sisu jäi põhidemo omaks (rida, indekseerimise arvutus, avanev detail, tüübi- ja objektifilter). Kuuvaade muutmata.
+- **v620–621 (kasutaja):** ajajoone real üldine reajoonte-hover (`.kal-row::after`, nurkades jooned) maha — hover = valge kaart
+  (`--surface` + vari, raadius 12); avatud sündmus = rida + detail üheks kaardiks, detail joondub tekstiveeruga, peen joon vahel,
+  sisu max 620 px; täpi rõngas järgib tausta.
+## 25.09.2026 (v=607–612) — 2. MIGRATSIOON STEVENI DEMOST: osapooled · arhiiv · neli märki · üks kaardimudel
 
-## 11.09.2026 (v=424) — VIITE JÄRGI: küllastunud koobalt, servata kaardid, nurgad 8/12/16, must UI-st välja
+- **Neli märki (2.3)** — üks visuaal ühe tähenduse kohta: Seis = `pill()`, Kord = `kordMark(minu|teine|ok)` (ooker/hall/roheline täpp),
+  Lugemata = `lugemataMark(n)` (sinine täpp + arv), Arv = `arvMark(n)` (`.mk-arv`, asendas `.count`/`.tb-n`/`.pf-n`/`.offer-filter-count`).
+  Kord on kaardil, real, juhtkaardil (`juhtriba`/`juhtribaSulg` „g-kes") ja osapoole lehel. Lugemata = teise poole sõnumid
+  (lepingu `arutelud`/`sonumid`, pakkumuse `labiraakimised` + `kliendiEttepanek`) uuemad kui dokumendi avamine
+  (`dokLoetud`, localStorage `thinkone_loetud`); külgriba „Suhtlus" näitab lugemata arvu.
+- **Üks kaardi-/reamudel (2.4)** — `pfMudel(r)` / `osapoolMudel(p)` → `kaartHTML` / `ridaHTML` / `pfLoendHTML`; järjekord alati:
+  nimi + seis · tunnus + ese · raha · aeg · järgmine samm (`pfSamm`: Kord + lause + kiirtee). Lepingud, pakkumused ja osapooled
+  kasutavad sama loendit (kaardid/read, `thinkone_pf_mode`). **Järjesta** (`thinkone_pf_sort`): Viimased ees (`pfViimaneMs` =
+  audit + sõnumid + allkirjad, mitte loomise kuupäev) / Tähtaeg lähemal (`pfTahtaeg`: võtmekuupäevad, kehtivus) / Nimi; „sinu kord"
+  alati ees. Veerupäiste sort eemaldati (kasutaja), filtrid (Ese, Seis) jäid. Vana `offerTableHTML`/`View.pakkumised` ja surnud
+  `pfNextStep`/`pfExpand*`/`pfPreview` eemaldati.
+- **Arhiiv (2.2)** — `ARH_OLEKUD` = Lõppenud · Ennetähtaegselt lõpetatud · Asendatud · Tühistatud; `arhiivInfo(r)` → miks + järglane;
+  `arhiivLoend` ridadena aasta kaupa. Sisu AINULT päris andmetest (kasutaja): imporditu tähtaeg möödas (`impArhiivis`, järglane =
+  hilisem leping samal pinnal), lisaga üürniku vahetus (`x.eelmised`, nt Rataskaevu → Bombay = „Asendatud" → järglane), lõppenud
+  pakkumused (portfell › pakkumused › Arhiiv). Imporditud lepingu vaates arhiivi/üürnikuvahetuse märkus.
+- **Osapooled rollidega (2.1)** — `osapooled()` tuletab dokumentidest (leping, pakkumus, tööleping, import); rollid üürnik ·
+  töötaja · teenusepakkuja; alamvaated Kõik/Üürnikud/Töötajad/Teenusepakkujad/Arhiiv (endised). Leht `#/osapool/<id>`
+  (vana `#/klient/` suunab): juhtkaart (järgmine samm, sh riskiraport puudub/vana) → Dokumendid (kaardid) + Arhiiv (volditud) →
+  Kontakt · Allkirjastajad (dokumentidest; üürniku poolelt mitu allkirjastajat = „ühine esindusõigus") · Riskiraportid · Tähtajad.
+  Loomisnuppu pole („+ Loo › Klient" eemaldati). Riskiraportita osapool: `View.risk`/`riskInline` näitavad märkust.
+- **v614 (kasutaja):** Seis-veerufilter eemaldati; „Ese" (tüüp + allikas) on tööriistareal Järjesta kõrval (`pfEseBtnHTML`,
+  sama koht kaardi- ja reavaates); tabelipäis on puhas tekst, `.pf-colbar` kaartide kohal kadus. Parandus: lisa üürimuutus
+  (`impRakendaLisa` → m.hind) luges „182,4 m²" valesti → üür 0 (WiSo); impordi rea m²/hind tuleb `pindIds`-ist (Evecon P7 vs P15).
+## 25.09.2026 (v=595–599) — LEPINGUTE IMPORT (1. migratsioon Steveni demost), PÄRIS lugemisega
 
-Kasutaja saatis viitepildi (koobalt-UI kaardikomplekt: valged kaardid pehme laia varjuga heledal hallil, sinised kiibid ja
-avatarid helesinisel pinnal, roheline ainult positiivsel muutusel, nupud ~12 px nurgaga). Rakendatud tokenitena:
-primary `#1F5EFF` / hover `#1749D6` / subtle `#E9EFFF`, `--color-success-vivid #22C55E` (`.bar > i`, `.pf-time .track i`,
-`.stepper .trk i`, toast/step/fin-cta ikoonid), raadiused 8/12/16, `--edge-color rgb(20 26 38 / .04)` + laiem `--shadow-surface`,
-lõuend `#F0F1F5`. `btn-ghost` = lõuenditooni pind ilma servata; `btn-primary` sinise kumaga. Kõik mustad valikud
-(tabbar, pf-view, pf-mode, lmonths.now, pipe-step b, ladder, ct-rail, res-opt/m-btn.sel, eri-list number) → koobalt või
-primary-subtle; `--ink-grad` → primary (oma sõnum), `--stone` → primary. Avatarid (`.sb-user .av`, `.cl-mono`, `.pick-av`,
-`.th-av`, `.cm-av`) = helesinine ring + koobalt-initsiaalid. Kiibid (`.pc-pill`, `.kd-date`, `.ag-chip`, `.preset-btn`,
-`.dm-chip`, `.omni kbd`) = primary-subtle + primary tekst. Kontrollitud: avaleht, pakkumuse detail.
+- Allikas: Steveni `import.js` voog (laud → ülevaatus → tulemus). Tema versioonis oli „lugemine" simuleeritud (väljad käsitsi
+  seemnes); meil loetakse PÄRIS faile kaustast `Üürileping/` (61 faili: .asice, .pdf, .docx). Kood elab app.js-is plokis
+  „LEPINGUTE IMPORT (v595)" (uut faili ei tulnud), CSS `.ix-*`.
+- Lugemine brauseris: `.asice` = ZIP → `zipLoe` (DecompressionStream, ilma teegita); PDF-i tekstikiht pdf.js-iga
+  (cdnjs 3.11.174, laetakse ALLES impordil — kasutaja kinnitas); DOCX = `word/document.xml`. Allkirjastajad XAdES-i
+  sertifikaadist (eesnimi + perenimi, isikukoodi ei loeta) + allkirjastamise aeg.
+- Tuvastus T6B malli siltide järgi (`impParsiLeping`): üürnik + reg.kood, pind (2.1 või failinimi), m², parkimiskohad,
+  üleandmine, üür, tagatis, tähtaeg (üleandmisest / allkirjastamisest), otstarve, esindajad, allkirjad. Lisad
+  (`impParsiLisa`): „N. Pooled lepivad/soovivad …" punktid + mõjud (PT 5.1 periood, PT 1.2 uus üürnik, PT 2.2 parkimine,
+  üür, ennetähtaegne lõpp) → rakenduvad lepingule. Muud: garantiikiri, akt, volikiri, skann (tekstikihita).
+- Kahtlused (`impKahtlused`): m² ≠ register, pind failinimest, parkimiskohad ≠ maja jaotus või arv ≠ numbrid, üks allkiri,
+  registrikood ≠ 8 kohta, pinnal leping/pakkumus/teine üürnik. Duplikaat → „Ei impordita" (nt Maru P29 = seemne LEP-2023-029).
+- Päris leiud: P10–12 (3 kohta vs jaotuses 6), P24 (76–79 → Lisa 4: 83, 86, 87), B1–B2 jaotus erineb, P28/B3/Maru koopia
+  üks allkiri, Titancompany reg.kood 9-kohaline, Rändtsirkus lõpeb Lisa 4-ga 31.01.2027, P14 üürnik → Bombay Group (Lisa 4).
+- Ülevaatus: originaal A4-na keskel (pdf.js lõuend + esiletõstud `ank`: roheline = leitud, ooker = kontrolli; Word tekstina),
+  paan paremal (1 Osapool · 2 Seos · 3 Põhitingimused, „Õige"/„Paranda", „Kinnita"). „Kinnita N valmis" teeb hulgi (lepingud
+  enne lisasid). Tulemus: koondatud „Portfelli tervis".
+- Kinnitus → IMPORDITUD-kirje (seemne kuju + `kood`, `registrikood`, `clientId`, `pindIds`, `imp: true`), pind saab üürniku,
+  uus osapool CLIENTS-i (`impUus`), KEY_DATES „Lepingu lõpp". Salvestus: `imported`, `impClients`, `importFailid`
+  andmevõtmes; originaalid IndexedDB „thinkone_import" (`openPdf('idb:…')`); „Lähtesta demo" kustutab. Päris andmed jäävad
+  ainult brauserisse — repos neid pole.
+- Demo lood (PAK-003/007/009/011/014, LEP-2026-001) on taas pindadel 2, 4, 5, 6, 22 — ainsad, millele päris lepingut pole
+  (`SPACES_SEED` t6b-2026-09-25b, salvestise migratsioon kolib v592–594 seisust tagasi).
+- Sisenemised: „+ Uus › Impordi lepingud", avalehe kiip, Portfell › Lepingud „Impordi".
+- **v600–601 (kasutaja):** pinna kahtlusel on „Õige"; käsitsi muudetud pind (`seos.muudetud`) = kasutaja otsus → failinime
+  märkus kaob, m² kontroll (leping vs valitud pinnad) jääb; kõik pinna põhjused ühes märkuses. Parkimisel „Lepingus õige" +
+  „Maja jaotus" (üks klõps, `impOtsus(id,k,false,väärtus)`); numbrite sisestus ainult siis, kui arv ≠ loetletud numbrid.
+  Märkus näitab otsust („Maja jaotuse järgi" / „Parandatud käsitsi"); originaali esiletõstud värvuvad otsuse järgi.
+- **v602 (kasutaja): pinna olek tuleb DOKUMENTIDEST.** Seemnes on lepinguta pinnad „Vaba" (28 tk, varem t6b.ee järgi „Üüritud");
+  „Üüritud" on ainult lepinguga pind (LEP-2026-001 Pind 4, seemne import Maru P29), pakkumusega „Pakkumusel". Import märgib
+  pinna üüritud; `load()` taastab selle ka seemne vahetusel (`IMPORDITUD[].pindIds`). `SPACES_SEED` t6b-2026-09-25c.
+  Lähtestatud demos on T6B täituvus ~7 % — import täidab maja päris lepingutega.
+- **v603 (kasutaja): impordi laud** — oleku riba all tööriistariba: vasakul kokkuvõte (N faili loetud · valmis · vajab kontrolli ·
+  imporditud · ei impordita, värvitäpid = riba värvid), paremal „Alusta ülevaatust" (`impAlusta` → `impJarjekord()[0]`) ja
+  „Kinnita N valmis" (päisest ära). Grupid: Loen → Valmis kinnitamiseks → Vajab kontrolli → Imporditud → Ei impordita;
+  ülevaatuse „järgmine" käib sama järjekorra järgi.
+- **v604–605 (kasutaja): ülevaatuse paan** — päises liik + failinimi + allkirjad; sammud 1 Osapool · 2 Pind · 3 Põhitingimused
+  näitavad olekut (roheline ✓ „korras" / ooker number „kontrolli"); üürnik ja pind ei kordu väljade loendis (nende kahtlused
+  on oma sammu all). Väljad kahes veerus (silt | väärtus), kahtlusega rida ookris kastis, märkus + nupud täislaiusel (`.ix-fo`).
+  Jalus: olekurida (⚠ N kontrollida / ✓ kõik kontrollitud) → „Kinnita" → „Jäta välja".
+## 25.09.2026 (v=588–591) — pinna JAGAMINE üüriüksusteks (harv erijuht, ainult toiminguna)
 
-## 11.09.2026 (v=423) — PALETI VAHETUS „Grafiit + koobalt", Geist, listid, pindade valik
+- Objekti lehel pinna kaardil (hõljudes) „Jaga üksusteks" → külgpaneel (`openJaga`, `jagaDraw`, `jagaSalvesta`). Lubatud, kui
+  `jagaKeeld(s)` on tühi: pole platvormi lepingut ega pooleli pakkumust, pole juba jagatud/üksus, pole laoboks.
+- Kaks üksust (A/B). Kui pinnal on ≥ 2 põhiosa (olmealat arvestamata) ja jaotuse summa = üüripind: osad määratakse A/B-le
+  (vaikimisi ladu → B, muu → A), ühisala jaguneb osade suhtes. Muidu jagamine pindala järgi (A m², B = jääk). Parkimiskohad
+  pindala suhtes (klõps kiibil vahetab), elekter pindala suhtes; hind, olek (Vaba/Üüritud) ja üürnik üksuse kaupa.
+- Salvestus: ema jääb alles (`staatus: "Jagatud"`, `jagatud: { alates, aeg, yksused, staatus, tenant }`), üksused on tavalised
+  pinnad (`id` `<ema>-a/-b`, `emaId`, `alates`, sama `nr` ja plaan). Viimane üksus saab jäägi → summa = ema üüripind.
+- Kokkuvõtted loevad `pindYksus` (ema välja): `objStats`, `ylScope`, registri hoonekaart, agent, omniotsing, parkimise
+  vaikejaotus. Täituvuse ajalugu `yksusKuupaeval`: enne `alates` loeb ema (endise olekuga), pärast üksused.
+- „Ühenda tagasi" (`jagaYhenda`) — ainult kui ühelgi üksusel pole lepingut ega pakkumust (ka lõpetatut, et viited ei katkeks).
+- **v592 (kasutaja):** „Jaga üksusteks" ainult VABAL pinnal (`jagaKeeld`: `staatus !== "Vaba"` → keeld). Pinnad 2, 4, 5, 6, 22
+  on seemnes vabad; demo lood kolisid sama suure pinna peale (olek + üürnik + vabanes vahetati): PAK-009 → Pind 11,
+  PAK-007 / LEP-2026-001 (Killa) → Pind 27, PAK-003 → Pind 26, PAK-011 → Pind 23, PAK-014 → Pind 9 (vaba, mustand).
+  `SPACES_SEED` = "t6b-2026-09-25" (vana salvestatud pinnastik asendub); pakkumused salvestises viitavad vanadele pindadele →
+  „Lähtesta demo". T6B täituvus seemnes 84 % → 64 % (neli seni üüritud pinda on nüüd pakkumusel/vabad).
+- **v594 (kasutaja):** jagada saab ainult pinda, millel on ≥ 2 põhiosa (nt ladu + kontor; olmeala ja ühisala ei loe) —
+  `jagaKeeld` → `!jagaOsad(s)`. Pindala järgi jagamise režiim (A m² + jääk) eemaldati; Pind 2 (ainult ladu) pole jagatav.
+- **v593:** `load()` kolib ka SALVESTATUD loo-pakkumused (id järgi: 009, 007, 003, 011, 014) ja neist tehtud lepingu uutele
+  pindadele (sh `hinnad`/`graafik`/`parkimine` võtmed ja vaikejaotuse parkimiskohad) — vana pakkumus ei blokeeri enam vaba pinda
+  ja lähtestamist pole vaja.
+## 25.09.2026 (v=586–587) — parkimise VAIKEJAOTUS pindade vahel + pindade import T6B struktuuris
 
-Kasutaja: v421/422 oli „liiga valge ja ebaprofessionaalne". Rakendati `.agents/skills/redesign-existing-projects`
-(fondivahetus → palett → olekud → rütm → komponendid) ja `design-taste-frontend` (neutraalne baas + üks aktsent, tint-varjud).
-Kolm suunda mokiti artefaktina (Grafiit+koobalt · Mets+luu · Kiltkivi+terrakota); kasutaja valis **grafiit + koobalt**,
-**hele külgriba** (lõuendist aste tumedam, mitte tume) ja **Geist + Bricolage + Geist Mono**.
+- **Maja jaotus** (`t6b-parkimine.xlsx`, genereeritud `p104_parkjaotus.py`-ga): `SPACES[].parkKohad` (34 pinda) + `PARK_ERI`
+  (üldkasutatav: elekter 31,32,84,85 · inva 1,2 · reserv 49,62,63). Kokku 115 kohta, kõik kaetud. Pind 7 ja Pind 24: 4 → 3 kohta
+  (xlsx järgi); xlsx Pind 19 + Pind 20 → meie ühine Pind 20 (66–69). `load()` võtab `parkKohad` seemnest ka vanadele andmetele.
+- **Vaikimisi dokumendis:** pakkumus ilma `o.parkKohad`-ita kasutab `offerParkKohad(o)` = pinna kohad (`pinnaKohad`); `createLease`
+  paneb `tehing.parkKohad` pinna kohtadest. Plaanivalijas „Pinna kohad" taastab vaikejaotuse; teise VABA pinna kohad (`pehme`,
+  „Vaba pinna koht") on valitavad hoiatusega, üüritud/pakkumuses kohad mitte.
+- `parkHoive` kihid: leping › imporditud › pakkumus › pinna vaikejaotus (üüritud pind = „Üüritud", vaba = „Pinnale määratud") ›
+  `PARK_ERI` = „Üldkasutatav". Seemnes kõik kohad hõivatud/pakkumuses → registris „0 vaba" on õige.
+- **Pindade import** (`objImportRow`, `OBJ_IMPORT_MALL`): päis `nimi;tüüp;üüripind;ladu;kontor;müügisaal;olmeala;ühisala;hind;elekter;parkimiskohad;staatus`.
+  Kohustuslik nimi, üüripind, hind; osad → `jaotus`, tüüp/neto/koef tuletatakse osadest; `parkimiskohad` numbrid → `parkKohad`
+  (arv = numbrite arv); staatus Vaba/Üüritud. Pinna vormis „Parkimiskohad (numbrid)", rea kokkuvõttes kohtade arv ja „üüritud".
+## 17.09.2026 (v=421) — ÜHTNE PUNKTIMUDEL + läbirääkimiste PAAN (mustand → saadetud → allkirjastamine)
 
-- **Tokenid**: neutraalid jahedaks (`#EDEFF3` lõuend · `#E2E5EB` külgriba/pehme pind · `#CDD2DA` eraldaja · `#838B98` kontrolliserv ·
-  `#596170` teisene · `#141821` tekst), primary `#2A55C7` / hover `#2348AB` / subtle `#E6ECFA` / ring `--color-primary-ring`,
-  info `#2F6A8C` (eraldi toon primary'st), kaardiserv `#DDE1E7` tahke, varjud `rgb(20 26 38 / …)`. Body-gradient koobalt-valgusega.
-- **VIGA PARANDATUD**: v421 normaliseerija oli teinud `--color-primary-subtle: var(--color-primary-subtle)` (tsükkel → tühi);
-  seepärast puudus aktiivsel navil taust. Nüüd tahke väärtus.
-- **Fondid**: `--font-ui` Geist, `--font-mono` Geist Mono. `.mono` = Geist tabular-nums (sildid/tunnused tekstis), `.num` ja
-  `.tbl .id/.r`, `.price-row .amt`, `.pc-row .num`, `.cd-sum`, `.pc-big`, `.stat/.pf-fact/.sp-nums .v`, `.kal-date .d` = Geist Mono.
-  `.ehr-cell .v` jääb UI-kirja (tekstväärtused). Google Fonts link index.html + kujundus.html.
-- **Listid** (styles.css „LISTID" plokk enne KEST-i): ühine polster/eraldaja/hover; 32 px ikoonitiilid (`.icotile`, `.kd-ic.lg`,
-  `.nh-ic`, `.np-ic`, `.att .fic`, `.om-row .ic` …) pehmel pinnal, svg 18 px; rea-hover `::after` jooned maas.
-  Avalehe `.nstack` = valge kaart + read; `nsLayout()` näitab kokkuvolditult 3 esimest rida (mitte kaardipakk), toggle
-  peidus kui ≤3. Kalender ≤640: tekst täislai, nupp oma real.
-- **Pindade valik** (viisardi samm 3): `wizSpacesHTML()` + `bindWizSpaces()` app.js-is. Hoone-combobox (`#sp-obj`, `.combo`,
-  `.drop` listbox, klaviatuur ↑↓/Enter/Esc, focusout sulgeb; globaalne `.drop.open` sulgeja jätab `.combo` vahele),
-  pinnaotsing (`#sp-q`, filtreerib `data-q` järgi ilma re-renderita), 40 px read (`.sp-row`, role=checkbox, tühik/Enter),
-  jalus valiku kokkuvõttega (`#sp-foot`: n · m² · €/kuus · Tühjenda), `WIZ.objektId` + `WIZ.q`. Mobiilis 2-realine rida.
-- **Tabel**: päis `--color-thead` taust + uppercase; `tr.sel` primary-subtle; `td.r/.num` mono.
-- Kontroll: 13 marsruuti 320/768 ilma ülevooluta (sh samm 3); töölaual avaleht, ülevaade, pakkumised, detail, objekt, seaded, kalender.
+Kasutaja lähteülesanne: lepingu käsitlemine efektiivsemaks ja skaleeruvaks teistele lepingutüüpidele —
+operaator võib muuta IGA punkti sõnastust (selge diff), iga punkti saab saata eritingimustesse, punktide
+arutelu/kinnitamine paremas paanis, iga arutelu lõpeb selgelt. Otsused: hübriid põhitingimustel (faktid
+struktuursed + sõnastuse ülekirjutus), ulatus Mustand V1→Saadetud→Allkirjastamisel (Kehtiv/Lisa N ja pakkumus
+jäid tööle, UI muutmata), sõnatasemel inline-diff, sõnastab ainult operaator.
 
-## 10.09.2026 (v=421) — UI-AUDITI RAKENDUS: tokenid, Button/Badge/Field, kest, mobiil, galerii
-
-Alus: `demo/design-system/audit.md` (+ loetav `audit.html`), `tokens.proposed.css`, `style-guide.proposed.md`.
-Kasutaja otsused enne alustamist: **petrooleum kõigile põhitegevustele** (must ja roheline nupp kadusid),
-fondid auditi järgi (Inter + Bricolage; Inter Tight ja Geist Mono ei laeta), kõik 4 etappi, baseline commit enne.
-
-- **Tokenid** on `styles.css :root`-is (koopia tokens.proposed.css-ist + `--text-display-lg 40px` erand hero-numbrile
-  ja avalehe küsimusele). Vanad nimed on ALIASED (`--paper`, `--ink`, `--ink-2`→text, `--muted`/`--faint`→text-secondary,
-  `--line`→neutral-2, `--line-strong`→divider, `--accent*`, `--green/amber/red/blue/teal*`→semantilised, `--r*`, `--shadow*`,
-  `--ink-grad`→ tume PIND (avatar, oma sõnum, valitud sakk) — mitte enam nupp). `--accent-soft-2` ja `--blue-soft` kustutatud.
-- **Normaliseerimisskript** (scratchpad, ühekordne) viis kogu CSS-i skaalale: kirjasuurused → 6 rolli, padding/margin/gap → 4 px
-  skaala (≤3 px optilised jäid), raadiused → 4/8/12 (50% jäi), transition/animation kestused → 150/250 ms (laadimisindikaatorid
-  spin/blink/shimmer jäid), box-shadow → 3 taset (inset-rõngad jäid). Sama loogika inline-stiilidele app.js-is.
-  Klauslirea geomeetria (26→24, 36→32/36) käsitsi ühtlustatud.
-- **Button**: `.btn` + primary/ghost/text/destructive, sm/md/lg 32/40/48, ikoonikast 22 px (ikoon 16) EI muuda polstrit
-  (`.btn:has(svg)` reeglid maas), `disabled` neutraalne, `aria-busy` = spinner + silt peidus, laius ei muutu; mobiilis/puutel 44 px.
-  Legacy klassid (`btn-accent/green/soft/quiet`) on CSS-is aliased, app.js ja galerii markup migreeritud.
-  „+ Uus" (`.btn-loo`) ja rollivahetus (`.role-tab`, operaator = ghost, klient = primary) samas keeles; läige/pööre/vedru maas.
-- **Badge**: `pill()` → `.pill.<sem>`; `STATUS` väärtused on nüüd success/warning/error/info/neutral (+`PILL_KIND` legacy
-  green/amber/… → semantika). Ootel/Lahendamisel/Arutelul = warning (must kapsel `.pill.fill` kadus). Tag neutraalne
-  (lime/lav aliased). Tumedal objektibändil `.pill` hele poolläbipaistev.
-- **Field**: `.field input/select/textarea` + lahtine `.fld` (`.fld-sm` 32 px, `.fld-color`): 40 px, kontrolliserv `#85857F`
-  (3,71:1), valge pind, fookus = globaalne outline (`:focus-visible`), read-only/disabled/error (`aria-invalid`, `.err`).
-  Mähitud sisendid (omni, composer, pf-search, risk-search, ag-input, suh-foot) kannavad outline'i mähisel `:focus-within`.
-  `.field input` selektor on `:where(...)`-iga (spetsiifilisus 0,1,1), et `.clsearch input` polster võidaks.
-  Tekstisisesed väljad (fact-in, rep-in, price-in, ce-in, eri-in) said sama serva ja sm-mõõdu. Check/radio 20 px, `.check` 44 px.
-- **Kest**: päis 64 px, navi read 44 px / ikoon 20 px, aktiivne = `--color-primary-subtle` + primary; sahtel ≤1024 px
-  (`drawer-in` 250 ms), ≤640 px kompaktne. `window.matchMedia('(max-width: 1024px)')` boot-is.
-- **Tabelid**: `stackTables()` router-is lisab igale `table.tbl`-ile `.stack` + `td[data-l]` (thead tekst); ainult nuppudega
-  lahter → `.tbl-actions`. ≤760 px: rida = plokk, silt absoluutselt vasakul 38 %, sisu voolab tavaliselt. `.offer-table .tbl
-  { min-width: 780px }` maas. Ruudustikud kõik `minmax(0, 1fr)` (sisu ei venita veergu). Kontroll: 320/375/768 px kõigil
-  26 marsruudil `scrollWidth ≤ vaateaken` (iframe-mõõtmine).
-- **Ülekatted**: `.drop/.co-menu/.preset-menu/.pdfmodal` sisse-välja paar `display allow-discrete + @starting-style`
-  (Chrome-first); `.side` 250 ms; toast HELE kaart, tekst murdub; scrim ilma blur'ita. PDF-modaal tagastab fookuse avajale.
-- **Liikumine**: needle-drift ja ct-pulse (püsivõnkumised) eemaldatud; reduced-motion nullib tokenid + nihked/pöörded.
-- **CSS-vead**: `.cl-side` sticky nüüd ENNE ≤1100 reeglit (+ `!important` static); obj-flow `border: var(--edge)` (mitte
-  `1px solid var(--edge)`); `.empty .ic` keskele.
-- **Galerii** `kujundus.html` laeb `uldtingimused.js + data.js + klauslid.js + app.js`; app.js `boot()` ja `router()`
-  ei käivitu ilma `#app-view`'ta. Koopiad (I, STATUS, PILL_SHAPE, pill, toast) kustutatud. Sektsioonid: Button (4 varianti,
-  3 mõõtu, disabled/loading/fookus), Badge (semantilised + KOGU STATUS renderdatud), Field olekud.
-- **Ei muudetud**: tekstid, andmed, äriloogika, rollid, teekonnad, illustratsioonikaardid (`.ltyp`: vari + nool 5 px +
-  pilt 5°, nüüd tokenitega), dokumendi A4/print eraldus (`.sheet` ekraanil ≤900/≤640 kitsam polster).
-- **Runtime-kontroll puudub** (testkirjeid pole): natiivne üürilepingu detail (`#/leping/…`), töölepingu detail — CSS on ühine,
-  aga vaadet pole silmaga üle vaadatud. Print kontrollitud ainult CSS-i järgi.
+- **Andmemudel (leping):** `l.punktid[]` asendab `l.pohi`/`l.eri`/ULD_FULL-i otserenderduse. Punkt =
+  `{ id ("pohi:P 3.1" | "uld:5.2" | "eri:<uid>"), osa, ref (eri: null — „Lisa 3 · pN" tuletatakse järjekorrast,
+  `eriRef`), jaguNr, jagu, pealkiri, algne (mall/faktid), tekst (kehtiv), lukus, kirjutabYle (sihtpunkti ID),
+  kirjutabYleTekst (pakkumuse vaba string, kui ei lahene), allikas, staatus/sonastamisel/aruteluId (eri),
+  kontrolli (pohi: fakt muutus, sõnastus üle kirjutatud), muudatused[{aeg, autor, vana, uus, viis, aruteluId}] }`.
+  `l.arutelud[]` asendab `l.kommentaarid`: `{ id, punktId, ref, algataja klient|operaator, autor, aeg, tekst,
+  staatus Ootel|Ootab kinnitust|Lahendatud, lahendus muudetud|eritingimus|selgitatud|tagasi lükatud,
+  lahendusTekst, lahendusAeg, sonumid[], ettepanek{tyyp, siht otse|eri|lisa3|ring, punktId, eriId?, tekst, algne, …} }`.
+  `l.liik` (vaikimisi „Üürileping") valib `LEPINGUTYYBID` konfiguratsiooni (osad, pohiMall=pohiTehing, uldMall=ULD_FULL,
+  faktid, kvRefs, lisad) — tuum (punktid/arutelud/diff/paan) ei tea m²-st ega üürist.
+- **Abifunktsioonid** (app.js, factMark järel): `punktById/pohiOf/uldOf/eriOf/eriKinni/eriRef/punktRef(D)/kyLabel/kyOf/
+  overriddenBy/sonastusMuudetud/kyParse/newEri/buildPunktid/createLease/migratePunktid`, diff `wordDiff/diffHTML/
+  diffBlock/bindDiffTabs` (LCS, sõnad+tühikud, ~40 rida), arutelu `aruOpen/aruOotabOp/aruPill/LAHENDUS_LBL/aruOf/
+  newArutelu/lahenda/muudaSonastus/toLisa3/eriKinnitusele`.
+- **Migratsioon** `migratePunktid()` stardis (pärast `migrateRingFacts`): vanad localStorage-mustandid → punktid/arutelud,
+  vanad väljad kustutatakse, üks audit-kirje „Andmemudel uuendatud". Idempotentne. Testitud v420-kujuga (scen2).
+- **Faktimootor:** `rebuildPohi` uuendab pohi-punktide `algne`; kui `tekst === algne` järgneb tekst mallile, muidu
+  `kontrolli = true` → paanis „Kontrolli sõnastust" (Võta malli sõnastus / Sobib nii), juhtriba loendab.
+- **Dokument:** üks tsükkel `renderPunktid → renderOsa → renderPunkt/renderEri`; `data-clause` = punkti ID; `.sel` =
+  paanis valitud; hover-nupud `.p-edit` (data-pedit) ja `.to-lisa3` (data-tolisa) igal põhi/üld-punktil; pillid
+  Lahendamisel / lahendus / Sõnastus muudetud / Kontrolli sõnastust; `.overwrite` „kirjutatud üle: Lisa 3 · pN".
+- **Paan `#np`** (`.cl-side`, laius 380 `.cl-layout.cl-nego`): `npItems` (Sinu kord / Ootab teist poolt / Lahendatud·
+  muudetud) + `npDetail` (diffBlock või tekst, redaktor `#np-edit/#np-save/#np-cancel/#np-reset`, kontrolli-plokk,
+  → Lisa 3, sõnastuse ajalugu, lõim). `selectPunkt(id, {scroll, edit})` sünkroonib dokumenti ILMA router()-ita;
+  `gotoClause(id)` Kehtiv→inline `openClause`, muidu paan; `REOPEN_CLAUSE`/`nextOpenPunkt` ID-põhised.
+  Lõim on jagatud: `threadCtx/thCardHTML/renderThread/bindThreadActions(root, l, punkt, rerender)` — paan ja Kehtiv
+  inline-laiendus kasutavad sama koodi.
+- **Sõnastuse muutmine:** Mustand V1 — paanis kohe (jälg `muudatused`, üld lukust lahti, audit). Saadetud — operaatori
+  algatatud arutelu `Ootab kinnitust` + `ettepanek{siht:"otse"}`; üürnik näeb diffi, kinnitab/„ei sobi". Lahenda→
+  „Muuda sõnastust otse" nüüd KÕIGIL punktidel (faktipunktil faktisisend nagu enne).
+- **→ Lisa 3 = üks mehhanism:** loob eri-punkti `Sõnastamisel` (üürnikule nähtamatu) `kirjutabYle`=sihtpunkti ID.
+  Mustand V1: `.eri-ok` avaldab. Saadetud: `.eri-ok` → `eriKinnitusele` (arutelu + `ettepanek{siht:"lisa3", eriId}`),
+  üürnik kinnitab → Aktsepteeritud/lahendus eritingimus; „ei sobi" → eri jääb sõnastamisel, arutelu Ootel, Lahenda→
+  „Saada Lisa 3-e" taaskasutab seotud punkti (`aruteluId`). Kinnitamist ootav eri on dokumendis lukus (pill).
+- **Viisard:** „Üürnik" samm ei hüppa kliendi valikul edasi — avaneb esindaja plokk (nimi/e-post/tel, eeltäidetud
+  registrist, `LWIZ.kontakt` → `l.kontakt`, P 1.2/P 6.2). Viisard ja pakkumus→leping kasutavad `createLease`-tehast.
+- **A4 / Lisa 3 leht:** `pohiOf/uldOf` punktidest (`tekst`), märked sulgudes „(sõnastus muudetud)" / „(kirjutatud üle: …)";
+  diff-märgendust lehel ei näidata.
+- **Välised tarbijad** (avaleht, portfell, kliendid, suhtlus, teavitused) loevad `l.arutelud` (`ref`, `lahendusTekst`).
+- **Surnud kood maha:** `ULD_CLAUSES` (data.js + app.js varuharud), `POHI_TABLE` (uldtingimused.js). `.uld-send` → `.to-lisa3`.
+- **Kontroll:** headless Chrome CDP (scratchpad `cdp.js` + `scen1.js` 40/40, `scen2.js` migratsioon/idempotentsus/mobiil
+  9/9, konsool puhas): viisard+esindaja, üld-diff + Vana/Uus lüliti, kontrolli-vood, → Lisa 3 + AI + kinnitus, näidisvoog
+  (hind 8.00 → vastus → OK → Lisa 3 → üürniku kinnitus → „Eritingimus"), otse sõnastus + tagasilükkamine (põhjendus
+  kohustuslik), selgitatud + taasava, fakt läbirääkimisel (parkimine), aktsept → allkirjastamine → Kehtiv → Lisa 4 ring,
+  pakkumus→leping (`kirjutabYleTekst` varuvariant).
+- Teadlikult tegemata (skoop): Kehtiv/Lisa N ring ja pakkumuse läbirääkimised on stringipõhised nagu enne; `View.tooleping`
+  (`t.pohi/t.eri`) ei puudutatud.
 
 ## 10.09.2026 (v=415–420) — NUPUKEEL viite rbp-shader-template.vercel.app järgi: prooviti ja VÕETI MAHA
 
