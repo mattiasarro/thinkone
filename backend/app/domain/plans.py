@@ -1,28 +1,35 @@
 """Bulk upload of floor plans (demo v797–801): many files (PDF · PNG · JPG · SVG · ZIP) → matched to spaces by
 FILENAME → operator confirms the file → space rows → stored as ``floor_plan`` attachments on the spaces.
 
-Matching rules (``plVaste``): „T6B_Pind_08.pdf” → Pind 8; „…_B1” / „Büroo 1” → Büroo 1; a file that matches
-no space is the building's plan (site_plan). The same space in several files: PDF > SVG > image, the rest
-are skipped. Every bound plan is one event: „Pind N: pinnaplaan vana → uus”.
+Matching (``plVaste``): one model call per batch gets the space list and the filenames and returns a best-effort
+pairing („T6B_Pind_08.pdf” → Pind 8; „a101_plaan.png” → A-101), leaving unclear files unmatched; the rule-based
+``match_filename`` is the fallback when the model is unavailable. A file that matches no space is the building's
+plan (site_plan). The same space in several files: PDF > SVG > image, the rest are skipped. Every bound plan is one
+event: „Pind N: pinnaplaan vana → uus”.
 """
 
 from __future__ import annotations
 
 import io
+import json
 import re
 import uuid
 import zipfile
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.prompts import plan_match
+from app.agent.providers.base import chat_model
 from app.domain import assets as assets_domain
 from app.domain import attachments as attachments_domain
 from app.domain.errors import DomainError
 from app.domain.events import Actor, emit
 from app.models.registry import Asset
 
+log = structlog.get_logger()
 PLAN_TYPES = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml"}
 PREFERENCE = {"application/pdf": 0, "image/svg+xml": 1, "image/png": 2, "image/jpeg": 2}
 MAX_FILES = 200
@@ -42,6 +49,7 @@ def space_key(name: str) -> str:
 
 
 def match_filename(filename: str, spaces: list[Asset]) -> Asset | None:
+    """Rule-based match (prefix + code). The fallback when the model is unavailable, and what the fake provider uses."""
     base = re.sub(r"\.[^.]+$", "", filename.rsplit("/", 1)[-1])
     base = re.sub(r"[_\-.]+", " ", base)
     m = re.search(r"(pind|p|unit|space|boks|box|büroo|buroo)\s*0*([A-Z]?\d{1,3}[A-Z]?)\b", base, re.I) or re.search(r"\b()(B\d{1,2})\b", base, re.I)
@@ -52,6 +60,44 @@ def match_filename(filename: str, spaces: list[Asset]) -> Asset | None:
         if space_key(s.name) == key:
             return s
     return None
+
+
+MIN_CONFIDENCE = 0.6
+
+
+async def match_files(filenames: list[str], spaces: list[Asset]) -> dict[str, Asset | None]:
+    """One model call for the whole batch: filename → space (or None). Falls back to the rules on any failure."""
+    names = list(dict.fromkeys(filenames))
+    if not names or not spaces:
+        return dict.fromkeys(names)
+    def describe(i: int, s: Asset) -> dict[str, Any]:
+        attrs = s.attributes or {}
+        return {"i": i, "name": s.name, **{k: attrs[k] for k in ("type", "floor") if attrs.get(k)}}
+
+    payload = {"spaces": [describe(i, s) for i, s in enumerate(spaces, start=1)], "files": names}
+    try:
+        result = await chat_model().structured(system=plan_match.SYSTEM, user=json.dumps(payload, ensure_ascii=False), schema=plan_match.schema(), max_tokens=16000)
+        out = apply_matches(result.data, names, spaces)
+        log.info("plan_match", model=result.model, prompt=plan_match.PROMPT_VERSION, files=len(names), matched=sum(1 for v in out.values() if v))
+        return out
+    except Exception as e:  # noqa: BLE001 — a matching failure must never block the upload
+        log.warning("plan_match_fallback", error=str(e)[:300])
+        return {n: match_filename(n, spaces) for n in names}
+
+
+def apply_matches(data: dict[str, Any], filenames: list[str], spaces: list[Asset]) -> dict[str, Asset | None]:
+    """Validate the model's answer: known files only, indexes in range, confident matches only; missing files → None."""
+    out: dict[str, Asset | None] = dict.fromkeys(filenames)
+    for m in data.get("matches") or []:
+        if not isinstance(m, dict) or m.get("file") not in out:
+            continue
+        idx, conf = m.get("space"), m.get("confidence")
+        if not isinstance(idx, int) or isinstance(idx, bool) or idx < 1 or idx > len(spaces):
+            continue
+        if isinstance(conf, (int, float)) and conf < MIN_CONFIDENCE:
+            continue
+        out[m["file"]] = spaces[idx - 1]
+    return out
 
 
 @dataclass
@@ -108,8 +154,12 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
         raise DomainError("Plaane saab siduda ainult hoone pindadega")
     spaces = [s for s in await assets_domain.children_of(session, prop.id, "space") if not (s.attributes or {}).get("split_into")]
     by_id = {str(s.id): s for s in spaces}
+    expanded = expand_files(files)
+    # one model call for every file the operator has not placed yet
+    unplaced = [f.filename for f in expanded if f.content_type in PREFERENCE and (mapping or {}).get(f.filename) not in ("skip", "property", *by_id)]
+    guessed = await match_files(unplaced, spaces)
     rows: list[PlanRow] = []
-    for f in expand_files(files):
+    for f in expanded:
         if f.content_type not in PREFERENCE:
             rows.append(PlanRow(f.filename, f.content_type, len(f.data), "skip", note="Lubatud on PDF, PNG, JPG, SVG või ZIP"))
             continue
@@ -122,7 +172,7 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
             s = by_id[choice]
             rows.append(PlanRow(f.filename, f.content_type, len(f.data), "space", s.id, s.name))
         else:
-            s = match_filename(f.filename, spaces)
+            s = guessed.get(f.filename)
             if s:
                 rows.append(PlanRow(f.filename, f.content_type, len(f.data), "space", s.id, s.name, note="failinime järgi"))
             else:

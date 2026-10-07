@@ -131,7 +131,7 @@ const et = {
     allocations: "Hõive", allocatedTo: "Seotud lepingud", noAllocations: "Hõivet pole", capacity: "Maht", children: "Alamüksused",
     attachmentsList: "Failid", noAttachments: "Faile pole", uploaded: "Fail üles laaditud", deleteAttachment: "Eemalda fail", detailsTab: "Andmed",
     plans: {
-      title: "Pinnaplaanid", sub: "Lohista või vali palju faile korraga — PDF, PNG, JPG, SVG või ZIP. Fail seotakse pinnaga failinime järgi („T6B_Pind_08” → Pind 8, „B1” → Büroo 1); sidumata fail jääb kogu hoone plaaniks.",
+      title: "Pinnaplaanid", sub: "Lohista või vali palju faile korraga — PDF, PNG, JPG, SVG või ZIP. Failid seotakse pindadega failinime järgi automaatselt („T6B_Pind_08” → Pind 8, „a101_plaan” → A-101); ebaselge fail jääb kogu hoone plaaniks ja sidumist saab enne kinnitamist muuta.",
       drop: "Lohista plaanid siia või klõpsa valimiseks", dropHint: "Sama pind mitmes failis: PDF > SVG > pilt, teised jäetakse välja.", matching: "Tuvastan vasteid…",
       file: "Fail", target: "Pind", property: "Kogu hoone", skip: "Jäta välja", byName: "failinime järgi", confirm: "Kinnita {n} plaani", done: "{n} plaani seotud", none: "Ühtegi plaani ei valitud",
       current: "Praegused plaanid", noPlan: "plaanita", withPlan: "plaaniga", replaces: "asendab senise",

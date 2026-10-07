@@ -1,5 +1,6 @@
 import io
 import json
+import uuid
 import zipfile
 from datetime import date, timedelta
 
@@ -110,6 +111,69 @@ async def test_plans_bulk_upload_matches_filenames(client: AsyncClient, admin: d
     r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=[("files", ("Pind 8 uus.pdf", pdf, "application/pdf"))])
     assert r.status_code == 200 and "asendab" in r.json()[0]["note"]
     assert len((await client.get(f"/api/v1/assets/{s8['id']}")).json()["attachments"]) == 2  # history kept, newest first
+
+
+async def test_plans_matching_uses_one_model_call(client: AsyncClient, admin: dict):
+    """The model sees the whole batch once; a full mapping (what the UI sends on confirm) needs no call at all."""
+    from app.agent.providers.base import chat_model
+
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    a101 = await make_space(client, prop["id"], "A-101", 100)
+    await make_space(client, prop["id"], "LB-01", 40)
+    pdf = b"%PDF-1.4\n%%EOF\n"
+    fake = chat_model()
+    before = len(fake.calls)
+    files = [("files", ("a101_plaan.pdf", pdf, "application/pdf")), ("files", ("LB01.pdf", pdf, "application/pdf")), ("files", ("koond.pdf", pdf, "application/pdf"))]
+    r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "true"}, files=files)
+    assert r.status_code == 200, r.text
+    assert len(fake.calls) == before + 1
+    payload = json.loads(fake.calls[-1]["user"])
+    assert [s["name"] for s in payload["spaces"]] == ["A-101", "LB-01"] and payload["files"] == ["a101_plaan.pdf", "LB01.pdf", "koond.pdf"]
+    rows = {x["filename"]: x for x in r.json()}
+    assert rows["koond.pdf"]["target"] == "property"
+
+    mapping = json.dumps({"a101_plaan.pdf": a101["id"], "LB01.pdf": "skip", "koond.pdf": "property"})
+    r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=files, data={"mapping": mapping})
+    assert r.status_code == 200, r.text
+    assert len(fake.calls) == before + 1  # nothing left to guess
+    rows = {x["filename"]: x for x in r.json()}
+    assert rows["a101_plaan.pdf"]["target"] == "space" and rows["a101_plaan.pdf"]["attachment_id"]
+    assert rows["LB01.pdf"]["target"] == "skip" and rows["koond.pdf"]["target"] == "property"
+
+
+async def test_plans_model_answer_validation(client: AsyncClient, admin: dict):
+    """The model's answer is best-effort: unknown files, bad indexes and low confidence fall back to unmatched; model errors to the rules."""
+    from types import SimpleNamespace
+
+    from app.agent.providers.base import StructuredResult, chat_model, set_chat_model
+    from app.domain.plans import apply_matches, match_files
+
+    spaces = [SimpleNamespace(id=uuid.uuid4(), name="A-101", attributes={}), SimpleNamespace(id=uuid.uuid4(), name="Pind 8", attributes={})]
+    data = {"matches": [{"file": "a.pdf", "space": 1, "confidence": 0.95}, {"file": "b.pdf", "space": 2, "confidence": 0.3},
+                        {"file": "c.pdf", "space": 7, "confidence": 1}, {"file": "ghost.pdf", "space": 1, "confidence": 1}, {"file": "d.pdf", "space": None, "confidence": 0}]}
+    out = apply_matches(data, ["a.pdf", "b.pdf", "c.pdf", "d.pdf", "e.pdf"], spaces)  # type: ignore[arg-type]
+    assert out["a.pdf"] is spaces[0] and out["b.pdf"] is None and out["c.pdf"] is None and out["d.pdf"] is None and out["e.pdf"] is None and "ghost.pdf" not in out
+
+    class Broken:
+        async def structured(self, **kw):
+            raise RuntimeError("api down")
+
+    class Garbage:
+        async def structured(self, **kw):
+            return StructuredResult(data={"matches": "nope"}, model="x")
+
+    prev = chat_model()
+    try:
+        set_chat_model(Broken())
+        out = await match_files(["T6B_Pind_08.pdf", "x.pdf"], spaces)  # type: ignore[arg-type]
+        assert out["T6B_Pind_08.pdf"] is spaces[1] and out["x.pdf"] is None  # rule-based fallback
+        set_chat_model(Garbage())
+        out = await match_files(["T6B_Pind_08.pdf"], spaces)  # type: ignore[arg-type]
+        assert out == {"T6B_Pind_08.pdf": None}
+    finally:
+        set_chat_model(prev)
+    assert await match_files([], spaces) == {} and await match_files(["a.pdf"], []) == {"a.pdf": None}  # type: ignore[arg-type]
 
 
 async def test_split_and_merge_space(client: AsyncClient, admin: dict):

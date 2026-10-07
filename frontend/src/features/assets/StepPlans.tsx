@@ -22,10 +22,18 @@ export function PlansUploader({ property, onDone }: { property: AssetDetail; onD
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
 
+  // The server asks the model once for every file not in `mapping`; after the first proposal the mapping covers
+  // every row, so corrections and the final confirm never re-run the matching behind the operator's back.
+  const fullMapping = (rs: PlanRow[], m: Record<string, string>) =>
+    Object.fromEntries(rs.map((r) => [r.filename, m[r.filename] ?? (r.target === "space" ? r.space_id ?? "property" : r.target)]));
   const propose = async (fs: File[], m: Record<string, string>) => {
-    try { setRows(await upload.mutateAsync({ files: fs, mapping: m, dryRun: true })); } catch (e) { toast.error(errorMessage(e)); }
+    try {
+      const rs = await upload.mutateAsync({ files: fs, mapping: m, dryRun: true });
+      setRows(rs);
+      setMapping(fullMapping(rs, m));
+    } catch (e) { toast.error(errorMessage(e)); }
   };
-  const onFiles = async (fs: File[]) => { const all = [...files, ...fs]; setFiles(all); setMapping({}); await propose(all, {}); };
+  const onFiles = async (fs: File[]) => { const all = [...files, ...fs]; setFiles(all); await propose(all, mapping); };
   const change = async (filename: string, target: string) => { const m = { ...mapping, [filename]: target }; setMapping(m); await propose(files, m); };
   const commit = async () => {
     try {
