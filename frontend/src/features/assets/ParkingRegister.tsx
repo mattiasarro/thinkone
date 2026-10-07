@@ -150,7 +150,7 @@ export function ParkingRegister({ property, compact }: { property: AssetDetail; 
       {view === "spaces" ? (
         <div className="card overflow-hidden">
           <Table>
-            <thead><tr><th>{t("assets.parkingReg.space")}</th><th>{t("assets.space.tenant")}</th><th className="num">{t("assets.parking")}</th><th>{t("assets.parkingReg.spots", { n: "" }).trim()}</th><th /></tr></thead>
+            <thead><tr><th>{t("assets.parkingReg.space")}</th><th>{t("assets.space.tenant")}</th><th className="num">{t("assets.parking")}</th><th>{t("assets.parkingReg.viewSpots")}</th><th /></tr></thead>
             <tbody>
               {groups.map(({ space, spots: sps }) => {
                 const contract = sps.find((s) => s.contract)?.contract;
