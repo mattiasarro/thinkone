@@ -83,22 +83,31 @@ export function StepPlans({ property, onBack, onNext }: { property: AssetDetail;
   const toast = useToast();
   const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
   const withPlan = spaces.filter((s) => s.attachments.some((a) => a.role === "floor_plan"));
+  // Building-level plans: files the plans step could not match to a space (site plan) and the parking plan.
+  const buildingPlans = property.attachments.filter((a) => a.role === "site_plan" || a.role === "parking_plan");
+  const open = (id: string) => openAttachment(id).catch((e) => toast.error(errorMessage(e)));
   return (
     <div className="grid gap-4">
       <div className="card pad grid gap-4">
         <div><h2 className="text-lg mb-1">{t("assets.plans.title")}</h2><p className="text-muted text-sm">{t("assets.plans.sub")}</p></div>
         <PlansUploader property={property} />
       </div>
-      {spaces.length > 0 && (
+      {(spaces.length > 0 || buildingPlans.length > 0) && (
         <div className="card">
           <div className="card-h"><h3>{t("assets.plans.current")}</h3><span className="flex gap-1"><Pill tone="success">{withPlan.length} {t("assets.plans.withPlan")}</Pill>{spaces.length - withPlan.length > 0 && <Pill>{spaces.length - withPlan.length} {t("assets.plans.noPlan")}</Pill>}</span></div>
           <ul className="divide-y px-[var(--card-padding)]" style={{ borderColor: "var(--line)" }}>
+            {buildingPlans.map((a) => (
+              <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
+                <span className="font-medium flex-1 min-w-0 truncate">{t("assets.plans.property")} <span className="text-muted font-normal">· {t(a.role === "parking_plan" ? "assets.parkingPlan" : "assets.sitePlan")}</span></span>
+                <button type="button" className="text-primary font-semibold text-xs inline-flex items-center gap-1" onClick={() => open(a.id)}><IconFile width={14} height={14} />{a.filename}</button>
+              </li>
+            ))}
             {spaces.map((s) => {
               const plan = s.attachments.find((a) => a.role === "floor_plan");
               return (
                 <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="font-medium flex-1 min-w-0 truncate">{s.name}</span>
-                  {plan ? <button type="button" className="text-primary font-semibold text-xs inline-flex items-center gap-1" onClick={() => openAttachment(plan.id).catch((e) => toast.error(errorMessage(e)))}><IconFile width={14} height={14} />{plan.filename}</button> : <span className="text-xs text-muted">{t("assets.plans.noPlan")}</span>}
+                  {plan ? <button type="button" className="text-primary font-semibold text-xs inline-flex items-center gap-1" onClick={() => open(plan.id)}><IconFile width={14} height={14} />{plan.filename}</button> : <span className="text-xs text-muted">{t("assets.plans.noPlan")}</span>}
                 </li>
               );
             })}
