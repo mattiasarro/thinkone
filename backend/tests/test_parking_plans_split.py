@@ -89,7 +89,7 @@ async def test_plans_bulk_upload_matches_filenames(client: AsyncClient, admin: d
     assert rows["T6B_Pind_08.pdf"]["target"] == "space" and rows["T6B_Pind_08.pdf"]["space_name"] == "Pind 8"
     assert rows["T6B_Pind_08.png"]["target"] == "skip" and "T6B_Pind_08.pdf" in rows["T6B_Pind_08.png"]["note"]  # PDF beats image
     assert rows["T6B_B1.svg"]["target"] == "space" and rows["T6B_B1.svg"]["space_id"] == b1["id"]
-    assert rows["koondplaan.pdf"]["target"] == "property"
+    assert rows["koondplaan.pdf"]["target"] == "overview"
     assert rows["notes.txt"]["target"] == "skip"
     assert all(x["attachment_id"] is None for x in r.json())
 
@@ -131,7 +131,7 @@ async def test_plans_matching_uses_one_model_call(client: AsyncClient, admin: di
     payload = json.loads(fake.calls[-1]["user"])
     assert [s["name"] for s in payload["spaces"]] == ["A-101", "LB-01"] and payload["files"] == ["a101_plaan.pdf", "LB01.pdf", "koond.pdf"]
     rows = {x["filename"]: x for x in r.json()}
-    assert rows["koond.pdf"]["target"] == "property"
+    assert rows["koond.pdf"]["target"] == "overview"
 
     mapping = json.dumps({"a101_plaan.pdf": a101["id"], "LB01.pdf": "skip", "koond.pdf": "property"})
     r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=files, data={"mapping": mapping})
@@ -243,14 +243,14 @@ async def test_plans_parking_target(client: AsyncClient, admin: dict):
     prop = await make_property(client, company["id"])
     await make_space(client, prop["id"], "Pind 8", 100)
     pdf = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
-    files = [("files", ("T6B_parkimine.pdf", pdf, "application/pdf")), ("files", ("koond.pdf", pdf, "application/pdf"))]
+    files = [("files", ("T6B_parkimine.pdf", pdf, "application/pdf")), ("files", ("koond.pdf", pdf, "application/pdf")), ("files", ("asendiplaan.pdf", pdf, "application/pdf"))]
     r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "true"}, files=files)
     assert r.status_code == 200, r.text
     rows = {x["filename"]: x for x in r.json()}
     assert rows["T6B_parkimine.pdf"]["target"] == "parking"
-    assert rows["koond.pdf"]["target"] == "property"
-    mapping = json.dumps({"T6B_parkimine.pdf": "parking", "koond.pdf": "parking"})
+    assert rows["koond.pdf"]["target"] == "overview" and rows["asendiplaan.pdf"]["target"] == "property"
+    mapping = json.dumps({"T6B_parkimine.pdf": "parking", "koond.pdf": "overview", "asendiplaan.pdf": "property"})
     r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=files, data={"mapping": mapping})
     assert r.status_code == 200, r.text
     detail = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
-    assert sorted(a["role"] for a in detail["attachments"]) == ["parking_plan", "parking_plan"]
+    assert sorted(a["role"] for a in detail["attachments"]) == ["overview_plan", "parking_plan", "site_plan"]

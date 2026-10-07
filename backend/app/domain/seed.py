@@ -19,7 +19,9 @@ ASSET_TYPES = [
 ]
 
 CONTRACT_TYPES = [
-    ("lease", "real_estate", "Üürileping", {"asset_binding": "exclusive:space", "annex_roles": {"1": "floor_plan", "2": "site_plan", "3": "special_terms"}}),
+    # annex_roles: numbered lease annexes; optional_annex_roles: appended after them only when the property has such a file
+    ("lease", "real_estate", "Üürileping", {"asset_binding": "exclusive:space", "annex_roles": {"1": "floor_plan", "2": "site_plan", "3": "special_terms"},
+                                            "optional_annex_roles": ["overview_plan", "parking_plan"]}),
     ("employment", "employment", "Tööleping", {"asset_binding": "quota:position"}),
     ("generic", None, "Üldine leping", {"asset_binding": "coverage:optional"}),
 ]
@@ -47,10 +49,12 @@ async def seed_globals(session: AsyncSession) -> None:
     for code, vertical, kind, name, schema in ASSET_TYPES:
         if code not in existing:
             session.add(AssetType(code=code, vertical=vertical, kind=kind, name_et=name, schema_ref=schema))
-    existing = {t.code for t in (await session.execute(select(ContractType))).scalars()}
+    existing_ct = {t.code: t for t in (await session.execute(select(ContractType))).scalars()}
     for code, vertical, name, config in CONTRACT_TYPES:
-        if code not in existing:
+        if code not in existing_ct:
             session.add(ContractType(code=code, vertical=vertical, name_et=name, config=config))
+        elif existing_ct[code].config != config:  # global config is code-owned: keep deployed rows in step with the seed
+            existing_ct[code].config = config
     existing = {k.code for k in (await session.execute(select(KeyDateKind).where(KeyDateKind.account_id.is_(None)))).scalars()}
     for code, name, vertical, days, client in KEY_DATE_KINDS:
         if code not in existing:

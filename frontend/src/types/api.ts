@@ -45,11 +45,11 @@ export interface SpaceImportRow { row: number; ok: boolean; errors: string[]; da
 export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; updated: number; parking_created?: number }
 export interface ParkingImportRow { row: number; ok: boolean; errors: string[]; numbers: string[]; zone: string | null; type: SpotType; reserve: boolean; space_name: string | null; space_id: UUID | null }
 export interface ParkingImportResult { rows: ParkingImportRow[]; created: number; skipped: number; dry_run: boolean }
-export interface PlanRow { filename: string; content_type: string; size: number; target: "space" | "property" | "parking" | "skip"; space_id: UUID | null; space_name: string | null; note: string | null; attachment_id: UUID | null }
+export interface PlanRow { filename: string; content_type: string; size: number; target: "space" | "property" | "overview" | "parking" | "skip"; space_id: UUID | null; space_name: string | null; note: string | null; attachment_id: UUID | null }
 export interface SplitUnitInput { name: string; parts: Partial<Record<SpacePartKey, number>>; price_per_m2: number; parking_numbers: string[] }
 
 export type AttachmentSubject = "asset" | "company" | "contract" | "template";
-export type AttachmentRole = "floor_plan" | "site_plan" | "parking_plan" | "logo" | "generic" | "annex";
+export type AttachmentRole = "floor_plan" | "site_plan" | "overview_plan" | "parking_plan" | "logo" | "generic" | "annex";
 export interface Attachment { id: UUID; role: AttachmentRole | string; filename: string; content_type: string; size: number; created_at: ISODate }
 export type { AssetDetail as SpaceDetail };
 

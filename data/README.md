@@ -14,7 +14,7 @@ The scenario list is in [TESTPLAN-phase2.md](TESTPLAN-phase2.md).
 
 Generated plan drawings named for the spaces of `pinnad_naidis.csv`: `Naidis_Pind_01..03.pdf`, `Naidis_B1.pdf` (→ Büroo 1),
 `Naidis_Pind_02.png` (same space as the PDF → skipped), `Naidis_Pind_04.png` (image-only plan), `koondplaan_korrus_1.pdf`
-(no space in the name → whole-building plan), `plaanid_pakk.zip` (Pind 3, Büroo 2 and the koondplaan inside a folder).
+(no space in the name → koondplaan, the building/floor overview), `plaanid_pakk.zip` (Pind 3, Büroo 2 and the koondplaan inside a folder).
 
 ## `parkimine/` — Objekt → Parkimine → Impordi tabelist
 

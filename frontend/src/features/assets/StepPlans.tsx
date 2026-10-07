@@ -58,7 +58,8 @@ export function PlansUploader({ property, onDone }: { property: AssetDetail; onD
                     <Td><span className="inline-flex items-center gap-2"><IconFile width={16} height={16} className="text-muted flex-none" /><span className="font-medium text-sm">{r.filename}</span><span className="text-xs text-muted">{fmtBytes(r.size)}</span></span></Td>
                     <Td>
                       <select className="fld fld-sm max-w-[260px]" aria-label={t("assets.plans.target")} value={r.target === "space" ? r.space_id ?? "" : r.target} onChange={(e) => change(r.filename, e.target.value)}>
-                        <option value="property">{t("assets.plans.property")}</option>
+                        <option value="overview">{t("assets.overviewPlan")}</option>
+                        <option value="property">{t("assets.sitePlan")}</option>
                         <option value="parking">{t("assets.parkingPlan")}</option>
                         {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         <option value="skip">{t("assets.plans.skip")}</option>
@@ -80,12 +81,14 @@ export function PlansUploader({ property, onDone }: { property: AssetDetail; onD
   );
 }
 
+const ROLE_LABEL = { overview_plan: "assets.overviewPlan", site_plan: "assets.sitePlan", parking_plan: "assets.parkingPlan" } as const;
+
 export function StepPlans({ property, onBack, onNext }: { property: AssetDetail; onBack: () => void; onNext: () => void }) {
   const toast = useToast();
   const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
   const withPlan = spaces.filter((s) => s.attachments.some((a) => a.role === "floor_plan"));
-  // Building-level plans: files the plans step could not match to a space (site plan) and the parking plan.
-  const buildingPlans = property.attachments.filter((a) => a.role === "site_plan" || a.role === "parking_plan");
+  // Building-level plans: koondplaan (unit overview), asendiplaan (site plan) and parkimisskeem.
+  const buildingPlans = property.attachments.filter((a) => a.role in ROLE_LABEL);
   const open = (id: string) => openAttachment(id).catch((e) => toast.error(errorMessage(e)));
   return (
     <div className="grid gap-4">
@@ -99,7 +102,7 @@ export function StepPlans({ property, onBack, onNext }: { property: AssetDetail;
           <ul className="divide-y px-[var(--card-padding)]" style={{ borderColor: "var(--line)" }}>
             {buildingPlans.map((a) => (
               <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-                <span className="font-medium flex-1 min-w-0 truncate">{t("assets.plans.property")} <span className="text-muted font-normal">· {t(a.role === "parking_plan" ? "assets.parkingPlan" : "assets.sitePlan")}</span></span>
+                <span className="font-medium flex-1 min-w-0 truncate">{t("assets.plans.property")} <span className="text-muted font-normal">· {t(ROLE_LABEL[a.role as keyof typeof ROLE_LABEL])}</span></span>
                 <button type="button" className="text-primary font-semibold text-xs inline-flex items-center gap-1" onClick={() => open(a.id)}><IconFile width={14} height={14} />{a.filename}</button>
               </li>
             ))}

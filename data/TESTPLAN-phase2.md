@@ -51,8 +51,8 @@ The database was emptied on 2026-10-06, so start from scenario 1. Paths below ar
   - Edit „Pind 1” from the table: change the price → saved; delete the hand-made „Pind 9” from the table.
 - **Step 3 Plaanid**
   - Drop all files from `data/plaanid/` at once (including the ZIP and both PNGs).
-  - Check the proposal: `Naidis_Pind_01.pdf` → Pind 1, `Naidis_Pind_02.pdf` → Pind 2 and `Naidis_Pind_02.png` is skipped („sama pind mitmes failis”), `Naidis_Pind_04.png` → Pind 4, `Naidis_B1.pdf` → Büroo 1, from the ZIP `Naidis_Pind_03.pdf` → Pind 3 and `Buroo_2.pdf` → Büroo 2, `koondplaan_korrus_1.pdf` → „Kogu hoone”.
-  - Change one row by hand (e.g. send the koondplaan to Pind 4 → the PNG for Pind 4 becomes skipped because PDF wins), then set it back to „Kogu hoone”.
+  - Check the proposal: `Naidis_Pind_01.pdf` → Pind 1, `Naidis_Pind_02.pdf` → Pind 2 and `Naidis_Pind_02.png` is skipped („sama pind mitmes failis”), `Naidis_Pind_04.png` → Pind 4, `Naidis_B1.pdf` → Büroo 1, from the ZIP `Naidis_Pind_03.pdf` → Pind 3 and `Buroo_2.pdf` → Büroo 2, `koondplaan_korrus_1.pdf` → „Koondplaan”.
+  - Change one row by hand (e.g. send the koondplaan to Pind 4 → the PNG for Pind 4 becomes skipped because PDF wins), then set it back to „Koondplaan”.
   - „Kinnita N plaani” → the „Praegused plaanid” list shows every space with a plan; click a filename → opens in a new tab.
   - Upload `Naidis_Pind_01.pdf` again alone → the row note says it replaces the previous one; the space keeps both files (newest first).
 - **Step 4 Parkimine**
@@ -64,7 +64,7 @@ The database was emptied on 2026-10-06, so start from scenario 1. Paths below ar
   - Next.
 - **Step 5 Tingimused**
   - VAT checkbox, winter/summer utility costs; „Üldtingimuste mall” is empty until scenario 5 — come back after uploading the template and pick it.
-  - Upload asendiplaan.pdf, parkimisskeem.pdf, logo.png and hoone_tutvustus.pdf from `data/manused/objekt/` under their roles → they appear in the list.
+  - Upload logo.png and hoone_tutvustus.pdf from `data/manused/objekt/` under their roles → they appear in the list. (asendiplaan.pdf and parkimisskeem.pdf go through the Plaanid step: their names put them under Asendiplaan / Parkimisskeem.)
   - The summary line shows spaces, m², plans and parking counts → „Lõpeta” → object page.
 - **Second building without parking**: new object under the second company, one space by hand, step 4 → „Parkimist pole” → the object page says parking is not set; „Lisa siiski parkimiskohad” brings the form back.
 - Avaleht: setup card 3/4 (contracts still to do).

@@ -146,7 +146,7 @@ class Attachment(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     id: Mapped[uuid.UUID] = uuid_pk()
     subject_type: Mapped[str] = mapped_column(String(40), index=True)  # asset | company | contract | template
     subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
-    role: Mapped[str] = mapped_column(String(40))  # floor_plan | site_plan | logo | generic | annex
+    role: Mapped[str] = mapped_column(String(40))  # floor_plan | site_plan | overview_plan | parking_plan | logo | generic | annex
     filename: Mapped[str] = mapped_column(String(300))
     content_type: Mapped[str] = mapped_column(String(120))
     size: Mapped[int] = mapped_column(BigInteger)

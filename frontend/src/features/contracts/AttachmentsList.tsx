@@ -47,5 +47,5 @@ export function AttachmentsList({ items, subjectType, subjectId, role = "generic
 }
 
 function roleKey(role: string): string {
-  return role === "site_plan" ? "sitePlan" : role === "parking_plan" ? "parkingPlan" : role === "floor_plan" ? "floorPlan" : role === "logo" ? "logo" : "genericAttachment";
+  return role === "site_plan" ? "sitePlan" : role === "overview_plan" ? "overviewPlan" : role === "parking_plan" ? "parkingPlan" : role === "floor_plan" ? "floorPlan" : role === "logo" ? "logo" : "genericAttachment";
 }

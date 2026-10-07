@@ -180,7 +180,8 @@ contract_fact                                        versioned facts (invariant 
                                                      superseded_by; exclusion constraint: no overlapping
                                                      validity per key among live rows
 annex                        (Lisa)                  lease_id, number (1=floor plan, 2=site plan,
-                                                     3=special terms, 4+=amendments), status
+                                                     3=special terms, then koondplaan and parking plan
+                                                     when the property has them, 4+=amendments), status
 clause                       (Lepingupunkt)          lease_id, annex_id?, parent_id? (tree node),
                                                      container: body|annex_id, ordinal (sibling order),
                                                      number_style, category: general|main|special,
@@ -324,7 +325,7 @@ backend/
 
 1. **Authoring** — quotes have (a) free-form rich text (TipTap JSON) and (b) structured special-term items; leases are fully structured (clause rows). No document is ever produced by copying free text into a contract.
 2. **Rendering** — Jinja2 HTML + company branding → WeasyPrint → PDF. Rendered PDFs are immutable, content-addressed (`sha256`) objects in S3: `account/{id}/lease/{id}/v{n}/lease.pdf`.
-3. **Assembly of attachments** — at quote/lease creation the system collects the right files automatically: Lisa 1 floor plans from the selected space(s), Lisa 2 site/parking plan from the property (uploaded once during object setup — stage 02 of the spec).
+3. **Assembly of attachments** — at quote/lease creation the system collects the right files automatically: Lisa 1 floor plans from the selected space(s), Lisa 2 site plan from the property, plus the koondplaan (floor/building overview) and parking plan as further annexes when the property has them (all uploaded once during object setup — stage 02 of the spec).
 4. **Versioning** — every send-to-client creates a new immutable document version: the rendered PDF **and** a clause-tree snapshot are frozen, content-addressed (invariant 3 — evidence of exactly what the client saw, for every draft V1, V2, … not only the signed one); the negotiation loop never mutates an already-sent version.
 
 ### Clause editor architecture
