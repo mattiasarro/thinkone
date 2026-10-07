@@ -115,7 +115,6 @@ const et = {
     rowOk: "OK", rowErrors: "Vead", commitImport: "Salvesta {n} pinda", importDone: "{created} lisatud, {updated} uuendatud", importHasErrors: "Osa ridu on vigased — need jäetakse salvestamisel vahele; paranda failis ja laadi uuesti, kui tahad ka need sisse", previewLoading: "Kontrollin ridu…",
     importParkingNote: "Parkimiskohtade numbrid lähevad hoone parkimisregistrisse ja pinna kohtadeks.",
     spaceName: "Pinna nimi", spaceType: "Tüüp", rentable: "Üüripind, m²", price: "Hind, €/m² kuus", electrical: "Elektrivõimsus, A", floor: "Korrus",
-    parts: "Osade jaotus, m²", partsHint: "Valikuline. Kui täidad, peab osade summa võrduma üüripinnaga.", partsSum: "Osad kokku {sum} m²", partsMismatch: "Osad kokku {sum} m², üüripind {area} m² — need peavad klappima.",
     partNames: { ladu: "Ladu", kontor: "Kontor", myygisaal: "Müügisaal", olmeala: "Olmeala", yhisala: "Ühisala" },
     parking: "Parkimiskohti", parkingNumbers: "Pinna parkimiskohad", parkingNumbersHint: "Hoone registri kohad, mis lähevad pakkumisse ja lepingusse vaikimisi.", parkingNoRegister: "Hoonel pole parkimisregistrit — sisesta ainult arv või lisa kohad sammus „Parkimine”.",
     parkingRegisterLink: "Halda hoone parkimiskohti →", parkingPickTitle: "Pinna kohad", parkingPickFree: "Vabad kohad", parkingPickTaken: "teise pinna koht",
