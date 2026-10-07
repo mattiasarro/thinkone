@@ -15,8 +15,9 @@ import { fmtNum } from "@/lib/format";
 import type { AssetDetail, PropertyAttributes, SpaceAttributes } from "@/types/api";
 
 type Form = { vat_taxable: boolean; utility_cost_winter: string; utility_cost_summer: string; template_id: string };
-const ROLES: { role: string; label: "assets.sitePlan" | "assets.parkingPlan" | "assets.logo" | "assets.genericAttachment" }[] = [
-  { role: "site_plan", label: "assets.sitePlan" }, { role: "parking_plan", label: "assets.parkingPlan" }, { role: "logo", label: "assets.logo" }, { role: "generic", label: "assets.genericAttachment" },
+// Site and parking plans are uploaded in the plans step; here only the logo and other attachments.
+const ROLES: { role: string; label: "assets.logo" | "assets.genericAttachment" }[] = [
+  { role: "logo", label: "assets.logo" }, { role: "generic", label: "assets.genericAttachment" },
 ];
 
 export function StepSettings({ property, onBack, onFinish }: { property: AssetDetail; onBack: () => void; onFinish: () => void }) {

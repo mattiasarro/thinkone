@@ -236,3 +236,21 @@ async def test_delete_guard_keeps_documented_spaces(client: AsyncClient, admin: 
     assert r.status_code == 409
     r = await client.request("DELETE", f"/api/v1/assets/{prop['id']}")
     assert r.status_code == 409
+
+
+async def test_plans_parking_target(client: AsyncClient, admin: dict):
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    await make_space(client, prop["id"], "Pind 8", 100)
+    pdf = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+    files = [("files", ("T6B_parkimine.pdf", pdf, "application/pdf")), ("files", ("koond.pdf", pdf, "application/pdf"))]
+    r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "true"}, files=files)
+    assert r.status_code == 200, r.text
+    rows = {x["filename"]: x for x in r.json()}
+    assert rows["T6B_parkimine.pdf"]["target"] == "parking"
+    assert rows["koond.pdf"]["target"] == "property"
+    mapping = json.dumps({"T6B_parkimine.pdf": "parking", "koond.pdf": "parking"})
+    r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false"}, files=files, data={"mapping": mapping})
+    assert r.status_code == 200, r.text
+    detail = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
+    assert sorted(a["role"] for a in detail["attachments"]) == ["parking_plan", "parking_plan"]

@@ -59,6 +59,7 @@ export function PlansUploader({ property, onDone }: { property: AssetDetail; onD
                     <Td>
                       <select className="fld fld-sm max-w-[260px]" aria-label={t("assets.plans.target")} value={r.target === "space" ? r.space_id ?? "" : r.target} onChange={(e) => change(r.filename, e.target.value)}>
                         <option value="property">{t("assets.plans.property")}</option>
+                        <option value="parking">{t("assets.parkingPlan")}</option>
                         {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         <option value="skip">{t("assets.plans.skip")}</option>
                       </select>

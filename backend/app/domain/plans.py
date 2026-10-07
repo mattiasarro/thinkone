@@ -4,7 +4,7 @@ FILENAME → operator confirms the file → space rows → stored as ``floor_pla
 Matching (``plVaste``): one model call per batch gets the space list and the filenames and returns a best-effort
 pairing („T6B_Pind_08.pdf” → Pind 8; „a101_plaan.png” → A-101), leaving unclear files unmatched; the rule-based
 ``match_filename`` is the fallback when the model is unavailable. A file that matches no space is the building's
-plan (site_plan). The same space in several files: PDF > SVG > image, the rest are skipped. Every bound plan is one
+plan (site_plan); a file whose name says parking (or one the operator marks so) is the parking plan (parking_plan). The same space in several files: PDF > SVG > image, the rest are skipped. Every bound plan is one
 event: „Pind N: pinnaplaan vana → uus”.
 """
 
@@ -63,6 +63,7 @@ def match_filename(filename: str, spaces: list[Asset]) -> Asset | None:
 
 
 MIN_CONFIDENCE = 0.6
+PARKING_RE = re.compile(r"park", re.I)  # „parkimisskeem.pdf”, „T6B_parkimine.png”, „parking_plan.svg”
 
 
 async def match_files(filenames: list[str], spaces: list[Asset]) -> dict[str, Asset | None]:
@@ -112,7 +113,7 @@ class PlanRow:
     filename: str
     content_type: str
     size: int
-    target: str  # "space" | "property" | "skip"
+    target: str  # "space" | "property" | "parking" | "skip"
     space_id: uuid.UUID | None = None
     space_name: str | None = None
     note: str | None = None  # why skipped / what it replaces
@@ -148,7 +149,7 @@ def expand_files(files: list[PlanFile]) -> list[PlanFile]:
 
 
 async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[PlanFile], mapping: dict[str, str] | None = None) -> list[PlanRow]:
-    """Match each file to a space; ``mapping`` (filename → space id | "property" | "skip") overrides the guess."""
+    """Match each file to a space; ``mapping`` (filename → space id | "property" | "parking" | "skip") overrides the guess."""
     prop = await assets_domain.get_asset(session, property_id)
     if prop.type_code != "property":
         raise DomainError("Plaane saab siduda ainult hoone pindadega")
@@ -156,7 +157,7 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
     by_id = {str(s.id): s for s in spaces}
     expanded = expand_files(files)
     # one model call for every file the operator has not placed yet
-    unplaced = [f.filename for f in expanded if f.content_type in PREFERENCE and (mapping or {}).get(f.filename) not in ("skip", "property", *by_id)]
+    unplaced = [f.filename for f in expanded if f.content_type in PREFERENCE and (mapping or {}).get(f.filename) not in ("skip", "property", "parking", *by_id)]
     guessed = await match_files(unplaced, spaces)
     rows: list[PlanRow] = []
     for f in expanded:
@@ -168,6 +169,8 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
             rows.append(PlanRow(f.filename, f.content_type, len(f.data), "skip", note="jäetakse välja"))
         elif choice == "property":
             rows.append(PlanRow(f.filename, f.content_type, len(f.data), "property", note="kogu hoone plaan"))
+        elif choice == "parking":
+            rows.append(PlanRow(f.filename, f.content_type, len(f.data), "parking", note="parkimisskeem"))
         elif choice and choice in by_id:
             s = by_id[choice]
             rows.append(PlanRow(f.filename, f.content_type, len(f.data), "space", s.id, s.name))
@@ -175,6 +178,8 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
             s = guessed.get(f.filename)
             if s:
                 rows.append(PlanRow(f.filename, f.content_type, len(f.data), "space", s.id, s.name, note="failinime järgi"))
+            elif PARKING_RE.search(f.filename):
+                rows.append(PlanRow(f.filename, f.content_type, len(f.data), "parking", note="failinime järgi — parkimisskeem"))
             else:
                 rows.append(PlanRow(f.filename, f.content_type, len(f.data), "property", note="pinda ei tuvastatud — kogu hoone plaan"))
     # same space from several files → keep the best format, skip the rest
@@ -201,7 +206,7 @@ async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, fi
             continue
         f = expanded[r.filename]
         subject_id = r.space_id if r.target == "space" else prop.id
-        role = "floor_plan" if r.target == "space" else "site_plan"
+        role = "floor_plan" if r.target == "space" else "parking_plan" if r.target == "parking" else "site_plan"
         previous = await attachments_domain.list_attachments(session, subject_type="asset", subject_id=subject_id, role=role)
         att = await attachments_domain.store_file(session, actor, subject_type="asset", subject_id=subject_id, role=role, filename=f.filename,
                                                   content_type=f.content_type, data=f.data)
