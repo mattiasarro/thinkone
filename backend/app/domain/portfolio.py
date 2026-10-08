@@ -72,6 +72,13 @@ async def get_contract(session: AsyncSession, contract_id: uuid.UUID) -> Contrac
     return c
 
 
+async def get_source_document(session: AsyncSession, contract: Contract, doc_id: uuid.UUID) -> SourceDocument:
+    d = await session.get(SourceDocument, doc_id)
+    if not d or d.contract_id != contract.id:
+        raise NotFound("Lähtedokumenti ei leitud")
+    return d
+
+
 async def contract_bundle(session: AsyncSession, contract: Contract) -> dict[str, Any]:
     from app.domain.clauses import rendered_tree, to_dicts
     from app.domain.contract_parties import list_for_contract

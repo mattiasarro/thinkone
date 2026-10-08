@@ -196,6 +196,11 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     assert r.status_code == 200
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
     assert c["source_documents"][0]["container_signatures"][0]["personal_code"] == "37001010000"
+    # provenance anchors open the signed PDF inside the container, plus the extracted text pages as fallback
+    v = (await client.get(f"/api/v1/contracts/{c['id']}/source-documents/{c['source_documents'][0]['id']}/view")).json()
+    assert v["format"] == "asice" and v["pdf_url"] and v["pdf_url"] != c["source_documents"][0]["url"]
+    assert v["text_pages"] and v["text_pages"][0]["page"] == 1
+    assert (await client.get(f"/api/v1/contracts/{c['id']}/source-documents/{uuid.uuid4()}/view")).status_code == 404
 
 
 def test_proposal_schema_has_no_numeric_bounds():

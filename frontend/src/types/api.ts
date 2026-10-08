@@ -85,6 +85,7 @@ export interface KeyDateKind { code: string; name_et: string; default_notify_day
 export interface SourceDocument { id: UUID; filename: string; content_type: string; role: string; format?: string | null; page_count?: number | null; url?: string | null; container_signatures?: ContainerSignature[] | null }
 export interface ContainerSignature { signer?: string | null; name?: string | null; personal_code?: string | null; signed_at?: ISODate | null; time?: ISODate | null; valid?: boolean | null }
 export interface ContractParty { id: UUID; party: { id: UUID; name: string; registry_code: string | null }; role: string; is_primary: boolean; valid_from: ISODate | null; valid_to: ISODate | null; source: string }
+export interface SourceView { id: UUID; filename: string; format: string; page_count: number | null; pdf_url: string | null; text_pages: { page: number; text: string }[] | null }
 export interface ContractDetail extends ContractSummary { notes?: string | null; facts: ContractFact[]; key_dates: KeyDate[]; allocations: Allocation[]; source_documents: SourceDocument[]; clauses: Clause[]; attachments: Attachment[]; parties: ContractParty[] }
 /** A party's contracts (GET /parties/{id}/contracts): the summary fields plus the party's role in that contract. */
 export interface PartyContractRow { id: UUID; number: string | null; title: string; status: string; type_code: string; category: ContractCategory | null; start_date: ISODate | null; end_date: ISODate | null; role: string | null }

@@ -72,6 +72,16 @@ class KeyDateOut(BaseModel):
     provenance: dict[str, Any] | None
 
 
+class SourceViewOut(BaseModel):
+    """What the contract page needs to show the signed original at a provenance anchor."""
+    id: uuid.UUID
+    filename: str
+    format: str
+    page_count: int | None
+    pdf_url: str | None  # the PDF itself, or the PDF datafile inside an ASiC-E container
+    text_pages: list[dict[str, Any]] | None  # extracted text per page — fallback when there is no PDF to embed
+
+
 class AllocationOut(BaseModel):
     id: uuid.UUID
     kind: str
@@ -206,6 +216,15 @@ async def patch_contract(contract_id: uuid.UUID, body: ContractPatchIn, p: Princ
 @router.delete("/{contract_id}", status_code=204)
 async def delete_contract(contract_id: uuid.UUID, reason: str | None = None, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> None:
     await portfolio.soft_delete_contract(session, p.actor, contract_id, reason)
+
+
+@router.get("/{contract_id}/source-documents/{doc_id}/view", response_model=SourceViewOut)
+async def source_view(contract_id: uuid.UUID, doc_id: uuid.UUID, session: AsyncSession = Depends(db)) -> SourceViewOut:
+    c = await portfolio.get_contract(session, contract_id)
+    doc = await portfolio.get_source_document(session, c, doc_id)
+    pdf_url = await imports_domain.source_pdf_url(doc)
+    pages = await imports_domain.source_pages(None, doc)
+    return SourceViewOut(id=doc.id, filename=doc.filename, format=doc.format, page_count=doc.page_count, pdf_url=pdf_url, text_pages=pages)
 
 
 @router.get("/{contract_id}/parties", response_model=list[ContractPartyOut])

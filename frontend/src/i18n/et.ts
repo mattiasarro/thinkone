@@ -92,7 +92,7 @@ const et = {
     noKeyDates: "Võtmekuupäevi pole", addKeyDate: "Lisa võtmekuupäev", noAllocations: "Esemeid pole seotud", noSources: "Lähtedokumente pole", noClauses: "Tingimuste struktuuri pole (registreeritud ilma klausliteta)",
     noAttachments: "Manuseid pole", noAudit: "Sündmusi pole", noFacts: "Andmeid pole", validFrom: "alates {date}", provenance: "Allikas", sourceNumber: "Originaalnumber",
     exportAudit: "Ekspordi auditijälg", exportStarted: "Eksport on koostamisel — link avaneb uues aknas", allocationKind: { exclusive: "Ainuõiguslik", coverage: "Katab" },
-    locked: "Lukus", editNotes: "Muuda märkmeid", updated: "Leping uuendatud", page: "lk {n}",
+    locked: "Lukus", editNotes: "Muuda märkmeid", updated: "Leping uuendatud", page: "lk {n}", openOriginal: "Ava originaal leheküljelt {n}", original: "Allkirjastatud originaal", openNewTab: "Ava uues vahekaardis", noPreview: "Eelvaadet pole — ava fail",
     parties: "Pooled", addParty: "Lisa osapool", primary: "Peamine", makePrimary: "Tee peamiseks", removeParty: "Eemalda lepingult",
     primaryKeep: "Peamist osapoolt ei saa eemaldada — määra enne teine peamiseks", partyAdded: "Osapool lisatud", partyRemoved: "Osapool eemaldatud lepingult",
     partyUpdated: "Osapoole roll muudetud", noParties: "Lepingul pole osapooli", partyRole: "Roll lepingus", partyValid: "kehtib {from} – {to}", partyFrom: "alates {from}", partyTo: "kuni {to}",

@@ -137,10 +137,29 @@ async def retry_job(session: AsyncSession, actor: Actor, job_id: uuid.UUID) -> I
     return job
 
 
-async def source_pages(job: ImportJob, doc: SourceDocument) -> list[dict[str, Any]] | None:
+async def source_pages(job: ImportJob | None, doc: SourceDocument) -> list[dict[str, Any]] | None:
     if not doc.extracted_text_s3_key:
         return None
     return json.loads(await blobstore().get(doc.extracted_text_s3_key))
+
+
+async def source_pdf_url(doc: SourceDocument) -> str | None:
+    """Presigned URL of the PDF a browser can embed at ``#page=N``: the file itself, or for an ASiC-E/BDOC container the
+    signed PDF datafile inside it (unpacked once and cached next to the container in object storage). None for DOCX."""
+    store = blobstore()
+    if doc.format == "pdf":
+        return await store.presigned_url(doc.s3_key, doc.filename)
+    if doc.format != "asice":
+        return None
+    key = f"{doc.s3_key}.main.pdf"
+    if not await store.exists(key):
+        from app.ingest.container import unpack
+
+        main = unpack(await store.get(doc.s3_key)).main_document()
+        if not main or not main[0].lower().endswith(".pdf"):
+            return None
+        await store.put(key, main[1], "application/pdf")
+    return await store.presigned_url(key, doc.filename.rsplit(".", 1)[0] + ".pdf")
 
 
 # ---------------------------------------------------------------- commit ----------------------------------

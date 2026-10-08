@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
 import { useAudit, useContract, useDeleteKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
@@ -14,7 +14,8 @@ import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownl
 import { fmtDate, fmtDateTime, valueToString, daysUntil } from "@/lib/format";
 import { KeyDateDialog } from "@/features/keydates/KeyDateDialog";
 import { ClauseTree } from "./ClauseTree";
-import { ProvenanceAnchor } from "./ProvenanceAnchor";
+import { ProvenanceAnchor, SourceViewerContext } from "./ProvenanceAnchor";
+import { SourceViewer } from "./SourceViewer";
 import { AmendmentDialog } from "./AmendmentDialog";
 import { AttachmentsList } from "./AttachmentsList";
 import { PartiesCard } from "./PartiesCard";
@@ -32,6 +33,8 @@ function Detail({ c }: { c: ContractDetail }) {
   const [kdDialog, setKdDialog] = useState<{ open: boolean; item?: KeyDate | null }>({ open: false });
   const [kdDel, setKdDel] = useState<KeyDate | null>(null);
   const [amend, setAmend] = useState(false);
+  const [src, setSrc] = useState<{ docId: string; page: number } | null>(null);
+  const openSource = useCallback((docId: string, page: number) => setSrc({ docId, page }), []);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notes, setNotes] = useState(c.notes ?? "");
   const delKd = useDeleteKeyDate();
@@ -53,6 +56,7 @@ function Detail({ c }: { c: ContractDetail }) {
   const facts: ContractFact[] = c.facts?.length ? c.facts : Object.entries(c.current_values ?? {}).map(([key, value]) => ({ key, value: value as string | number | null, valid_from: null, reason: null }));
 
   return (
+    <SourceViewerContext.Provider value={openSource}>
     <div className="grid gap-5">
       <LinkButton href="/app/portfell?tab=lepingud" variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{t("portfolio.tabs.contracts")}</LinkButton>
       <PageHead
@@ -184,7 +188,9 @@ function Detail({ c }: { c: ContractDetail }) {
       <KeyDateDialog open={kdDialog.open} onClose={() => setKdDialog({ open: false })} initial={kdDialog.item} contractId={c.id} lockContract />
       <ConfirmDialog open={!!kdDel} onClose={() => setKdDel(null)} onConfirm={onDeleteKd} busy={delKd.isPending} title={t("common.delete")} body={kdDel ? t("keyDates.deleteConfirm", { title: kdDel.title }) : null} />
       <AmendmentDialog open={amend} onClose={() => setAmend(false)} contractId={c.id} />
+      <SourceViewer contractId={c.id} docId={src?.docId ?? null} page={src?.page ?? null} onClose={() => setSrc(null)} />
     </div>
+    </SourceViewerContext.Provider>
   );
 }
 

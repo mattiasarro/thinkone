@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SourceView, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -9,6 +9,9 @@ export function useContracts(params: Query) {
 }
 export function useContract(id: string | undefined) {
   return useQuery({ queryKey: ["contract", id], queryFn: () => api.get<ContractDetail>(`/contracts/${id}`), enabled: !!id });
+}
+export function useSourceView(contractId: string, docId: string | null) {
+  return useQuery({ queryKey: ["source-view", contractId, docId], queryFn: () => api.get<SourceView>(`/contracts/${contractId}/source-documents/${docId}/view`), enabled: !!docId, staleTime: 5 * 60_000 });
 }
 export function useUpdateContract(id: string) {
   const qc = useQueryClient();
