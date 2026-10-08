@@ -31,6 +31,7 @@ class TemplateOut(BaseModel):
 
 class TemplateDetailOut(TemplateOut):
     body: dict[str, Any]
+    clauses: list[dict[str, Any]] | None = None  # rendered tree for clause_tree templates (general terms)
 
 
 class TemplateBodyIn(BaseModel):
@@ -77,4 +78,10 @@ async def import_general_terms(
 
 @router.get("/{template_id}", response_model=TemplateDetailOut)
 async def get_template(template_id: uuid.UUID, session: AsyncSession = Depends(db)) -> TemplateDetailOut:
-    return TemplateDetailOut.model_validate(await templates_domain.get_template(session, template_id))
+    from app.domain.clauses import rendered_tree, to_dicts
+
+    t = await templates_domain.get_template(session, template_id)
+    out = TemplateDetailOut.model_validate(t)
+    if (t.body or {}).get("format") == "clause_tree":
+        out.clauses = to_dicts(await rendered_tree(session, template_id=t.id))
+    return out
