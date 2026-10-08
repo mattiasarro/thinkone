@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal, db
 from app.domain import parties as parties_domain
+from app.ingest.schema import PartyRole
 
 router = APIRouter(prefix="/parties", tags=["parties"])
 
@@ -40,7 +41,7 @@ class PartyIn(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=60)
-    roles: list[str] = Field(default_factory=list)
+    roles: list[PartyRole] = Field(default_factory=list)
 
 
 class PartyPatch(BaseModel):
@@ -53,7 +54,7 @@ class PartyPatch(BaseModel):
     contact_name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=60)
-    roles: list[str] | None = None
+    roles: list[PartyRole] | None = None
 
 
 class PartyContractOut(BaseModel):

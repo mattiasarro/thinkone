@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { t } from "@/i18n";
+import { t, tEnum } from "@/i18n";
 import { Modal } from "@/components/ui/Modal";
 import { Input, Select, FormRow } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -11,29 +11,31 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { useSaveParty } from "@/lib/queries/portfolio";
 import { AriregisterSearch } from "@/components/ui/AriregisterSearch";
-import type { AriregisterHit, Party, PartyKind } from "@/types/api";
+import { PARTY_ROLES, type AriregisterHit, type Party, type PartyKind, type PartyRole } from "@/types/api";
 
 const schema = z.object({
   kind: z.enum(["ee_company", "foreign_company", "person"]),
   name: z.string().min(1, t("common.required")),
   registry_code: z.string().optional(), personal_code: z.string().optional(), vat_number: z.string().optional(), address: z.string().optional(),
-  contact_name: z.string().optional(), email: z.string().email(t("common.validationError")).optional().or(z.literal("")), phone: z.string().optional(), roles: z.string().optional(),
+  contact_name: z.string().optional(), email: z.string().email(t("common.validationError")).optional().or(z.literal("")), phone: z.string().optional(), roles: z.array(z.enum(PARTY_ROLES)),
 });
 type Form = z.infer<typeof schema>;
 
 export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open: boolean; onClose: () => void; initial?: Party | null; defaults?: Partial<Party>; onSaved?: (p: Party) => void }) {
   const save = useSaveParty();
   const toast = useToast();
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { kind: "ee_company", name: "" } });
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { kind: "ee_company", name: "", roles: [] } });
   useEffect(() => {
     if (!open) return;
     const src = initial ?? defaults;
     reset({
       kind: (src?.kind as PartyKind) ?? "ee_company", name: src?.name ?? "", registry_code: src?.registry_code ?? "", personal_code: src?.personal_code ?? "", vat_number: src?.vat_number ?? "",
-      address: src?.address ?? "", contact_name: src?.contact_name ?? "", email: src?.email ?? "", phone: src?.phone ?? "", roles: (src?.roles ?? []).join(", "),
+      address: src?.address ?? "", contact_name: src?.contact_name ?? "", email: src?.email ?? "", phone: src?.phone ?? "", roles: (src?.roles ?? []).filter((r): r is PartyRole => (PARTY_ROLES as readonly string[]).includes(r)),
     });
   }, [open, initial, defaults, reset]);
   const kind = watch("kind");
+  const roles = watch("roles");
+  const toggleRole = (r: PartyRole) => setValue("roles", roles.includes(r) ? roles.filter((x) => x !== r) : [...roles, r], { shouldDirty: true });
   const pick = (h: AriregisterHit, d: AriregisterHit | null) => {
     if (!d) { setValue("kind", "ee_company"); setValue("name", h.name); setValue("registry_code", h.registry_code); setValue("address", h.address ?? ""); setValue("vat_number", h.vat_number ?? ""); return; }
     if (d.vat_number) setValue("vat_number", d.vat_number);
@@ -47,7 +49,7 @@ export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open
     try {
       const p = await save.mutateAsync({
         id: initial?.id, kind: v.kind, name: v.name, registry_code: v.registry_code || null, personal_code: v.personal_code || null, vat_number: v.vat_number || null, address: v.address || null,
-        contact_name: v.contact_name || null, email: v.email || null, phone: v.phone || null, roles: (v.roles ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+        contact_name: v.contact_name || null, email: v.email || null, phone: v.phone || null, roles: v.roles,
       });
       toast.success(t("toast.saved"));
       onSaved?.(p);
@@ -76,7 +78,16 @@ export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open
           <Input label={t("portfolio.parties.email")} type="email" error={errors.email?.message} {...register("email")} />
           <Input label={t("portfolio.parties.phone")} {...register("phone")} />
         </FormRow>
-        <Input label={t("portfolio.parties.roles")} hint={t("portfolio.parties.rolesHint")} {...register("roles")} />
+        <fieldset className="field">
+          <legend>{t("portfolio.parties.roles")}</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {PARTY_ROLES.map((r) => (
+              <label key={r} className={`pill cursor-pointer select-none ${roles.includes(r) ? "primary" : ""}`}>
+                <input type="checkbox" className="sr-only" checked={roles.includes(r)} onChange={() => toggleRole(r)} />{tEnum("portfolio.parties.roleNames", r)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </form>
     </Modal>
   );

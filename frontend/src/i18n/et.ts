@@ -75,8 +75,8 @@ const et = {
       empty: "Osapooli pole", emptySub: "Osapooled tekivad lepingute importimisel või käsitsi lisades.",
       kinds: { ee_company: "Eesti ettevõte", foreign_company: "Välismaa ettevõte", person: "Eraisik" },
       registryCode: "Registrikood", personalCode: "Isikukood", vatNumber: "KMKR nr", address: "Aadress", contactName: "Kontaktisik", email: "E-post", phone: "Telefon",
-      rolesHint: "Eralda komaga, nt üürnik, haldur", contracts: "Lepingud", noContracts: "Selle osapoolega lepinguid pole", deleteConfirm: "Kas kustutada osapool „{name}”?",
-      roleNames: { tenant: "Üürnik", landlord: "Üürileandja", employee: "Töötaja", employer: "Tööandja", manager: "Haldur", maintainer: "Hooldaja", insurer: "Kindlustaja", security: "Turvafirma", other: "Muu" },
+      contracts: "Lepingud", noContracts: "Selle osapoolega lepinguid pole", deleteConfirm: "Kas kustutada osapool „{name}”?",
+      roleNames: { landlord: "Üürileandja", tenant: "Üürnik", client: "Klient", supplier: "Tarnija", manager: "Haldur", maintainer: "Hooldaja", security: "Turvafirma", insurer: "Kindlustaja", insured: "Kindlustatu", employer: "Tööandja", employee: "Töötaja", other: "Muu" },
     },
   },
   contract: {

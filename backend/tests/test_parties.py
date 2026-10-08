@@ -66,3 +66,17 @@ async def test_find_or_create_party(client: AsyncClient, admin: dict):
     assert sorted(p["name"] for p in parties) == ["Caverion Eesti AS", "Uus Klient OÜ"]
     ev = (await client.get("/api/v1/audit", params={"entity_type": "party", "entity_id": str(a.id)})).json()
     assert [e["action"] for e in ev] == ["party.updated", "party.created"]
+
+
+def test_party_role_vocabulary_is_shared():
+    from typing import get_args
+
+    from app.domain.parties import PARTY_ROLES
+    from app.ingest.schema import PartyRole
+
+    assert set(get_args(PartyRole)) == set(PARTY_ROLES)
+
+
+async def test_party_unknown_role_rejected(client: AsyncClient, admin: dict):
+    r = await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Roll OÜ", "roles": ["üürnik"]})
+    assert r.status_code == 422

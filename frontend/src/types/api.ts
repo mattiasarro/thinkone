@@ -21,7 +21,9 @@ export interface AriregisterHit { name: string; registry_code: string; address: 
 export interface EhrHit { ehr_code: string; address: string; use_type: string | null; footprint_m2: number | null; net_area_m2: number | null; floors: number | null; build_year: number | null; ehr_payload?: Record<string, unknown> | null }
 
 export type PartyKind = "ee_company" | "foreign_company" | "person";
-export interface Party { id: UUID; kind: PartyKind; name: string; registry_code: string | null; personal_code: string | null; vat_number: string | null; address: string | null; contact_name: string | null; email: string | null; phone: string | null; roles: string[] }
+export const PARTY_ROLES = ["landlord", "tenant", "client", "supplier", "manager", "maintainer", "security", "insurer", "insured", "employer", "employee", "other"] as const;
+export type PartyRole = (typeof PARTY_ROLES)[number];
+export interface Party { id: UUID; kind: PartyKind; name: string; registry_code: string | null; personal_code: string | null; vat_number: string | null; address: string | null; contact_name: string | null; email: string | null; phone: string | null; roles: PartyRole[] }
 export type PartyInput = Omit<Party, "id">;
 
 export type AssetType = "property" | "space" | "parking_spot" | "department" | "position";

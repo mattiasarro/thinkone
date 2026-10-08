@@ -16,6 +16,8 @@ from app.models.contracts import Contract
 from app.models.core import Party
 
 KINDS = {"ee_company", "foreign_company", "person"}
+# The one vocabulary for party roles — the import schema (``app.ingest.schema.PartyRole``) and the frontend pick list mirror it.
+PARTY_ROLES = ("landlord", "tenant", "client", "supplier", "manager", "maintainer", "security", "insurer", "insured", "employer", "employee", "other")
 EDITABLE = ("kind", "name", "registry_code", "personal_code", "vat_number", "address", "contact_name", "email", "phone", "roles")
 
 
@@ -137,7 +139,11 @@ def _validate(*, kind: str, name: str, roles: list[str] | None, **fields: Any) -
     clean_roles: list[str] = []
     for r in roles or []:
         r = (r or "").strip().lower()
-        if r and r not in clean_roles:
+        if not r:
+            continue
+        if r not in PARTY_ROLES:
+            raise DomainError(f"Tundmatu roll: {r}")
+        if r not in clean_roles:
             clean_roles.append(r)
     data: dict[str, Any] = {"kind": kind, "name": name, "roles": clean_roles}
     for k in ("registry_code", "personal_code", "vat_number", "address", "contact_name", "email", "phone"):

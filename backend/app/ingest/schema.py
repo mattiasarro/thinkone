@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 
 Category = Literal["lease", "maintenance", "management", "insurance", "security", "employment", "other"]
 KeyDateKindCode = Literal["start", "end", "indexation", "payment", "notice", "probation", "salary_review", "other"]
-PartyRole = Literal["landlord", "tenant", "client", "supplier", "insurer", "insured", "employer", "employee", "other"]
+PartyRole = Literal["landlord", "tenant", "client", "supplier", "manager", "maintainer", "security", "insurer", "insured", "employer", "employee", "other"]
 
 
 class Anchor(BaseModel):
