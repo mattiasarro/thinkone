@@ -5,6 +5,7 @@ from app.models.contracts import (  # noqa: F401
     Clause,
     Contract,
     ContractFact,
+    ContractParty,
     ContractType,
     ImportJob,
     KeyDate,

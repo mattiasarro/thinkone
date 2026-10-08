@@ -168,12 +168,18 @@ quote                        (Hinnapakkumine)        party_id, property_id, stat
 quote_space                                          quote_id ↔ space_id (1..n spaces per quote)
 quote_special_term                                   structured items — flow into lease annex 3
 lease → contract             (Üürileping)            quote_id?, space via allocation (exactly 1),
-                                                     party_id, status, origin: platform|imported,
+                                                     parties via contract_party, status, origin:
+                                                     platform|imported,
                                                      version (optimistic lock); rent, utility,
                                                      vat_taxable (inherited), indexation (method:
                                                      fixed_pct | stat_cpi, rate, frequency, next_date)
                                                      as current-value columns = maintained projection
                                                      of contract_fact (invariant 2)
+contract_party                                       contract_id, party_id, role (the shared party-role
+                                                     vocabulary), is_primary (exactly one per contract),
+                                                     valid_from/valid_to, source: import|manual|amendment.
+                                                     A contract's parties are rows; the primary one is
+                                                     what single-party views (lists, calendar, hõive) show.
 contract_fact                                        versioned facts (invariant 2): contract_id, key,
                                                      value JSONB, valid_from/valid_to, recorded_at,
                                                      reason: initial|indexation|amendment|correction,

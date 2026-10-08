@@ -13,7 +13,7 @@ import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconCheck, IconAlert } from "@/components/ui/Icons";
 import { SourcePane } from "./SourcePane";
 import { ProposalEditor } from "./ProposalEditor";
-import { LinkSection, type LinkState } from "./LinkSection";
+import { LinkSection, initialPartyRows, partyRowsValid, syncPartyRows, type LinkState } from "./LinkSection";
 import { loadChecked, saveChecked, uncertainKeys } from "./reviewState";
 import type { ImportJobDetail, Proposal } from "@/types/api";
 
@@ -72,7 +72,7 @@ function Review({ job }: { job: ImportJobDetail }) {
   const [draft, setDraft] = useState<Proposal>(base);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [link, setLink] = useState<LinkState>(() => ({
-    company_id: "", asset_id: "", space_id: "", partyMode: "new", party_id: "", parking_numbers: null,
+    company_id: "", asset_id: "", space_id: "", parties: initialPartyRows(base), parking_numbers: null,
     // supporting agreements (haldus/hooldus/kindlustus/turva) cover a property rather than occupying a space
     allocation_kind: SUPPORTING.includes(base.contract.category) ? "coverage" : "exclusive",
   }));
@@ -96,7 +96,7 @@ function Review({ job }: { job: ImportJobDetail }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  const onChange = useCallback((p: Proposal) => { dirty.current = true; setDraft(p); }, []);
+  const onChange = useCallback((p: Proposal) => { dirty.current = true; setDraft(p); setLink((l) => { const parties = syncPartyRows(l.parties, p); return parties === l.parties ? l : { ...l, parties }; }); }, []);
   const onCheck = useCallback((key: string, v: boolean) => {
     setChecked((s) => { const n = new Set(s); if (v) n.add(key); else n.delete(key); saveChecked(job.id, n); return n; });
   }, [job.id]);
@@ -107,15 +107,15 @@ function Review({ job }: { job: ImportJobDetail }) {
   }, []);
 
   const unresolved = uncertainKeys(draft).filter((k) => !checked.has(k));
-  const canCommit = unresolved.length === 0 && !!draft.contract.title && (link.partyMode === "new" || !!link.party_id);
+  const canCommit = unresolved.length === 0 && !!draft.contract.title && partyRowsValid(link.parties);
 
   const doCommit = async () => {
     try {
       if (dirty.current) await save.mutateAsync(draft);
-      const newParty = link.partyMode === "new" ? (draft.parties.find((p) => p.name.toLowerCase() === draft.contract.counterparty_name.toLowerCase()) ?? draft.parties[0] ?? { name: draft.contract.counterparty_name, role: "counterparty", confidence: 1 }) : null;
       const r = await commit.mutateAsync({
         company_id: link.company_id || null, asset_id: link.space_id || link.asset_id || null, allocation_kind: link.asset_id || link.space_id ? link.allocation_kind : null,
-        party_id: link.partyMode === "existing" ? link.party_id : null, party: newParty, category: draft.contract.category,
+        parties: link.parties.filter((x) => x.include).map((x) => ({ index: x.mode === "new" ? x.index : null, party_id: x.mode === "existing" ? x.party_id : null, role: x.role, is_primary: x.is_primary, include: true })),
+        category: draft.contract.category,
         checked: Array.from(checked), parking_numbers: link.space_id ? link.parking_numbers : null,
       });
       toast.success(t("imports.committed"));

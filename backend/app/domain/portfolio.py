@@ -12,7 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.errors import NotFound
 from app.domain.events import Actor, emit
-from app.models.contracts import Clause, Contract, ContractFact, ImportJob, KeyDate, SourceDocument
+from app.models.contracts import (
+    Clause,
+    Contract,
+    ContractFact,
+    ContractParty,
+    ImportJob,
+    KeyDate,
+    SourceDocument,
+)
 from app.models.core import Attachment, Party
 from app.models.registry import Allocation, Asset
 
@@ -21,7 +29,9 @@ TERMINAL = ("ended", "cancelled", "early_terminated", "rejected", "expired")
 
 async def list_contracts(session: AsyncSession, *, status: str | None = None, type_code: str | None = None, category: str | None = None,
                          q: str | None = None, view: str = "active", party_id: uuid.UUID | None = None, company_id: uuid.UUID | None = None) -> list[tuple[Contract, Party | None]]:
-    stmt = select(Contract, Party).outerjoin(Party, Party.id == Contract.party_id).where(Contract.deleted_at.is_(None))
+    primary = select(ContractParty.contract_id, ContractParty.party_id).where(ContractParty.is_primary).subquery("primary_party")
+    stmt = (select(Contract, Party).outerjoin(primary, primary.c.contract_id == Contract.id).outerjoin(Party, Party.id == primary.c.party_id)
+            .where(Contract.deleted_at.is_(None)))
     if view == "active":
         stmt = stmt.where(Contract.status.not_in(TERMINAL))
     elif view == "archive":
@@ -32,8 +42,8 @@ async def list_contracts(session: AsyncSession, *, status: str | None = None, ty
         stmt = stmt.where(Contract.type_code == type_code)
     if category:
         stmt = stmt.where(Contract.category == category)
-    if party_id:
-        stmt = stmt.where(Contract.party_id == party_id)
+    if party_id:  # any role, not only the primary one
+        stmt = stmt.where(Contract.id.in_(select(ContractParty.contract_id).where(ContractParty.party_id == party_id)))
     if company_id:
         stmt = stmt.where(Contract.company_id == company_id)
     if q:
@@ -64,8 +74,10 @@ async def get_contract(session: AsyncSession, contract_id: uuid.UUID) -> Contrac
 
 async def contract_bundle(session: AsyncSession, contract: Contract) -> dict[str, Any]:
     from app.domain.clauses import rendered_tree, to_dicts
+    from app.domain.contract_parties import list_for_contract
 
-    party = await session.get(Party, contract.party_id) if contract.party_id else None
+    parties = await list_for_contract(session, contract.id)
+    party = next((p for cp, p in parties if cp.is_primary), None)
     facts = list((await session.execute(select(ContractFact).where(ContractFact.contract_id == contract.id).order_by(ContractFact.key, ContractFact.recorded_at))).scalars())
     key_dates = list((await session.execute(select(KeyDate).where(KeyDate.subject_id == contract.id, KeyDate.deleted_at.is_(None)).order_by(KeyDate.due_date))).scalars())
     allocs = (await session.execute(select(Allocation, Asset).join(Asset, Asset.id == Allocation.asset_id).where(Allocation.contract_id == contract.id, Allocation.deleted_at.is_(None)))).all()
@@ -73,7 +85,7 @@ async def contract_bundle(session: AsyncSession, contract: Contract) -> dict[str
     atts = list((await session.execute(select(Attachment).where(Attachment.subject_type == "contract", Attachment.subject_id == contract.id, Attachment.deleted_at.is_(None)))).scalars())
     clauses = to_dicts(await rendered_tree(session, contract_id=contract.id)) if contract.has_clause_tree else []
     return {"contract": contract, "party": party, "facts": facts, "key_dates": key_dates, "allocations": allocs, "source_documents": docs,
-            "attachments": atts, "clauses": clauses}
+            "attachments": atts, "clauses": clauses, "parties": parties}
 
 
 async def update_contract(session: AsyncSession, actor: Actor, contract_id: uuid.UUID, *, expected_version: int | None = None, **fields: Any) -> Contract:
@@ -165,7 +177,8 @@ async def health_report(session: AsyncSession) -> dict[str, Any]:
     # 6. counterparty without registry code
     finding("party_no_code", "info", "Osapoolel puudub registrikood",
             [item(c, parties[c.id].name) for c in contracts if parties.get(c.id) and not parties[c.id].registry_code and parties[c.id].kind != "person"])
-    finding("no_party", "warning", "Osapool sidumata", [item(c, "osapool puudub") for c in contracts if not c.party_id])
+    with_party = set((await session.execute(select(ContractParty.contract_id).where(ContractParty.contract_id.in_(ids)))).scalars()) if ids else set()
+    finding("no_party", "warning", "Osapool sidumata", [item(c, "osapool puudub") for c in contracts if c.id not in with_party])
     # 7. referenced annexes missing: clause text mentions "Lisa N" but no annex/attachment/source datafile covers it
     if ids:
         clause_rows = (await session.execute(select(Clause.contract_id, Clause.text).where(Clause.contract_id.in_(ids)))).all()

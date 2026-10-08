@@ -112,14 +112,15 @@ Before importing, add a space named „Pind 29” (ladu, 174,8 m², price 7,60, 
   - Contract fields: category Üürileping, dates; parties with registry codes; parameters (rent_per_m2 7.60, area_m2 174.8, deposit, parking 2 …); key dates (end, indexation); more than 100 clauses in the tree.
   - Edit a parameter value → „Salvestan muudatusi…” then „Muudatused salvestatud”; reload → the edit persists.
   - „Kinnita import” is blocked while uncertain fields are unchecked (the warning counts them); tick every „Kontrollitud” box.
-  - Seosed: building and „Pind 29” are pre-selected from the hint (if not, choose the building → the blue „Kas see on Pind 29?” suggestion appears → „Jah, see pind”); „Parkimiskohad lepingusse” shows 20 and 21 selected — untick 21; the new-party box shows the e-äriregister line with the registered name and status.
+  - Seosed: building and „Pind 29” are pre-selected from the hint (if not, choose the building → the blue „Kas see on Pind 29?” suggestion appears → „Jah, see pind”); „Parkimiskohad lepingusse” shows 20 and 21 selected — untick 21.
+  - Seosed → Osapooled: one row per proposal party. The landlord (our side) is unticked, AS Maru Ehitus is ticked, role „Üürnik”, „Peamine” selected; the row shows the e-äriregister line with the registered name and status. „Vali olemasolev” on the row switches to a search of registry parties. „Lisa osapool” adds a row that is not in the document (e.g. a guarantor from the registry, role „Muu”). Commit is blocked while no row or more than one row is „Peamine”.
   - „Kinnita import” → contract page opens.
 - **Verify the links**: contract page „Seotud esemed” lists Pind 29 and spot P 20 (links go to the space page and the parking page); space page: status Üüritud, „Praegu” shows the contract, „Kustuta pind” disabled with the LEP reason; parking register: spot 20 Üüritud with the contract number, 21 Vaba.
-- **Maintenance DOCX**: import `Hooldusleping_H5-08.docx` → category Hooldusleping, number HOO-…; Seosed: building only, seose liik „Katab” → commit → the building's „Hõive” card lists it with kind Katab; the party gets role supplier.
+- **Maintenance DOCX**: import `Hooldusleping_H5-08.docx` → category Hooldusleping, number HOO-…; Seosed: building only, seose liik „Katab” → commit → the building's „Hõive” card lists it with kind Katab; Caverion is the primary party with role „Hooldaja” (and gets that role on its party page).
 - **Scan-like PDF**: import `T6B_pind_29_plaan.pdf` → status „Ebaõnnestus” with the reason → „Registreeri skaneeritud dokument käsitsi” → fill title, counterparty, dates, one key date, one parameter, building → „Registreeri leping” → contract with no clause structure; the source document opens.
   - On the failed job: „Proovi uuesti” (retry) → it fails again the same way (expected for a drawing).
 - **ASiC-E**: import the `.asice` → the review shows „Allkirjad konteineris” with signer names, codes and times; commit without a space.
-- **Duplicate**: upload `MARU_uurileping_P29.pdf` again → the review warns it is probably already imported with a link to the existing contract → commit → the existing contract is updated, not duplicated.
+- **Duplicate**: upload `MARU_uurileping_P29.pdf` again → the review warns it is probably already imported with a link to the existing contract → commit → the existing contract is updated, not duplicated; its Pooled card shows the party set you committed this time (rows replaced, not appended).
 - Import list: „Pooleli” and „Lõpetatud” groups; Avaleht lists „Import ootab ülevaatamist” for a job left in review.
 
 ## 8. Contract page
@@ -130,6 +131,7 @@ Before importing, add a space named „Pind 29” (ladu, 174,8 m², price 7,60, 
   - Võtmekuupäevad: add one (kind, date, notify days), edit, delete.
   - Manused: upload a file as annex → listed; delete it.
   - Märkmed: edit and save.
+  - Pooled: the imported lease lists AS Maru Ehitus as „Peamine” with role Üürnik. „Lisa osapool” → search a registry party, role „Muu”, add → a second row; „Tee peamiseks” on it → the pill moves and the contracts list / calendar show the new name; the trash icon on the primary is disabled with the reason while another party remains; remove the non-primary row → gone, an event in the audit trail; the party page's contracts table shows the role column.
   - „Registreeri väline muudatus” → `MARU_uurileping_P29_lisa3.pdf`, note, changed parameter rent_per_m2 → new value, a changed end date → submit → a second source document with role amendment, a new fact version (old one closed), the key date updated, events in the audit trail.
   - Edit title/category via the header edit; change status to Lõppenud → the space becomes Vaba and the delete guard still mentions the archived contract.
   - Auditijälg at the bottom; „Ekspordi auditijälg” → ZIP with events.jsonl, events.csv, manifest.json.

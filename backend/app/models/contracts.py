@@ -6,7 +6,19 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,7 +45,6 @@ class Contract(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     type_code: Mapped[str] = mapped_column(String(40), index=True)
     category: Mapped[str | None] = mapped_column(String(40), nullable=True)  # lease | maintenance | management | insurance | security | other
     company_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("company.id"), nullable=True, index=True)
-    party_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("party.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(300))
     status: Mapped[str] = mapped_column(String(30), index=True)  # draft | ... | active | ended | cancelled | early_terminated
     origin: Mapped[str] = mapped_column(String(10))  # platform | imported
@@ -46,6 +57,26 @@ class Contract(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")  # optimistic lock
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+
+
+class ContractParty(Base, TenantMixin, TimestampMixin):
+    """contract ↔ party with the party's role in THIS contract. Exactly one row per contract is primary.
+
+    ``valid_from``/``valid_to`` let a tenant change by amendment keep the old tenant on the history."""
+
+    __tablename__ = tenant_table("contract_party")
+    __table_args__ = (
+        UniqueConstraint("contract_id", "party_id", "role", name="uq_contract_party_role"),
+        Index("ix_contract_party_primary", "contract_id", unique=True, postgresql_where=text("is_primary")),
+    )
+    id: Mapped[uuid.UUID] = uuid_pk()
+    contract_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("contract.id"), index=True)
+    party_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("party.id"), index=True)
+    role: Mapped[str] = mapped_column(String(30))
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source: Mapped[str] = mapped_column(String(12), default="manual", server_default="manual")  # import | manual | amendment
 
 
 class ContractFact(Base, TenantMixin):

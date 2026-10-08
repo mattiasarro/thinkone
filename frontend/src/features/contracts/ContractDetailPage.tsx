@@ -16,6 +16,7 @@ import { KeyDateDialog } from "@/features/keydates/KeyDateDialog";
 import { ClauseTree } from "./ClauseTree";
 import { AmendmentDialog } from "./AmendmentDialog";
 import { AttachmentsList } from "./AttachmentsList";
+import { PartiesCard } from "./PartiesCard";
 import type { ContractDetail, ContractFact, KeyDate, SourceDocument } from "@/types/api";
 
 export function ContractDetailPage({ id }: { id: string }) {
@@ -112,6 +113,8 @@ function Detail({ c }: { c: ContractDetail }) {
         </div>
 
         <div className="grid gap-5 min-w-0">
+          <PartiesCard c={c} />
+
           <Card>
             <CardHeader title={t("contract.keyDates")} actions={<Button size="sm" onClick={() => setKdDialog({ open: true, item: null })}><IconPlus width={14} height={14} />{t("common.add")}</Button>} />
             {c.key_dates.length === 0 ? <EmptyState title={t("contract.noKeyDates")} /> : (

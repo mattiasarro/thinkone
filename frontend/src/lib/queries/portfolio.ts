@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractSummary, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -13,9 +13,31 @@ export function useContract(id: string | undefined) {
 export function useUpdateContract(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { notes?: string | null; category?: string; party_id?: string | null; title?: string }) => api.patch<ContractDetail>(`/contracts/${id}`, body),
+    mutationFn: (body: { notes?: string | null; category?: string; title?: string }) => api.patch<ContractDetail>(`/contracts/${id}`, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["contract", id] }); qc.invalidateQueries({ queryKey: ["contracts"] }); },
   });
+}
+const invalidateContractParties = (qc: ReturnType<typeof useQueryClient>, id: string) => {
+  qc.invalidateQueries({ queryKey: ["contract", id] }); qc.invalidateQueries({ queryKey: ["contracts"] }); qc.invalidateQueries({ queryKey: ["party-contracts"] });
+  qc.invalidateQueries({ queryKey: ["parties"] }); qc.invalidateQueries({ queryKey: ["party"] }); qc.invalidateQueries({ queryKey: ["audit"] });
+};
+export function useAddContractParty(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { party_id: string; role: string; is_primary?: boolean; valid_from?: string | null }) => api.post<ContractParty>(`/contracts/${contractId}/parties`, body),
+    onSuccess: () => invalidateContractParties(qc, contractId),
+  });
+}
+export function useUpdateContractParty(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; role?: string; is_primary?: boolean; valid_from?: string | null; valid_to?: string | null }) => api.patch<ContractParty>(`/contracts/${contractId}/parties/${id}`, body),
+    onSuccess: () => invalidateContractParties(qc, contractId),
+  });
+}
+export function useRemoveContractParty(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => api.delete(`/contracts/${contractId}/parties/${id}`), onSuccess: () => invalidateContractParties(qc, contractId) });
 }
 export function useRegisterAmendment(id: string) {
   const qc = useQueryClient();
@@ -43,7 +65,7 @@ export function useParty(id: string | undefined) {
   return useQuery({ queryKey: ["party", id], queryFn: () => api.get<Party>(`/parties/${id}`), enabled: !!id });
 }
 export function usePartyContracts(id: string | undefined) {
-  return useQuery({ queryKey: ["party-contracts", id], queryFn: () => api.get<ContractSummary[]>(`/parties/${id}/contracts`), enabled: !!id });
+  return useQuery({ queryKey: ["party-contracts", id], queryFn: () => api.get<PartyContractRow[]>(`/parties/${id}/contracts`), enabled: !!id });
 }
 export function useSaveParty() {
   const qc = useQueryClient();

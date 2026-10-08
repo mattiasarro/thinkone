@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal, db
+from app.domain import contract_parties, portfolio
 from app.domain import imports as imports_domain
-from app.domain import portfolio
 from app.infra.blobstore import blobstore
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -103,8 +103,33 @@ class AttachmentOut(BaseModel):
     created_at: datetime
 
 
+class ContractPartyOut(BaseModel):
+    id: uuid.UUID
+    party: PartyRef
+    role: str
+    is_primary: bool
+    valid_from: date | None
+    valid_to: date | None
+    source: str
+
+
+class ContractPartyIn(BaseModel):
+    party_id: uuid.UUID
+    role: str
+    is_primary: bool = False
+    valid_from: date | None = None
+
+
+class ContractPartyPatch(BaseModel):
+    role: str | None = None
+    is_primary: bool | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
+
+
 class ContractDetailOut(ContractOut):
     notes: str | None
+    parties: list[ContractPartyOut] = []
     facts: list[FactOut]
     key_dates: list[KeyDateOut]
     allocations: list[AllocationOut]
@@ -117,7 +142,6 @@ class ContractPatchIn(BaseModel):
     title: str | None = None
     notes: str | None = None
     category: str | None = None
-    party_id: uuid.UUID | None = None
     company_id: uuid.UUID | None = None
     status: str | None = None
     end_date: date | None = None
@@ -130,6 +154,11 @@ def _out(c, p, kd=None) -> ContractOut:
                        start_date=c.start_date, end_date=c.end_date, signed_at=c.signed_at, current_values=c.current_values or {},
                        has_clause_tree=c.has_clause_tree, version=c.version, created_at=c.created_at,
                        key_dates_next=KeyDateRef(kind_code=kd.kind_code, due_date=kd.due_date) if kd else None)
+
+
+def _cp_out(cp, p) -> ContractPartyOut:
+    return ContractPartyOut(id=cp.id, party=PartyRef(id=p.id, name=p.name, registry_code=p.registry_code), role=cp.role, is_primary=cp.is_primary,
+                            valid_from=cp.valid_from, valid_to=cp.valid_to, source=cp.source)
 
 
 @router.get("", response_model=list[ContractOut])
@@ -153,7 +182,7 @@ async def get_contract(contract_id: uuid.UUID, session: AsyncSession = Depends(d
                                  page_count=d.page_count, container_signatures=d.container_signatures, url=await blobstore().presigned_url(d.s3_key, d.filename),
                                  created_at=d.created_at))
     return ContractDetailOut(
-        **base.model_dump(), notes=c.notes,
+        **base.model_dump(), notes=c.notes, parties=[_cp_out(cp, p) for cp, p in b["parties"]],
         facts=[FactOut(id=f.id, key=f.key, label=(f.value or {}).get("label"), value=(f.value or {}).get("value"), unit=(f.value or {}).get("unit"),
                        text=(f.value or {}).get("text"), valid_from=f.valid_from, valid_to=f.valid_to, reason=f.reason, recorded_at=f.recorded_at,
                        provenance=f.provenance) for f in b["facts"]],
@@ -179,15 +208,63 @@ async def delete_contract(contract_id: uuid.UUID, reason: str | None = None, p: 
     await portfolio.soft_delete_contract(session, p.actor, contract_id, reason)
 
 
+@router.get("/{contract_id}/parties", response_model=list[ContractPartyOut])
+async def list_parties(contract_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[ContractPartyOut]:
+    await portfolio.get_contract(session, contract_id)
+    return [_cp_out(cp, p) for cp, p in await contract_parties.list_for_contract(session, contract_id)]
+
+
+@router.post("/{contract_id}/parties", response_model=ContractPartyOut, status_code=201)
+async def add_party(contract_id: uuid.UUID, body: ContractPartyIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ContractPartyOut:
+    cp = await contract_parties.add_party(session, p.actor, contract_id=contract_id, party_id=body.party_id, role=body.role, is_primary=body.is_primary,
+                                          valid_from=body.valid_from, source="manual")
+    return await _cp_fetch(session, cp.id)
+
+
+@router.patch("/{contract_id}/parties/{cp_id}", response_model=ContractPartyOut)
+async def patch_party(contract_id: uuid.UUID, cp_id: uuid.UUID, body: ContractPartyPatch, p: Principal = Depends(current_principal),
+                      session: AsyncSession = Depends(db)) -> ContractPartyOut:
+    cp = await contract_parties.get_link(session, cp_id)
+    if cp.contract_id != contract_id:
+        from app.domain.errors import NotFound
+
+        raise NotFound("Lepingu osapoolt ei leitud")
+    if body.role is not None or body.valid_from is not None or body.valid_to is not None:
+        await contract_parties.update_party(session, p.actor, cp_id, role=body.role, valid_from=body.valid_from, valid_to=body.valid_to)
+    if body.is_primary:
+        await contract_parties.set_primary(session, p.actor, cp_id)
+    return await _cp_fetch(session, cp_id)
+
+
+@router.delete("/{contract_id}/parties/{cp_id}", status_code=204)
+async def remove_party(contract_id: uuid.UUID, cp_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> None:
+    cp = await contract_parties.get_link(session, cp_id)
+    if cp.contract_id != contract_id:
+        from app.domain.errors import NotFound
+
+        raise NotFound("Lepingu osapoolt ei leitud")
+    await contract_parties.remove_party(session, p.actor, cp_id)
+
+
+async def _cp_fetch(session: AsyncSession, cp_id: uuid.UUID) -> ContractPartyOut:
+    from app.domain.parties import get_party
+
+    cp = await contract_parties.get_link(session, cp_id)
+    await session.flush()
+    await session.refresh(cp)
+    return _cp_out(cp, await get_party(session, cp.party_id))
+
+
 @router.post("/{contract_id}/amendments", response_model=SourceDocOut, status_code=201)
 async def register_amendment(
     contract_id: uuid.UUID, file: UploadFile = File(...), note: str | None = Form(None), parameters: str = Form("[]"), key_dates: str = Form("[]"),
-    valid_from: date | None = Form(None), end_date: date | None = Form(None), p: Principal = Depends(current_principal), session: AsyncSession = Depends(db),
+    valid_from: date | None = Form(None), end_date: date | None = Form(None), new_party_id: uuid.UUID | None = Form(None),
+    p: Principal = Depends(current_principal), session: AsyncSession = Depends(db),
 ) -> SourceDocOut:
     data = await file.read()
     d = await imports_domain.register_amendment(session, p.actor, contract_id, filename=file.filename or "lisa", content_type=file.content_type, data=data,
                                                 note=note, parameters=json.loads(parameters or "[]"), key_dates=json.loads(key_dates or "[]"),
-                                                valid_from=valid_from, end_date=end_date)
+                                                valid_from=valid_from, end_date=end_date, new_party_id=new_party_id)
     return SourceDocOut(id=d.id, filename=d.filename, content_type=d.content_type, role=d.role, format=d.format, has_text_layer=d.has_text_layer,
                         page_count=d.page_count, container_signatures=d.container_signatures, url=await blobstore().presigned_url(d.s3_key, d.filename),
                         created_at=d.created_at)

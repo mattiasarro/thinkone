@@ -10,9 +10,57 @@ import { useAssets, useParking, useParties } from "@/lib/queries/portfolio";
 import { useDebounced } from "@/lib/hooks";
 import { fmtNum } from "@/lib/format";
 import { SpotChip } from "@/features/assets/ParkingRegister";
-import type { Asset, Proposal, SpaceAttributes } from "@/types/api";
+import { PARTY_ROLES, type Asset, type Proposal, type SpaceAttributes } from "@/types/api";
+import { defaultRole } from "@/features/contracts/PartiesCard";
 
-export interface LinkState { company_id: string; asset_id: string; space_id: string; allocation_kind: "exclusive" | "coverage"; partyMode: "existing" | "new"; party_id: string; parking_numbers: string[] | null }
+/** One party of the contract to commit: from the proposal (``index``, mode new → find-or-create) or an existing registry party. */
+export interface PartyRow { index: number | null; party_id: string; role: string; is_primary: boolean; include: boolean; mode: "new" | "existing" }
+export interface LinkState { company_id: string; asset_id: string; space_id: string; allocation_kind: "exclusive" | "coverage"; parties: PartyRow[]; parking_numbers: string[] | null }
+
+const OUR_SIDE = new Set(["landlord", "client", "insured", "employer"]);
+const roleOptions = PARTY_ROLES.map((r) => ({ value: r, label: tEnum("imports.partyRoles", r) }));
+
+function isOurs(draft: Proposal, i: number): boolean {
+  const p = draft.parties[i];
+  const ours = (draft.contract.our_company_name ?? "").trim().toLowerCase();
+  return OUR_SIDE.has(p.role) || (!!ours && p.name.trim().toLowerCase() === ours);
+}
+
+/** The proposal's counterparty: first non-our-side party with a specific role, else the one named as counterparty, else the first included. */
+function counterpartyIndex(draft: Proposal, included: number[]): number | null {
+  const specific = included.find((i) => draft.parties[i].role !== "other");
+  if (specific != null) return specific;
+  const named = included.find((i) => draft.parties[i].name.trim().toLowerCase() === (draft.contract.counterparty_name ?? "").trim().toLowerCase());
+  return named ?? included[0] ?? null;
+}
+
+/** One row per proposal party; our side is left out by default; the counterparty is primary. */
+export function initialPartyRows(draft: Proposal): PartyRow[] {
+  const included = draft.parties.map((_, i) => i).filter((i) => !isOurs(draft, i));
+  const primary = counterpartyIndex(draft, included);
+  return draft.parties.map((p, i) => ({
+    index: i, party_id: "", include: included.includes(i), mode: "new" as const, is_primary: i === primary,
+    role: i === primary ? defaultRole(draft.contract.category) : p.role,
+  }));
+}
+
+/** Keep the rows in step with an edited proposal: drop rows whose index is gone, add rows for new proposal parties. */
+export function syncPartyRows(rows: PartyRow[], draft: Proposal): PartyRow[] {
+  const kept = rows.filter((r) => r.index == null || r.index < draft.parties.length);
+  const have = new Set(kept.map((r) => r.index).filter((i): i is number => i != null));
+  const added = draft.parties.map((p, i) => i).filter((i) => !have.has(i)).map((i) => ({ index: i, party_id: "", include: !isOurs(draft, i), mode: "new" as const, is_primary: false, role: draft.parties[i].role }));
+  const out = [...kept, ...added];
+  if (out.some((r) => r.include) && !out.some((r) => r.include && r.is_primary)) {
+    const first = out.findIndex((r) => r.include);
+    out[first] = { ...out[first], is_primary: true };
+  }
+  return out.length === rows.length && out.every((r, i) => r === rows[i]) ? rows : out;
+}
+
+export function partyRowsValid(rows: PartyRow[]): boolean {
+  const inc = rows.filter((r) => r.include);
+  return inc.length > 0 && inc.every((r) => r.mode === "new" ? r.index != null : !!r.party_id) && inc.filter((r) => r.is_primary).length === 1;
+}
 
 const num = (v: unknown) => { const n = Number(String(v ?? "").replace(",", ".").replace(/[^\d.-]/g, "")); return Number.isFinite(n) ? n : null; };
 
@@ -57,9 +105,6 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
   const spaces = useAssets({ type_code: "space", parent_id: state.asset_id || undefined });
   const allSpaces = useAssets({ type_code: "space" });
   const parking = useParking(state.asset_id || undefined);
-  const [pq, setPq] = useState("");
-  const dpq = useDebounced(pq, 300);
-  const parties = useParties({ q: dpq || undefined });
   const set = <K extends keyof LinkState>(k: K, v: LinkState[K]) => onChange({ ...state, [k]: v });
   const area = useMemo(() => contractArea(draft), [draft]);
   const suggestion = useMemo(() => (state.asset_id && !state.space_id ? suggestSpace(spaces.data ?? [], area) : null), [spaces.data, area, state.asset_id, state.space_id]);
@@ -86,7 +131,17 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
     }
   }, [draft.asset_hint, properties.data, allSpaces.data, allSpaces.isLoading, state, onChange]);
 
-  const newParty = draft.parties.find((p) => p.name.toLowerCase() === draft.contract.counterparty_name.toLowerCase()) ?? draft.parties[0];
+  const rows = state.parties;
+  const setRow = (i: number, patch: Partial<PartyRow>) => {
+    let next = rows.map((r, k) => (k === i ? { ...r, ...patch } : r));
+    if (patch.is_primary) next = next.map((r, k) => ({ ...r, is_primary: k === i }));
+    if (patch.include === false && rows[i].is_primary) { const f = next.findIndex((r) => r.include); next = next.map((r, k) => ({ ...r, is_primary: k === f })); }
+    if (patch.include === true && !next.some((r) => r.include && r.is_primary)) next[i] = { ...next[i], is_primary: true };
+    set("parties", next);
+  };
+  const addRow = () => set("parties", [...rows, { index: null, party_id: "", role: "other", is_primary: !rows.some((r) => r.include), include: true, mode: "existing" }]);
+  const dropRow = (i: number) => { const next = rows.filter((_, k) => k !== i); if (next.some((r) => r.include) && !next.some((r) => r.include && r.is_primary)) { const f = next.findIndex((r) => r.include); next[f] = { ...next[f], is_primary: true }; } set("parties", next); };
+  const primaries = rows.filter((r) => r.include && r.is_primary).length;
   const spots = parking.data ?? [];
   const spaceSpots = state.space_id ? spots.filter((s) => s.space_id === state.space_id).map((s) => s.number) : [];
   const picked = state.parking_numbers ?? spaceSpots;
@@ -120,26 +175,57 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
         </fieldset>
       )}
       <fieldset className="field">
-        <legend className="field-label">{t("imports.party")}</legend>
-        <div className="flex gap-4 flex-wrap mb-2">
-          <label className="check !min-h-0"><input type="radio" name="partyMode" checked={state.partyMode === "existing"} onChange={() => set("partyMode", "existing")} />{t("imports.pickExisting")}</label>
-          <label className="check !min-h-0"><input type="radio" name="partyMode" checked={state.partyMode === "new"} onChange={() => set("partyMode", "new")} />{t("imports.createNew")}</label>
+        <legend className="field-label">{t("imports.parties")}</legend>
+        <ul className="grid gap-2">
+          {rows.map((r, i) => {
+            const src = r.index != null ? draft.parties[r.index] : null;
+            return (
+              <li key={i} className={`rounded-control border p-2 grid gap-2 ${r.include ? "" : "opacity-60"}`} style={{ borderColor: "var(--line)" }}>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="check !min-h-0"><input type="checkbox" checked={r.include} onChange={(e) => setRow(i, { include: e.target.checked })} />{t("imports.includeParty")}</label>
+                  <span className="min-w-0 flex-1 text-sm font-semibold truncate">{src ? `${src.name}${src.registry_code ? ` (${src.registry_code})` : ""}` : <span className="text-muted font-normal">{t("imports.partyNotInProposal")}</span>}</span>
+                  <label className="check !min-h-0" title={t("imports.onePrimary")}><input type="radio" name="primaryParty" disabled={!r.include} checked={r.include && r.is_primary} onChange={() => setRow(i, { is_primary: true })} />{t("imports.primary")}</label>
+                  {src == null && <button type="button" className="icon-btn !w-8 !h-8" aria-label={t("common.remove")} onClick={() => dropRow(i)}>×</button>}
+                </div>
+                {r.include && (
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] items-start">
+                    <Select className="!mb-0" aria-label={t("imports.role")} value={r.role} options={roleOptions} onChange={(e) => setRow(i, { role: e.target.value })} />
+                    {src && (
+                      <div className="flex gap-3 flex-wrap text-sm">
+                        <label className="check !min-h-0"><input type="radio" name={`mode-${i}`} checked={r.mode === "new"} onChange={() => setRow(i, { mode: "new" })} />{t("imports.createNew")}</label>
+                        <label className="check !min-h-0"><input type="radio" name={`mode-${i}`} checked={r.mode === "existing"} onChange={() => setRow(i, { mode: "existing" })} />{t("imports.pickExisting")}</label>
+                      </div>
+                    )}
+                    {r.mode === "existing" && <div className="sm:col-span-2"><ExistingPicker value={r.party_id} onChange={(id) => setRow(i, { party_id: id })} /></div>}
+                    {r.mode === "new" && src && <div className="sm:col-span-2 -mt-1"><RegistryRow code={src.registry_code} contractName={src.name} /></div>}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <Button size="sm" onClick={addRow}>{t("imports.addPartyRow")}</Button>
+          {rows.some((r) => r.include) && primaries !== 1 && <span className="text-xs text-warning">{t("imports.onePrimary")}</span>}
         </div>
-        {state.partyMode === "existing" ? (
-          <div className="grid gap-2">
-            <Input className="!mb-0" aria-label={t("common.search")} placeholder={t("portfolio.parties.search")} value={pq} onChange={(e) => setPq(e.target.value)} />
-            <select className="fld" aria-label={t("imports.party")} value={state.party_id} onChange={(e) => set("party_id", e.target.value)} size={Math.min(6, Math.max(2, (parties.data ?? []).length + 1))}>
-              <option value="">{t("common.selectPlaceholder")}</option>
-              {(parties.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}{p.registry_code ? ` (${p.registry_code})` : ""}</option>)}
-            </select>
-          </div>
-        ) : (
-          <div className="note info flex-col items-start gap-0">
-            <span>{newParty ? t("imports.partyNew", { name: `${newParty.name}${newParty.registry_code ? ` (${newParty.registry_code})` : ""}` }) : t("imports.partyNew", { name: draft.contract.counterparty_name })}</span>
-            <RegistryRow code={newParty?.registry_code} contractName={newParty?.name ?? draft.contract.counterparty_name} />
-          </div>
-        )}
       </fieldset>
     </section>
+  );
+}
+
+
+/** Search + pick one registry party (the same pattern the contract page's „Lisa osapool” uses). */
+function ExistingPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const dq = useDebounced(q, 300);
+  const parties = useParties({ q: dq || undefined });
+  return (
+    <div className="grid gap-2">
+      <Input className="!mb-0" aria-label={t("common.search")} placeholder={t("portfolio.parties.search")} value={q} onChange={(e) => setQ(e.target.value)} />
+      <select className="fld" aria-label={t("imports.party")} value={value} onChange={(e) => onChange(e.target.value)} size={Math.min(6, Math.max(2, (parties.data ?? []).length + 1))}>
+        <option value="">{t("common.selectPlaceholder")}</option>
+        {(parties.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}{p.registry_code ? ` (${p.registry_code})` : ""}</option>)}
+      </select>
+    </div>
   );
 }

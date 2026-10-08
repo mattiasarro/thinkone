@@ -55,7 +55,7 @@ async def test_search(client: AsyncClient, admin: dict):
     company = await make_company(client)
     prop = await make_property(client, company["id"], name="Tuleviku tee 6b")
     p = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Nordproff OÜ", "registry_code": "12888777", "roles": ["client"]})).json()
-    cid = await make_contract(admin["account"]["id"], number="LEP-2023-029", title="Üürileping Nordproff", party_id=uuid.UUID(p["id"]))
+    cid = await make_contract(admin["account"]["id"], number="LEP-2023-029", title="Üürileping Nordproff", parties=[(uuid.UUID(p["id"]), "tenant")])
 
     hits = (await client.get("/api/v1/search", params={"q": "nordproff"})).json()
     assert {(h["entity_type"], h["entity_id"]) for h in hits} == {("party", p["id"]), ("contract", str(cid))}
@@ -70,7 +70,10 @@ async def test_search(client: AsyncClient, admin: dict):
 async def test_key_dates(client: AsyncClient, admin: dict):
     p = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Nordproff OÜ", "roles": ["client"]})).json()
     today = date.today()
-    cid = await make_contract(admin["account"]["id"], number="LEP-1", party_id=uuid.UUID(p["id"]), end_date=today + timedelta(days=200))
+    # the calendar shows the PRIMARY party: Nordproff is primary, the guarantor is not
+    guarantor = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Garant OÜ", "roles": ["other"]})).json()
+    cid = await make_contract(admin["account"]["id"], number="LEP-1", parties=[(uuid.UUID(p["id"]), "tenant"), (uuid.UUID(guarantor["id"]), "other")],
+                              end_date=today + timedelta(days=200))
     other = await make_contract(admin["account"]["id"], number="TL-1", type_code="employment")
 
     kinds = (await client.get("/api/v1/key-dates/kinds")).json()

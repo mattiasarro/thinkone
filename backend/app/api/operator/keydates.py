@@ -11,7 +11,6 @@ from app.api.deps import Principal, current_principal, db
 from app.domain import keydates as keydates_domain
 from app.domain.errors import NotFound
 from app.models.contracts import Contract, KeyDate
-from app.models.core import Party
 
 router = APIRouter(prefix="/key-dates", tags=["key-dates"])
 
@@ -61,7 +60,7 @@ async def list_key_dates(from_: date | None = Query(default=None, alias="from"),
                          kind: str | None = Query(default=None), contract_id: uuid.UUID | None = Query(default=None),
                          session: AsyncSession = Depends(db)) -> list[KeyDateOut]:
     rows = await keydates_domain.calendar(session, start=from_, end=to, kind_code=kind, contract_id=contract_id)
-    party_names = await _party_names(session, [c.party_id for _, c in rows if c and c.party_id])
+    party_names = await _party_names(session, [c.id for _, c in rows if c])
     return [_out(kd, c, party_names) for kd, c in rows]
 
 
@@ -78,14 +77,14 @@ async def create_key_date(body: KeyDateIn, p: Principal = Depends(current_princi
         raise NotFound("Lepingut ei leitud")
     kd = await keydates_domain.add_key_date(session, p.actor, contract_id=body.contract_id, kind_code=body.kind_code, due_date=body.due_date,
                                             title=body.title, notify_days_before=body.notify_days_before)
-    return _out(kd, contract, await _party_names(session, [contract.party_id] if contract.party_id else []))
+    return _out(kd, contract, await _party_names(session, [contract.id]))
 
 
 @router.patch("/{key_date_id}", response_model=KeyDateOut)
 async def patch_key_date(key_date_id: uuid.UUID, body: KeyDatePatch, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> KeyDateOut:
     kd = await keydates_domain.update_key_date(session, p.actor, key_date_id, due_date=body.due_date, notify_days_before=body.notify_days_before, title=body.title)
     contract = await session.get(Contract, kd.subject_id)
-    return _out(kd, contract, await _party_names(session, [contract.party_id] if contract and contract.party_id else []))
+    return _out(kd, contract, await _party_names(session, [contract.id] if contract else []))
 
 
 @router.api_route("/{key_date_id}", methods=["DELETE"], status_code=204)
@@ -94,19 +93,17 @@ async def delete_key_date(key_date_id: uuid.UUID, p: Principal = Depends(current
     return Response(status_code=204)
 
 
-async def _party_names(session: AsyncSession, party_ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
-    if not party_ids:
-        return {}
-    from sqlalchemy import select
+async def _party_names(session: AsyncSession, contract_ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """contract id → primary party name."""
+    from app.domain.contract_parties import primary_parties
 
-    rows = (await session.execute(select(Party.id, Party.name).where(Party.id.in_(list(set(party_ids)))))).all()
-    return {pid: name for pid, name in rows}
+    return {cid: p.name for cid, p in (await primary_parties(session, contract_ids)).items()}
 
 
 def _out(kd: KeyDate, c: Contract | None, party_names: dict[uuid.UUID, str]) -> KeyDateOut:
     contract = None
     if c is not None:
         contract = KeyDateContractOut(id=c.id, number=c.number, title=c.title, type_code=c.type_code,
-                                      party_name=party_names.get(c.party_id) if c.party_id else None)
+                                      party_name=party_names.get(c.id))
     return KeyDateOut(id=kd.id, kind_code=kd.kind_code, title=kd.title, due_date=kd.due_date, notify_days_before=kd.notify_days_before,
                       fired_at=kd.fired_at, contract=contract)

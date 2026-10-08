@@ -11,12 +11,14 @@ from app.infra.db import tenant_session
 
 
 async def make_contract(account_id: str | uuid.UUID, *, number: str = "LEP-2024-001", title: str = "Üürileping", status: str = "active",
-                        type_code: str = "lease", party_id: uuid.UUID | None = None, company_id: uuid.UUID | None = None,
+                        type_code: str = "lease", parties: list[tuple[uuid.UUID, str]] | None = None, company_id: uuid.UUID | None = None,
                         start_date: date | None = None, end_date: date | None = None, category: str | None = None) -> uuid.UUID:
+    """``parties``: (party id, role) pairs — the first one becomes the primary party."""
     aid = uuid.UUID(str(account_id))
     async with tenant_session(aid) as s:
         c = await create_contract(s, Actor(account_id=aid), type_code=type_code, title=title, number=number, status=status, origin="imported",
-                                  party_id=party_id, company_id=company_id, start_date=start_date, end_date=end_date, category=category)
+                                  parties=[{"party_id": pid, "role": role, "is_primary": i == 0} for i, (pid, role) in enumerate(parties or [])],
+                                  company_id=company_id, start_date=start_date, end_date=end_date, category=category)
         return c.id
 
 

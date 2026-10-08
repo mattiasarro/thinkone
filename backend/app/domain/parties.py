@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.errors import DomainError, NotFound
 from app.domain.events import Actor, emit
 from app.domain.search import index_entity, remove_entity
-from app.models.contracts import Contract
+from app.models.contracts import Contract, ContractParty
 from app.models.core import Party
 
 KINDS = {"ee_company", "foreign_company", "person"}
@@ -73,14 +73,21 @@ async def update_party(session: AsyncSession, actor: Actor, party_id: uuid.UUID,
 
 
 async def delete_party(session: AsyncSession, actor: Actor, party_id: uuid.UUID) -> None:
+    from app.domain.errors import Conflict
+
     p = await get_party(session, party_id)
+    linked = (await session.execute(select(ContractParty.id).where(ContractParty.party_id == p.id).limit(1))).first()
+    if linked:
+        raise Conflict("Osapool on lepingutega seotud — eemalda ta enne lepingutelt")
     p.deleted_at = datetime.now(UTC)
     emit(session, actor, "party", p.id, "party.deleted", {"name": p.name})
     await remove_entity(session, "party", p.id)
 
 
 async def contracts_of(session: AsyncSession, party_id: uuid.UUID) -> list[Contract]:
-    stmt = select(Contract).where(Contract.party_id == party_id, Contract.deleted_at.is_(None)).order_by(Contract.start_date.desc().nulls_last(), Contract.number)
+    """Contracts the party is on in any role."""
+    stmt = (select(Contract).where(Contract.id.in_(select(ContractParty.contract_id).where(ContractParty.party_id == party_id)), Contract.deleted_at.is_(None))
+            .order_by(Contract.start_date.desc().nulls_last(), Contract.number))
     return list((await session.execute(stmt)).scalars())
 
 
@@ -111,7 +118,15 @@ async def find_or_create_party(
         if kind is None:
             kind = "person" if fields.get("personal_code") else "ee_company"
         return await create_party(session, actor, kind=kind, name=name or registry_code, registry_code=registry_code, roles=[role], **fields)
+    await add_role(session, actor, p, role, registry_code=registry_code, **fields)
+    return p
+
+
+async def add_role(session: AsyncSession, actor: Actor, p: Party, role: str | None, *, registry_code: str | None = None, **fields: Any) -> Party:
+    """Add ``role`` to ``party.roles`` when missing and fill empty identity fields; one ``party.updated`` event for the lot."""
     changes: dict[str, Any] = {}
+    if role and role not in PARTY_ROLES:
+        raise DomainError(f"Tundmatu roll: {role}")
     if role and role not in (p.roles or []):
         changes["roles"] = [list(p.roles or []), list(p.roles or []) + [role]]
         p.roles = list(p.roles or []) + [role]

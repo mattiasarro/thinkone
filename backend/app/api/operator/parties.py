@@ -67,6 +67,7 @@ class PartyContractOut(BaseModel):
     category: str | None
     start_date: date | None
     end_date: date | None
+    role: str | None = None  # the party's role in that contract (primary row's role when it holds several)
 
 
 @router.get("", response_model=list[PartyOut])
@@ -98,5 +99,15 @@ async def delete_party(party_id: uuid.UUID, p: Principal = Depends(current_princ
 
 @router.get("/{party_id}/contracts", response_model=list[PartyContractOut])
 async def party_contracts(party_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[PartyContractOut]:
+    from app.domain.contract_parties import list_for_contracts
+
     await parties_domain.get_party(session, party_id)
-    return [PartyContractOut.model_validate(c) for c in await parties_domain.contracts_of(session, party_id)]
+    rows = await parties_domain.contracts_of(session, party_id)
+    links = await list_for_contracts(session, [c.id for c in rows])
+    out = []
+    for c in rows:
+        mine = [cp for cp, p in links.get(c.id, []) if p.id == party_id]
+        role = next((cp.role for cp in mine if cp.is_primary), mine[0].role if mine else None)
+        out.append(PartyContractOut(id=c.id, number=c.number, title=c.title, status=c.status, type_code=c.type_code, category=c.category,
+                                    start_date=c.start_date, end_date=c.end_date, role=role))
+    return out

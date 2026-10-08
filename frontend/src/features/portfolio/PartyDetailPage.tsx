@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconEdit, IconTrash } from "@/components/ui/Icons";
 import { PartyModal } from "./PartyModal";
-import { ContractsTable } from "./ContractsTable";
+import { PartyContractsTable } from "./PartyContractsTable";
 
 export function PartyDetailPage({ id }: { id: string }) {
   const party = useParty(id);
@@ -47,7 +47,7 @@ export function PartyDetailPage({ id }: { id: string }) {
         </Card>
         <Card>
           <CardHeader title={t("portfolio.parties.contracts")} />
-          {contracts.isLoading ? <div className="p-6"><Loading /></div> : contracts.error ? <div className="p-6"><ErrorState error={contracts.error} onRetry={() => contracts.refetch()} /></div> : (contracts.data ?? []).length === 0 ? <EmptyState title={t("portfolio.parties.noContracts")} /> : <ContractsTable rows={contracts.data ?? []} />}
+          {contracts.isLoading ? <div className="p-6"><Loading /></div> : contracts.error ? <div className="p-6"><ErrorState error={contracts.error} onRetry={() => contracts.refetch()} /></div> : (contracts.data ?? []).length === 0 ? <EmptyState title={t("portfolio.parties.noContracts")} /> : <PartyContractsTable rows={contracts.data ?? []} />}
         </Card>
       </div>
       <PartyModal open={edit} onClose={() => setEdit(false)} initial={p} />

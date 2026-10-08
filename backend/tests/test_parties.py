@@ -44,10 +44,23 @@ async def test_party_crud_and_search(client: AsyncClient, admin: dict):
 
 async def test_party_contracts(client: AsyncClient, admin: dict):
     p = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Nordproff OÜ", "roles": ["client"]})).json()
-    cid = await make_contract(admin["account"]["id"], number="LEP-2023-029", title="Üürileping A-101", party_id=uuid.UUID(p["id"]))
+    cid = await make_contract(admin["account"]["id"], number="LEP-2023-029", title="Üürileping A-101", parties=[(uuid.UUID(p["id"]), "tenant")])
     r = await client.get(f"/api/v1/parties/{p['id']}/contracts")
     assert r.status_code == 200
-    assert [(c["id"], c["number"], c["status"], c["type_code"]) for c in r.json()] == [(str(cid), "LEP-2023-029", "active", "lease")]
+    assert [(c["id"], c["number"], c["status"], c["type_code"], c["role"]) for c in r.json()] == [(str(cid), "LEP-2023-029", "active", "lease", "tenant")]
+    # linking adds the role to the party's portfolio roles
+    assert (await client.get(f"/api/v1/parties/{p['id']}")).json()["roles"] == ["client", "tenant"]
+    # the same party as insurer on a second contract (not primary there) → both listed with their roles
+    insured = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Kindlustatu OÜ", "roles": ["insured"]})).json()
+    cid2 = await make_contract(admin["account"]["id"], number="KIN-1", title="Kindlustus", type_code="generic", category="insurance",
+                               parties=[(uuid.UUID(insured["id"]), "insured"), (uuid.UUID(p["id"]), "insurer")])
+    rows = (await client.get(f"/api/v1/parties/{p['id']}/contracts")).json()
+    assert {(c["id"], c["role"]) for c in rows} == {(str(cid), "tenant"), (str(cid2), "insurer")}
+    # contracts list filter by party: any role
+    assert {c["id"] for c in (await client.get("/api/v1/contracts", params={"party_id": p["id"]})).json()} == {str(cid), str(cid2)}
+    # a party on contracts cannot be deleted
+    r = await client.request("DELETE", f"/api/v1/parties/{p['id']}")
+    assert r.status_code == 409
     assert (await client.get(f"/api/v1/parties/{uuid.uuid4()}/contracts")).status_code == 404
 
 

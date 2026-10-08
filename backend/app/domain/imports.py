@@ -147,9 +147,11 @@ async def source_pages(job: ImportJob, doc: SourceDocument) -> list[dict[str, An
 
 async def commit_import(
     session: AsyncSession, actor: Actor, job_id: uuid.UUID, *, company_id: uuid.UUID | None = None, asset_id: uuid.UUID | None = None,
-    allocation_kind: str | None = None, party_id: uuid.UUID | None = None, category: str | None = None, checked: list[str] | None = None,
-    party_override: dict[str, Any] | None = None, parking_numbers: list[str] | None = None,
+    allocation_kind: str | None = None, category: str | None = None, checked: list[str] | None = None,
+    parties: list[dict[str, Any]] | None = None, parking_numbers: list[str] | None = None,
 ) -> Contract:
+    """``parties``: [{index: <position in prop.parties> | None, party_id: <existing> | None, role, is_primary, include}].
+    ``None`` → the default set: every proposal party that is not our side, the counterparty primary."""
     job = await get_job(session, job_id)
     if job.status != "review":
         raise DomainError("Import ei ole ülevaatuse seisus")
@@ -161,24 +163,8 @@ async def commit_import(
     doc = await session.get(SourceDocument, job.source_document_id)
     assert doc
 
-    from app.domain.parties import find_or_create_party
-
-    party = None
-    if party_id:
-        from app.models.core import Party
-
-        party = await session.get(Party, party_id)
-        if not party:
-            raise NotFound("Osapoolt ei leitud")
-    elif party_override and party_override.get("name"):
-        party = await find_or_create_party(session, actor, name=party_override["name"], registry_code=party_override.get("registry_code") or None,
-                                           role=_party_role(cat, party_override.get("role") or "other"), address=party_override.get("address"),
-                                           email=party_override.get("email"))
-    else:
-        cp = _counterparty(prop)
-        if cp:
-            party = await find_or_create_party(session, actor, name=cp.name, registry_code=cp.registry_code, role=_party_role(cat, cp.role),
-                                               address=cp.address, email=cp.email)
+    party_items = await _resolve_parties(session, actor, prop, cat, parties)
+    party = next((pt for it, pt in party_items if it["is_primary"]), None)
 
     type_code = "lease" if cat == "lease" else "employment" if cat == "employment" else "generic"
     ctype = (await session.execute(select(ContractType).where(ContractType.code == type_code))).scalar_one()
@@ -193,13 +179,21 @@ async def commit_import(
         action = "contract.import_updated"
     else:
         contract = Contract(account_id=actor.account_id, number=number, contract_type_id=ctype.id, type_code=type_code, category=cat,
-                            company_id=company_id, party_id=party.id if party else None, title=prop.contract.title, status="active",
-                            origin="imported", has_clause_tree=bool(prop.clauses))
+                            company_id=company_id, title=prop.contract.title, status="active", origin="imported", has_clause_tree=bool(prop.clauses))
         session.add(contract)
         await session.flush()
         action = "contract.imported"
     contract.company_id = company_id or contract.company_id
-    contract.party_id = party.id if party else contract.party_id
+    from app.domain.contract_parties import add_party, replace_parties
+
+    links = [{"party_id": pt.id, "role": it["role"], "is_primary": it["is_primary"], "valid_from": prop.contract.start_date} for it, pt in party_items]
+    if action == "contract.import_updated":
+        if links:
+            await replace_parties(session, actor, contract.id, links, source="import")
+    else:
+        for ln in links:
+            await add_party(session, actor, contract_id=contract.id, party_id=ln["party_id"], role=ln["role"], is_primary=ln["is_primary"],
+                            valid_from=ln["valid_from"], source="import")
     contract.title, contract.category, contract.status = prop.contract.title, cat, _status_for(prop)
     contract.signed_at, contract.start_date, contract.end_date = prop.contract.signed_at, prop.contract.start_date, prop.contract.end_date
     contract.notes = prop.contract.summary
@@ -260,8 +254,8 @@ async def commit_import(
                        _search_text(prop), f"/app/portfell/leping/{contract.id}", subtitle=party.name if party else None)
     job.status, job.committed_contract_id = "committed", contract.id
     emit(session, actor, "contract", contract.id, action,
-         {"import_job_id": job.id, "source_document_id": doc.id, "category": cat, "party_id": party.id if party else None,
-          "asset_id": asset_id, "parking_spots": parking_linked or None, "clauses": len(prop.clauses), "parameters": len(prop.parameters), "key_dates": len(prop.key_dates),
+         {"import_job_id": job.id, "source_document_id": doc.id, "category": cat,
+          "parties": [{"party_id": ln["party_id"], "role": ln["role"], "is_primary": ln["is_primary"]} for ln in links], "asset_id": asset_id, "parking_spots": parking_linked or None, "clauses": len(prop.clauses), "parameters": len(prop.parameters), "key_dates": len(prop.key_dates),
           "edits": job.edits_count, "prompt_version": job.prompt_version, "model": job.model})
     emit(session, actor, "import_job", job.id, "import.committed", {"contract_id": contract.id})
     return contract
@@ -280,12 +274,66 @@ def _counterparty(prop: Proposal):
     return others[-1] if len(prop.parties) > 1 and others else None
 
 
-def _party_role(category: str, role: str) -> str:
-    if category == "lease":
-        return "client"
-    if category == "employment":
-        return "employee"
-    return "supplier"
+OUR_SIDE_ROLES = {"landlord", "client", "insured", "employer"}
+
+
+def _is_ours(prop: Proposal, p) -> bool:
+    ours = (prop.contract.our_company_name or "").strip().lower()
+    return p.role in OUR_SIDE_ROLES or (bool(ours) and p.name.strip().lower() == ours)
+
+
+async def _resolve_parties(session: AsyncSession, actor: Actor, prop: Proposal, cat: str, items: list[dict[str, Any]] | None) -> list[tuple[dict[str, Any], Any]]:
+    """→ [(item, Party)] with exactly one ``is_primary`` (or none when the list is empty)."""
+    from app.domain.contract_parties import counterparty_role
+    from app.domain.parties import add_role, find_or_create_party, get_party
+
+    out: list[tuple[dict[str, Any], Any]] = []
+    if items is None:
+        cp = _counterparty(prop)
+        for p in prop.parties:
+            if _is_ours(prop, p):
+                continue
+            role = counterparty_role(cat) if p is cp else p.role  # the counterparty takes the category's role (supplier → maintainer on a maintenance contract)
+            party = await find_or_create_party(session, actor, name=p.name, registry_code=p.registry_code, role=role, address=p.address, email=p.email)
+            out.append(({"role": role, "is_primary": p is cp}, party))
+        if not out and cp is not None:
+            role = counterparty_role(cat)
+            party = await find_or_create_party(session, actor, name=cp.name, registry_code=cp.registry_code, role=role, address=cp.address, email=cp.email)
+            out.append(({"role": role, "is_primary": True}, party))
+    else:
+        for it in items:
+            if not it.get("include", True):
+                continue
+            role = (it.get("role") or "").strip().lower()
+            if it.get("party_id"):
+                party = await get_party(session, uuid.UUID(str(it["party_id"])))
+                role = role or counterparty_role(cat)
+                await add_role(session, actor, party, role)
+            else:
+                idx = it.get("index")
+                if idx is None or idx < 0 or idx >= len(prop.parties):
+                    raise ValidationFailed("Osapoole viide ettepanekusse on vigane", errors=[{"loc": ["parties"], "msg": "index"}])
+                src = prop.parties[idx]
+                role = role or src.role
+                party = await find_or_create_party(session, actor, name=src.name, registry_code=src.registry_code, role=role, address=src.address, email=src.email)
+            out.append(({"role": role, "is_primary": bool(it.get("is_primary"))}, party))
+    # the same party once (first wins); exactly one primary
+    seen: set[uuid.UUID] = set()
+    uniq: list[tuple[dict[str, Any], Any]] = []
+    for it, pt in out:
+        if pt.id in seen:
+            continue
+        seen.add(pt.id)
+        uniq.append((it, pt))
+    if uniq and not any(it["is_primary"] for it, _ in uniq):
+        uniq[0][0]["is_primary"] = True
+    first = True
+    for it, _ in uniq:
+        if it["is_primary"]:
+            if not first:
+                it["is_primary"] = False
+            first = False
+    return uniq
 
 
 def _status_for(prop: Proposal) -> str:
@@ -359,16 +407,20 @@ async def manual_register(
     await session.flush()
     doc.s3_key = f"account/{actor.account_id}/source/{doc.id}/{_safe(filename)}"
     await blobstore().put(doc.s3_key, data, doc.content_type)
-    party = await find_or_create_party(session, actor, name=counterparty_name, registry_code=registry_code, role=_party_role(category, "other"))
+    from app.domain.contract_parties import add_party, counterparty_role
+
+    role = counterparty_role(category)
+    party = await find_or_create_party(session, actor, name=counterparty_name, registry_code=registry_code, role=role)
     type_code = "lease" if category == "lease" else "employment" if category == "employment" else "generic"
     ctype = (await session.execute(select(ContractType).where(ContractType.code == type_code))).scalar_one()
     contract = Contract(account_id=actor.account_id, number=await _next_number(session, category), contract_type_id=ctype.id, type_code=type_code,
-                        category=category, company_id=company_id, party_id=party.id, title=title, origin="imported", has_clause_tree=False,
+                        category=category, company_id=company_id, title=title, origin="imported", has_clause_tree=False,
                         status="ended" if end_date and end_date < date.today() else "active", signed_at=signed_at, start_date=start_date,
                         end_date=end_date, notes=notes, source_document_id=doc.id)
     session.add(contract)
     await session.flush()
     doc.contract_id = contract.id
+    await add_party(session, actor, contract_id=contract.id, party_id=party.id, role=role, is_primary=True, valid_from=start_date, source="import")
     values = {}
     for p in parameters or []:
         session.add(ContractFact(account_id=actor.account_id, contract_id=contract.id, key=p["key"], reason="import",
@@ -387,16 +439,20 @@ async def manual_register(
     await index_entity(session, actor.account_id, "contract", contract.id, f"{contract.number} · {title}", f"{counterparty_name} {notes or ''}",
                        f"/app/portfell/leping/{contract.id}", subtitle=counterparty_name)
     emit(session, actor, "contract", contract.id, "contract.registered_manually",
-         {"source_document_id": doc.id, "category": category, "party_id": party.id, "key_dates": len(key_dates or []), "parameters": len(parameters or [])})
+         {"source_document_id": doc.id, "category": category, "parties": [{"party_id": party.id, "role": role, "is_primary": True}],
+          "key_dates": len(key_dates or []), "parameters": len(parameters or [])})
     return contract
 
 
 async def register_amendment(
     session: AsyncSession, actor: Actor, contract_id: uuid.UUID, *, filename: str, content_type: str | None, data: bytes, note: str | None,
     parameters: list[dict[str, Any]] | None = None, key_dates: list[dict[str, Any]] | None = None, valid_from: date | None = None,
-    end_date: date | None = None,
+    end_date: date | None = None, new_party_id: uuid.UUID | None = None,
 ) -> SourceDocument:
-    """Externally signed amendment on an imported contract: store the annex, write new fact versions + key dates."""
+    """Externally signed amendment on an imported contract: store the annex, write new fact versions + key dates.
+
+    ``new_party_id`` is the tenant-change case: the current primary row closes the day before ``valid_from`` and the new
+    party becomes primary with ``source=amendment``."""
     from app.domain.keydates import add_key_date
 
     contract = await session.get(Contract, contract_id)
@@ -434,6 +490,12 @@ async def register_amendment(
     if end_date:
         changes.append({"key": "end_date", "old": contract.end_date, "new": end_date})
         contract.end_date = end_date
+    if new_party_id:
+        from app.domain.contract_parties import change_primary_by_amendment, primary_parties
+
+        old = (await primary_parties(session, [contract.id])).get(contract.id)
+        cp = await change_primary_by_amendment(session, actor, contract.id, new_party_id=new_party_id, valid_from=vf)
+        changes.append({"key": "party", "old": old.id if old else None, "new": cp.party_id})
     for kd in key_dates or []:
         await add_key_date(session, actor, contract_id=contract.id, kind_code=kd["kind"], due_date=date.fromisoformat(str(kd["date"])), title=kd.get("title"),
                            provenance={"source_document_id": str(doc.id)})

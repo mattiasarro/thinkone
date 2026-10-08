@@ -67,6 +67,10 @@ async def test_import_lease_pdf_end_to_end(client: AsyncClient, admin: dict):
     assert {a["asset"]["name"] for a in c["allocations"]} == {"P_29", "P 41"}
     assert c["origin"] == "imported" and c["category"] == "lease" and c["title"].startswith("Üürileping P_29")
     assert c["party"]["registry_code"] == "10714568"
+    # default party set: the counterparty is the primary row with the lease's counterparty role
+    assert [(x["role"], x["is_primary"], x["source"]) for x in c["parties"]] == [("tenant", True, "import")]
+    assert c["parties"][0]["party"]["registry_code"] == "10714568"
+    assert "tenant" in (await client.get(f"/api/v1/parties/{c['parties'][0]['party']['id']}")).json()["roles"]
     assert any(f["key"] == "rent_per_m2" for f in c["facts"])
     assert any(k["kind_code"] == "start" for k in c["key_dates"])
     assert len(c["clauses"]) > 100 and c["clauses"][0]["number"] == "1"
@@ -88,9 +92,30 @@ async def test_import_lease_pdf_end_to_end(client: AsyncClient, admin: dict):
     assert job2["duplicate_of_contract_id"] == cid
     await _run_worker_inline(job2["id"])
     j2 = (await client.get(f"/api/v1/imports/{job2['id']}")).json()
-    r = await client.post(f"/api/v1/imports/{job2['id']}/commit", json={"checked": j2["uncertain"]})
+    # … with an explicit party list: the proposal's tenant plus an existing party as guarantor
+    guarantor = (await client.post("/api/v1/parties", json={"kind": "ee_company", "name": "Garant OÜ", "registry_code": "11111111", "roles": []})).json()
+    prop2 = j2["reviewed"] or j2["proposal"]
+    tenant_idx = next(i for i, p in enumerate(prop2["parties"]) if p["registry_code"] == "10714568")
+    r = await client.post(f"/api/v1/imports/{job2['id']}/commit", json={"checked": j2["uncertain"], "parties": [
+        {"index": tenant_idx, "party_id": None, "role": "tenant", "is_primary": True, "include": True},
+        {"index": None, "party_id": guarantor["id"], "role": "other", "is_primary": False, "include": True},
+    ]})
     assert r.status_code == 200 and r.json()["contract_id"] == cid
     assert len((await client.get("/api/v1/contracts")).json()) == 1
+    c = (await client.get(f"/api/v1/contracts/{cid}")).json()
+    assert [(x["party"]["name"], x["role"], x["is_primary"]) for x in c["parties"]] == [(c["party"]["name"], "tenant", True), ("Garant OÜ", "other", False)]
+    assert c["party"]["registry_code"] == "10714568"
+    assert "other" in (await client.get(f"/api/v1/parties/{guarantor['id']}")).json()["roles"]
+    # a third re-import with a different list replaces the rows instead of appending
+    job3 = await _upload(client, LEASE_PDF, "application/pdf")
+    await _run_worker_inline(job3["id"])
+    j3 = (await client.get(f"/api/v1/imports/{job3['id']}")).json()
+    r = await client.post(f"/api/v1/imports/{job3['id']}/commit", json={"checked": j3["uncertain"], "parties": [
+        {"index": tenant_idx, "party_id": None, "role": "tenant", "is_primary": True, "include": True}]})
+    assert r.status_code == 200
+    c = (await client.get(f"/api/v1/contracts/{cid}")).json()
+    assert [(x["role"], x["is_primary"]) for x in c["parties"]] == [("tenant", True)]
+    assert len((await client.get("/api/v1/parties")).json()) == 2  # the guarantor party itself stays
 
 
 async def test_import_maintenance_docx_and_coverage(client: AsyncClient, admin: dict):
@@ -108,6 +133,7 @@ async def test_import_maintenance_docx_and_coverage(client: AsyncClient, admin: 
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
     assert c["type_code"] == "generic" and c["allocations"][0]["kind"] == "coverage"
     assert c["party"]["name"].startswith("Caverion")
+    assert [(x["role"], x["is_primary"]) for x in c["parties"]] == [("maintainer", True)]
     # health: open-ended contract without notice → info finding; missing annexes referenced (Lisa 1–5)
     health = (await client.get("/api/v1/portfolio/health")).json()
     codes = {f["code"] for f in health["findings"]}
@@ -127,6 +153,7 @@ async def test_scanned_pdf_fails_structuring_and_manual_registration(client: Asy
     assert r.status_code == 201, r.text
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
     assert c["origin"] == "imported" and not c["has_clause_tree"] and c["clauses"] == [] and c["current_values"]["premium"]["value"] == "1200"
+    assert c["party"]["registry_code"] == "10100168" and [(x["role"], x["is_primary"]) for x in c["parties"]] == [("insurer", True)]
     assert any(k["kind_code"] == "end" for k in c["key_dates"])
     # externally signed amendment: new fact version supersedes the old one
     r = await client.post(f"/api/v1/contracts/{c['id']}/amendments", files={"file": ("lisa1.pdf", b"%PDF-1.4 lisa", "application/pdf")},

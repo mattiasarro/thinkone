@@ -18,7 +18,7 @@ Implemented: account/user setup with invites and the data-driven „Alusta · 10
 autofill), asset registry (object workflow in five steps — building with EHR autofill · spaces with parts breakdown, CSV
 import and a space page · bulk floor-plan upload matched by filename · parking register as a separate asset with per-space
 default spots · terms + template; derived occupancy; space split/merge; delete guard for documented spaces), parties with
-roles, templates (general-terms DOCX → locked clause tree), import pipeline (PDF/DOCX/ASiC-E → extraction with anchors → LLM
+roles (contracts link to any number of parties with a role each, one primary), templates (general-terms DOCX → locked clause tree), import pipeline (PDF/DOCX/ASiC-E → extraction with anchors → LLM
 structuring → review with „Kas see on Pind N?” and äriregister check → commit with space + parking-spot linking; manual
 registration for scans; externally signed amendments; in-progress/finished batches), versioned contract facts, key dates +
 calendar + daily scan, notifications with email delivery state, global event log page with actor/entity filters and CSV/JSONL/PDF

@@ -25,7 +25,7 @@ from app.models.registry import Asset
 
 ENTITY_WORDS = {"contract": "Leping", "asset": "Ese", "party": "Osapool", "import_job": "Import", "source_document": "Dokument", "key_date": "Tähtaeg",
                 "allocation": "Hõive", "attachment": "Fail", "template": "Mall", "company": "Ettevõte", "account": "Konto", "membership": "Kasutaja",
-                "notification": "Teavitus", "user": "Kasutaja"}
+                "notification": "Teavitus", "user": "Kasutaja", "contract_party": "Lepingu osapool"}
 
 
 @dataclass
@@ -147,6 +147,9 @@ async def resolve_entities(session: AsyncSession, rows: list[EventRow]) -> None:
             r.entity_label, r.entity_link = labels[(r.entity_type, r.entity_id)]
         elif r.entity_type == "allocation" and r.payload.get("contract_id"):
             r.entity_label = r.payload.get("asset_name") or r.payload.get("contract_number")
+            r.entity_link = f"/app/portfell/leping/{r.payload['contract_id']}"
+        elif r.entity_type == "contract_party" and r.payload.get("contract_id"):
+            r.entity_label = " · ".join(x for x in [r.payload.get("party_name"), r.payload.get("role")] if x) or r.payload.get("contract_number")
             r.entity_link = f"/app/portfell/leping/{r.payload['contract_id']}"
         elif r.entity_type == "attachment" and r.payload.get("subject_id"):
             r.entity_label = r.payload.get("filename")

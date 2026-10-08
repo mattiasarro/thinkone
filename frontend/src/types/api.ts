@@ -84,7 +84,10 @@ export interface KeyDate { id: UUID; kind_code: string; title: string; due_date:
 export interface KeyDateKind { code: string; name_et: string; default_notify_days: number }
 export interface SourceDocument { id: UUID; filename: string; content_type: string; role: string; url?: string | null; container_signatures?: ContainerSignature[] | null }
 export interface ContainerSignature { signer?: string | null; name?: string | null; personal_code?: string | null; signed_at?: ISODate | null; time?: ISODate | null; valid?: boolean | null }
-export interface ContractDetail extends ContractSummary { notes?: string | null; facts: ContractFact[]; key_dates: KeyDate[]; allocations: Allocation[]; source_documents: SourceDocument[]; clauses: Clause[]; attachments: Attachment[] }
+export interface ContractParty { id: UUID; party: { id: UUID; name: string; registry_code: string | null }; role: string; is_primary: boolean; valid_from: ISODate | null; valid_to: ISODate | null; source: string }
+export interface ContractDetail extends ContractSummary { notes?: string | null; facts: ContractFact[]; key_dates: KeyDate[]; allocations: Allocation[]; source_documents: SourceDocument[]; clauses: Clause[]; attachments: Attachment[]; parties: ContractParty[] }
+/** A party's contracts (GET /parties/{id}/contracts): the summary fields plus the party's role in that contract. */
+export interface PartyContractRow { id: UUID; number: string | null; title: string; status: string; type_code: string; category: ContractCategory | null; start_date: ISODate | null; end_date: ISODate | null; role: string | null }
 
 export type ImportStatus = "uploaded" | "extracting" | "structuring" | "review" | "committed" | "failed" | "manual";
 export interface ImportSourceDocument { id: UUID; filename: string; format: "pdf" | "docx" | "asice"; page_count: number | null; has_text_layer: boolean | null; container_signatures: ContainerSignature[] | null }
@@ -96,7 +99,8 @@ export interface ProposalClause { number: string; level: number; heading?: strin
 export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null }
 export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate }
 export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null }
-export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; allocation_kind?: "exclusive" | "coverage" | null; party_id?: UUID | null; party?: ProposalParty | null; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
+export interface ImportCommitParty { index: number | null; party_id: string | null; role: string; is_primary: boolean; include: boolean }
+export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; allocation_kind?: "exclusive" | "coverage" | null; parties?: ImportCommitParty[]; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
 
 export interface SearchHit { entity_type: string; entity_id: UUID; title: string; subtitle: string | null; link: string | null }
 export interface AuditEvent { id: UUID | number; ts?: ISODate; action?: string; entity_type?: string; entity_id?: UUID | null; entity_label?: string | null; entity_link?: string | null; event_type?: string; kind?: string; actor_type?: string; actor_name?: string | null; actor?: string | null; on_behalf_of?: UUID | null; reason?: string | null; correlation_id?: string | null; occurred_at?: ISODate; created_at?: ISODate; payload?: Record<string, unknown> | null }

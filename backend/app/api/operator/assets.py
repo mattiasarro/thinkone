@@ -340,7 +340,7 @@ async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) ->
         spots = [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, a.id)]
     return AssetDetailOut(**base.model_dump(), children=[AssetChildOut(**c.model_dump(), attachments=child_atts[c.id]) for c in children],
                           attachments=[AttachmentSummaryOut.model_validate(x) for x in atts],
-                          allocations=[await _alloc_out(session, al, c) for al, c in allocs],
+                          allocations=await _allocs_out(session, allocs),
                           parent=AssetRefOut(id=parent.id, name=parent.name, type_code=parent.type_code, attributes=parent.attributes or {}) if parent else None,
                           parking_spots=spots, split_parent=split_parent, split_units=split_units,
                           delete_block_reason=delete_reason, split_block_reason=split_reason)
@@ -504,7 +504,7 @@ async def upload_plans(property_id: uuid.UUID, files: list[UploadFile] = File(..
 @router.get("/assets/{asset_id}/allocations", response_model=list[AllocationOut])
 async def asset_allocations(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[AllocationOut]:
     await assets_domain.get_asset(session, asset_id)
-    return [await _alloc_out(session, al, c) for al, c in await assets_domain.list_allocations(session, asset_id=asset_id)]
+    return await _allocs_out(session, await assets_domain.list_allocations(session, asset_id=asset_id))
 
 
 @router.post("/allocations", response_model=AllocationOut, status_code=201)
@@ -513,7 +513,7 @@ async def create_allocation(body: AllocationIn, p: Principal = Depends(current_p
                                       period_start=body.period_start, period_end=body.period_end, area_m2=body.area_m2)
     c = await session.get(Contract, al.contract_id)
     assert c
-    return await _alloc_out(session, al, c)
+    return (await _allocs_out(session, [(al, c)]))[0]
 
 
 @router.api_route("/allocations/{allocation_id}", methods=["DELETE"], status_code=204)
@@ -544,13 +544,14 @@ async def _outs(session: AsyncSession, rows: list[Asset]) -> list[AssetOut]:
     return out
 
 
-async def _alloc_out(session: AsyncSession, al: Allocation, c: Contract) -> AllocationOut:
-    party_name = None
-    if c.party_id:
-        from app.models.core import Party
+async def _allocs_out(session: AsyncSession, rows: list[tuple[Allocation, Contract]]) -> list[AllocationOut]:
+    from app.domain.contract_parties import primary_parties
 
-        party = await session.get(Party, c.party_id)
-        party_name = party.name if party else None
+    primary = await primary_parties(session, [c.id for _, c in rows])
+    return [_alloc_out(al, c, primary[c.id].name if c.id in primary else None) for al, c in rows]
+
+
+def _alloc_out(al: Allocation, c: Contract, party_name: str | None) -> AllocationOut:
     return AllocationOut(id=al.id, contract_id=al.contract_id, asset_id=al.asset_id, kind=al.kind, quantity=al.quantity, period_start=al.period_start,
                          period_end=al.period_end, area_m2=float(al.area_m2) if al.area_m2 is not None else None,
                          contract=AllocationContractOut(id=c.id, number=c.number, title=c.title, status=c.status, type_code=c.type_code, party_name=party_name))
