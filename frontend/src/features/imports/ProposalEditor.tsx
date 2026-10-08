@@ -11,7 +11,7 @@ import type { Proposal, ProposalKeyDate, ProposalParameter, ProposalParty } from
 
 const CATEGORIES = ["lease", "maintenance", "management", "insurance", "security", "other"];
 /** The backend's PartyRole vocabulary (ingest/schema.py) — the review must stay schema-valid or autosave fails. */
-const PARTY_ROLES = ["landlord", "tenant", "client", "supplier", "insurer", "insured", "employer", "employee", "other"];
+const PARTY_ROLES = ["landlord", "tenant", "client", "supplier", "manager", "maintainer", "security", "insurer", "insured", "employer", "employee", "other"];
 
 interface Props { draft: Proposal; onChange: (p: Proposal) => void; checked: Set<string>; onCheck: (key: string, v: boolean) => void; onAnchor: (page: number | null | undefined) => void }
 

@@ -193,7 +193,7 @@ const et = {
     commit: "Kinnita import", commitBlocked: "Kontrolli kõik ebakindlad väljad enne kinnitamist ({n} kontrollimata)", committed: "Leping loodud", saving: "Salvestan muudatusi…", savedReview: "Muudatused salvestatud",
     signatures: "Allkirjad konteineris", noTextLayer: "Tekstikihti pole — dokument on skaneeritud", openSource: "Ava originaal", asset_hint: "Objekti vihje",
     alreadyCommitted: "See import on juba kinnitatud", viewContract: "Vaata lepingut", addParameter: "Lisa parameeter", addKeyDate: "Lisa võtmekuupäev", noClauses: "Tingimusi ei tuvastatud",
-    partyRoles: { landlord: "Üürileandja", tenant: "Üürnik", client: "Tellija", supplier: "Teenuseosutaja", insurer: "Kindlustusandja", insured: "Kindlustusvõtja", employer: "Tööandja", employee: "Töötaja", other: "Muu" },
+    partyRoles: { landlord: "Üürileandja", tenant: "Üürnik", client: "Tellija", supplier: "Teenuseosutaja", manager: "Haldur", maintainer: "Hooldaja", security: "Turvafirma", insurer: "Kindlustusandja", insured: "Kindlustusvõtja", employer: "Tööandja", employee: "Töötaja", other: "Muu" },
     inProgress: "Pooleli", finished: "Lõpetatud", spaceSuggest: "Kas see on {name}?", spaceSuggestWhy: "lepingus {area} m² — sama suur on {name}", useSuggestion: "Jah, see pind",
     parkingTake: "Parkimiskohad lepingusse", parkingTakeHint: "Vaikimisi pinna kohad; vali ümber, kui leping ütleb teisiti.", registry: "e-äriregister", registryChecking: "kontrollin…", registryNotFound: "koodi {code} ei leitud — kontrolli", registryOtherName: "lepingus teise nimega", registryStatus: "olek {status}",
     manual: {
