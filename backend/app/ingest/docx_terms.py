@@ -41,7 +41,10 @@ def _level(paragraph) -> int | None:
 
 
 def parse_general_terms(data: bytes) -> ParsedTerms:
-    doc = Document(io.BytesIO(data))
+    try:
+        doc = Document(io.BytesIO(data))
+    except Exception as e:  # BadZipFile / PackageNotFoundError: a PDF, a .doc, an empty upload
+        raise ValidationFailed("Fail ei ole Word-dokument (.docx)") from e
     started = False
     sections: list[Node] = []
     stack: list[Node] = []  # current path: [section, point, subpoint]

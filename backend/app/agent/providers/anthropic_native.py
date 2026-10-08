@@ -5,15 +5,24 @@ Classifier refusals are retried server-side on Anthropic's recommended fallback 
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
 import anthropic
 import structlog
 
-from app.agent.providers.base import StructuredResult
+from app.agent.providers.base import ImageInput, StructuredResult
 
 log = structlog.get_logger()
+
+
+def _content(user: str, images: list[ImageInput] | None) -> str | list[dict[str, Any]]:
+    if not images:
+        return user
+    blocks: list[dict[str, Any]] = [{"type": "image", "source": {"type": "base64", "media_type": mt, "data": base64.b64encode(data).decode()}}
+                                    for mt, data in images]
+    return [*blocks, {"type": "text", "text": user}]
 
 
 class AnthropicChatModel:
@@ -21,18 +30,20 @@ class AnthropicChatModel:
         self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=3, timeout=600.0)
         self.model = model
 
-    async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 64000) -> StructuredResult:
+    async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 64000,
+                         images: list[ImageInput] | None = None) -> StructuredResult:
         try:
-            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=True)
+            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=True, images=images)
         except anthropic.BadRequestError as e:
             # The API compiles the JSON schema into a grammar and refuses large ones; the schema still goes into
             # the prompt and Pydantic validates the reply, so fall back to free-form JSON for this call.
             if "grammar" not in str(e).lower():
                 raise
             log.warning("llm_structured_grammar_fallback", error=str(e)[:200])
-            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=False)
+            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=False, images=images)
 
-    async def _call(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int, grammar: bool) -> StructuredResult:
+    async def _call(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int, grammar: bool,
+                    images: list[ImageInput] | None = None) -> StructuredResult:
         # Streaming keeps long structuring runs clear of HTTP timeouts; the stable system prompt is cached.
         # max_tokens covers thinking as well as the JSON (thinking is always on for Opus 5.5).
         output_config: dict[str, Any] = {"effort": "high"}
@@ -45,7 +56,7 @@ class AnthropicChatModel:
             model=self.model,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": sys_text, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": _content(user, images)}],
             thinking={"type": "adaptive"},
             output_config=output_config,
             betas=["server-side-fallback-2026-07-01"],

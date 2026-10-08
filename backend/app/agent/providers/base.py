@@ -14,9 +14,13 @@ class StructuredResult:
     raw_text: str | None = None
 
 
+ImageInput = tuple[str, bytes]  # (media type, raw bytes) — shown to the model before the user text
+
+
 class ChatModel(Protocol):
-    async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 32000) -> StructuredResult:
-        """Return JSON validated by the API against ``schema`` (JSON schema)."""
+    async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 32000,
+                         images: list[ImageInput] | None = None) -> StructuredResult:
+        """Return JSON validated by the API against ``schema`` (JSON schema). ``images`` precede the text (vision tasks)."""
         ...
 
 

@@ -42,6 +42,11 @@ async def enqueue_structuring(session: AsyncSession, import_job_id: uuid.UUID) -
     await _enqueue(session, "app.worker.tasks.structure_import", {"import_job_id": str(import_job_id)}, queue="import", lock=f"import:{import_job_id}")
 
 
+async def enqueue_parking_plan_derivation(session: AsyncSession, account_id: uuid.UUID, property_id: uuid.UUID) -> None:
+    await _enqueue(session, "app.worker.tasks.derive_parking_plan", {"account_id": str(account_id), "property_id": str(property_id)},
+                   queue="import", lock=f"parking_plan:{property_id}")
+
+
 # ---- tasks -------------------------------------------------------------------------------------
 
 
@@ -102,6 +107,18 @@ async def structure_import(import_job_id: str) -> None:
     from app.ingest.pipeline import run_structuring
 
     await run_structuring(uuid.UUID(import_job_id))
+
+
+@app.task(name="app.worker.tasks.derive_parking_plan", queue="import", retry=1)
+async def derive_parking_plan(account_id: str, property_id: str) -> None:
+    """After a parking plan upload: read it with the model and leave the proposal as a draft for the editor."""
+    from app.domain import parking_plan as parking_plan_domain
+    from app.domain.events import Actor
+    from app.infra.db import tenant_session
+
+    aid = uuid.UUID(account_id)
+    async with tenant_session(aid) as session:
+        await parking_plan_domain.derive_draft(session, Actor.system(aid, correlation_id=f"parking_plan:{property_id[:12]}"), uuid.UUID(property_id))
 
 
 @app.periodic(cron="15 5 * * *")

@@ -69,3 +69,8 @@ async def test_general_terms_docx_import(client: AsyncClient, admin: dict):
     t = r.json()
     assert t["kind"] == "general_terms" and t["version"] == 1 and t["node_count"] >= 5 and t["is_current"]
     assert (await client.get(f"/api/v1/templates/{t['id']}")).status_code == 200
+
+
+async def test_general_terms_rejects_non_docx(client: AsyncClient, admin: dict):
+    r = await client.post("/api/v1/templates/general-terms", data={"name": "Vale"}, files={"file": ("terms.docx", b"%PDF-1.4 not a zip", "application/pdf")})
+    assert r.status_code == 422 and "docx" in r.json()["detail"].lower()

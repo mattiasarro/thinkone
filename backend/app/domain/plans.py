@@ -220,6 +220,12 @@ async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, fi
               "before": previous[0].filename if previous else None, "after": f.filename, "attachment_id": att.id})
         if previous:
             r.note = f"asendab „{previous[0].filename}”"
+        if role == "parking_plan":
+            from app.worker.tasks import (
+                enqueue_parking_plan_derivation,  # the VLM reads the plan in the worker → editor draft
+            )
+
+            await enqueue_parking_plan_derivation(session, actor.account_id, prop.id)
     return rows
 
 

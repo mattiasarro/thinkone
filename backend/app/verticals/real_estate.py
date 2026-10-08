@@ -13,6 +13,34 @@ SPACE_PART_LABELS = {"ladu": "Ladu", "kontor": "Kontor", "myygisaal": "Müügisa
 PARKING_TYPES = ("tavaline", "elektriauto", "ligipääsetav")
 
 
+class SpotGeom(BaseModel):
+    """A spot's box on the building's parking schematic: centre ``x, y``, size ``w, h`` in metres, ``rot`` degrees clockwise."""
+
+    x: float
+    y: float
+    w: float = Field(gt=0, le=100)
+    h: float = Field(gt=0, le=100)
+    rot: float = Field(default=0, ge=-360, le=360)
+
+
+class PlanBackground(BaseModel):
+    """The uploaded parking plan drawn under the boxes: which attachment and where it sits on the frame (metres)."""
+
+    attachment_id: str
+    x: float = 0
+    y: float = 0
+    w: float = Field(gt=0)
+    h: float = Field(gt=0)
+    opacity: float = Field(default=0.6, ge=0, le=1)
+
+
+class ParkingPlanFrame(BaseModel):
+    units: Literal["m"] = "m"
+    width: float = Field(gt=0, le=5000)
+    height: float = Field(gt=0, le=5000)
+    background: PlanBackground | None = None
+
+
 class PropertyAttributes(BaseModel):
     ehr_code: str | None = None
     address: str | None = None
@@ -29,6 +57,8 @@ class PropertyAttributes(BaseModel):
     ehr_payload: dict | None = None  # trimmed raw register payload (architecture §7: adapters snapshot responses)
     template_id: str | None = None  # general-terms template used for this building's leases (object workflow step 5)
     has_parking: bool | None = None  # None = not decided; False = „parkimist pole”
+    parking_plan: ParkingPlanFrame | None = None  # the schematic's frame (metres); spots carry their own ``geom``
+    parking_plan_draft: dict | None = None  # VLM proposal awaiting the operator's review (parking_plan domain)
 
 
 class SpaceAttributes(BaseModel):
@@ -104,6 +134,7 @@ class ParkingSpotAttributes(BaseModel):
     reserve: bool = False
     out_of_service: bool = False
     space_id: str | None = None
+    geom: SpotGeom | None = None  # None = not placed on the schematic yet
 
     @field_validator("number", mode="before")
     @classmethod

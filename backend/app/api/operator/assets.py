@@ -13,6 +13,7 @@ from app.api.deps import Principal, current_principal, db
 from app.domain import assets as assets_domain
 from app.domain import attachments as attachments_domain
 from app.domain import parking as parking_domain
+from app.domain import parking_plan as parking_plan_domain
 from app.domain import plans as plans_domain
 from app.domain import registry
 from app.domain import spaces as spaces_domain
@@ -198,6 +199,54 @@ class HasParkingIn(BaseModel):
     has_parking: bool
 
 
+class SpotGeomIn(BaseModel):
+    x: float
+    y: float
+    w: float
+    h: float
+    rot: float = 0
+
+
+class PlanSpotIn(BaseModel):
+    id: uuid.UUID
+    geom: SpotGeomIn | None = None
+    space_id: uuid.UUID | None = None
+    set_space: bool = False  # True → ``space_id`` is written (null detaches); False → the default space is left as is
+
+
+class PlanNewSpotIn(BaseModel):
+    number: str = Field(min_length=1, max_length=20)
+    zone: str | None = None
+    type: str = "tavaline"
+    geom: SpotGeomIn
+    space_id: uuid.UUID | None = None
+
+
+class ParkingPlanIn(BaseModel):
+    frame: dict[str, Any] | None = None
+    spots: list[PlanSpotIn] = Field(default_factory=list)
+    new: list[PlanNewSpotIn] = Field(default_factory=list)
+    clear_draft: bool = False
+
+
+class PlanSpotOut(ParkingSpotOut):
+    geom: SpotGeomIn | None = None
+
+
+class PlanAttachmentOut(BaseModel):
+    id: uuid.UUID
+    filename: str
+    content_type: str
+
+
+class ParkingPlanOut(BaseModel):
+    property_id: uuid.UUID
+    frame: dict[str, Any] | None
+    spots: list[PlanSpotOut]
+    draft: dict[str, Any] | None
+    plan_attachment: PlanAttachmentOut | None
+
+
 class PlanRowOut(BaseModel):
     filename: str
     content_type: str
@@ -378,6 +427,48 @@ async def delete_parking(property_id: uuid.UUID, body: ParkingDeleteIn, p: Princ
 async def set_has_parking(property_id: uuid.UUID, body: HasParkingIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> AssetOut:
     a = await parking_domain.set_has_parking(session, p.actor, property_id, body.has_parking)
     return (await _outs(session, [a]))[0]
+
+
+# ---- parking schematic (boxes per register spot) -----------------------------------------------
+
+
+@router.get("/assets/{property_id}/parking/plan", response_model=ParkingPlanOut)
+async def get_parking_plan(property_id: uuid.UUID, session: AsyncSession = Depends(db)) -> ParkingPlanOut:
+    return ParkingPlanOut(**await parking_plan_domain.plan_document(session, property_id))
+
+
+@router.put("/assets/{property_id}/parking/plan", response_model=ParkingPlanOut)
+async def save_parking_plan(property_id: uuid.UUID, body: ParkingPlanIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ParkingPlanOut:
+    """One save of the editor: frame + boxes of existing spots (+ default space when ``set_space``) + new register rows."""
+    spots = []
+    for it in body.spots:
+        d: dict[str, Any] = {"id": it.id, "geom": it.geom.model_dump() if it.geom else None}
+        if it.set_space:
+            d["space_id"] = it.space_id
+        spots.append(d)
+    new = [{**n.model_dump(exclude={"geom"}), "geom": n.geom.model_dump()} for n in body.new]
+    doc = await parking_plan_domain.save_plan(session, p.actor, property_id, frame=body.frame, spots=spots, new=new, clear_draft=body.clear_draft)
+    return ParkingPlanOut(**doc)
+
+
+@router.get("/assets/{property_id}/parking/plan/background", response_class=Response, responses={200: {"content": {"image/png": {}}}})
+async def parking_plan_background(property_id: uuid.UUID, attachment_id: uuid.UUID | None = Query(default=None), session: AsyncSession = Depends(db)) -> Response:
+    """The uploaded parking plan (PDF/SVG/PNG/JPG) rendered to one PNG for the editor's background layer."""
+    png = await parking_plan_domain.background_png(session, property_id, attachment_id)
+    return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@router.post("/assets/{property_id}/parking/plan/derive", response_model=ParkingPlanOut)
+async def derive_parking_plan(property_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ParkingPlanOut:
+    """Read the uploaded plan with the model now (the upload also queues this in the worker) → ``draft`` for review."""
+    await parking_plan_domain.derive_draft(session, p.actor, property_id)
+    return ParkingPlanOut(**await parking_plan_domain.plan_document(session, property_id))
+
+
+@router.delete("/assets/{property_id}/parking/plan/draft", status_code=204)
+async def discard_parking_plan_draft(property_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> Response:
+    await parking_plan_domain.discard_draft(session, p.actor, property_id)
+    return Response(status_code=204)
 
 
 # ---- plans (bulk floor-plan upload) ---------------------------------------------------------------

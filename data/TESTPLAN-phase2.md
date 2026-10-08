@@ -13,7 +13,8 @@ The database was emptied on 2026-10-06, so start from scenario 1. Paths below ar
 | `data/plaanid/` (4 PDF, 2 PNG, 1 ZIP) | bulk plan upload; names match the spaces of `pinnad_naidis.csv` |
 | `data/parkimine/parkimiskohad.csv` | parking register table (`nr;tsoon;tüüp;pind`), last row has an unknown space |
 | `data/manused/objekt/*` | site plan, parking plan, logo, generic attachments |
-| `demo/testfailid/lepingud/Üürileping.docx` | general-terms template (local only, the folder is gitignored) |
+| `data/mallid/*` | general-terms DOCX samples (good, v2, second company, three error cases) + text bodies for the two text template kinds |
+| `demo/testfailid/lepingud/Üürileping.docx` | the real general-terms template (local only, the folder is gitignored) |
 | `demo/demo/lisad/importitud/MARU_uurileping_P29.pdf` | lease import (real signed contract — personal data) |
 | `demo/demo/lisad/importitud/MARU_uurileping_P29_lisa3.pdf` | externally signed amendment of that lease |
 | `demo/demo/lisad/importitud/Hooldusleping_H5-08.docx` | maintenance contract import (DOCX, coverage on the building) |
@@ -83,12 +84,17 @@ The database was emptied on 2026-10-06, so start from scenario 1. Paths below ar
   - Büroo 2 → „Kustuta pind” → confirm text lists the spots that stay in the register → deleted; the register shows 8 and 15 as „Pinnata”.
 - Contract-related actions are re-checked in scenario 7 after an import.
 
-## 5. Templates
+## 5. Templates (Seaded → Mallid) — files in `data/mallid/`
 
-- Seaded → Mallid → „Laadi üldtingimuste DOCX” → name „Äriruumide üürilepingu üldtingimused”, company → upload `Üürileping.docx` → the row shows version 1, „Kehtiv”, 132 punkti.
-  - „Vaata” → clause tree with 18 sections, locked numbering.
-  - Upload the same file again under the same name → version 2 becomes current, version 1 stays in history.
-  - „Loo mall” → kind „Eritingimuste põhi”, some text → saved.
+- „Laadi üldtingimuste DOCX” → name „Äriruumide üürilepingu üldtingimused”, company 1 → `uldtingimused_naidis.docx` → row: version 1, Kehtiv, 33 punkti.
+  - „Vaata” → 6 sections with derived numbers 1 … 6.4; sub-points 2.2.1, 2.2.2, 4.4.1, 6.3.1, 6.3.2; point 2.2 ends with the sentence about the electronic act (an unnumbered paragraph merged in); every node is locked.
+  - Upload `uldtingimused_naidis_v2.docx` under the same name and company → version 2 current (34 punkti, new 3.4; 5.3 says 14 days); version 1 stays listed, not current.
+  - Upload `uldtingimused_laoboksid.docx` under company 2 → an independent template (4 sections, 9 points); object step 5 of a company-2 building offers only it.
+  - Error cases, each must show a toast and create nothing: `uldtingimused_ilma_pealkirjata.docx`, `uldtingimused_nummerdamata.docx`, `vale_formaat.pdf` (choose „All files” in the picker).
+  - Upload the real `demo/testfailid/lepingud/Üürileping.docx` (local only) → 18 sections, 132 punkti.
+- „Loo mall” → kind Eritingimuste põhi, name, paste `eritingimuste_pohi.md` → saved; „Vaata” shows the text; create again with the same name → version 2.
+- „Loo mall” → kind Pakkumuse põhi, paste `pakkumuse_pohi.md` → saved; try an empty body → refused.
+- Sündmuslogi shows `template.general_terms_ingested` (sections/points in the payload) and `template.created`.
 - Object → Muuda → step 5 → pick the general-terms template → „Lõpeta”.
 
 ## 6. Parties

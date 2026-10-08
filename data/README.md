@@ -21,6 +21,22 @@ Generated plan drawings named for the spaces of `pinnad_naidis.csv`: `Naidis_Pin
 `parkimiskohad.csv`: `nr;tsoon;tüüp;pind` rows with a range, an electric-vehicle group, a reserve + accessible spot,
 and a last row pointing at a space that does not exist (rejected).
 
+## `mallid/` — Seaded → Mallid
+
+Fictional general terms (Näidise Kinnisvara OÜ) as Word auto-numbered paragraphs after the heading ÜLDTINGIMUSED, which is
+what the DOCX ingest reads (level 0 = section, 1 = point, 2 = sub-point; unnumbered paragraphs join the previous point).
+
+| File | Expected result |
+|---|---|
+| `uldtingimused_naidis.docx` | 6 sections, 27 points (33 punkti), numbers 1 … 6.4 incl. sub-points 2.2.1–2.2.2, 4.4.1, 6.3.1–6.3.2; point 2.2 absorbs an unnumbered continuation sentence. |
+| `uldtingimused_naidis_v2.docx` | Same name again → version 2 (34 punkti): new point 3.4 (utilities prepayment), 5.3 deposit return 30 → 14 days. Version 1 stays in history. |
+| `uldtingimused_laoboksid.docx` | A second, shorter template (4 sections, 9 points) for another company — upload under the second company. |
+| `uldtingimused_ilma_pealkirjata.docx` | No ÜLDTINGIMUSED heading → rejected: „Dokumendist ei leitud üldtingimusi …”. |
+| `uldtingimused_nummerdamata.docx` | Heading present but numbers typed as text, not Word numbering → rejected with the same message. |
+| `vale_formaat.pdf` | Not a DOCX → rejected: „Fail ei ole Word-dokument (.docx)” (the file picker only offers .docx; drag it in or choose „All files”). |
+| `eritingimuste_pohi.md` | Text to paste into „Loo mall” → Eritingimuste põhi. |
+| `pakkumuse_pohi.md` | Text to paste into „Loo mall” → Pakkumuse põhi. |
+
 ## `uuripinnad-import/` — legacy spec-v2 header (netopind, koefitsient) — still accepted
 
 | File | Expected preview |
