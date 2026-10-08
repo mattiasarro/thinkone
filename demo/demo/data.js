@@ -41,7 +41,7 @@ function shiftStoryDates() {
   LEASES.forEach(l => shiftDeep(l, d));
   TLEPINGUD.forEach(t => shiftDeep(t, d));
   AUDIT.forEach(a => shiftDeep(a, d));
-  KEY_DATES.forEach(k => { if (!/imporditud/i.test(k.objekt || "")) shiftDeep(k, d); });
+  KEY_DATES.forEach(k => { if (!/imporditud/i.test(k.objekt || "") && !k.kasitsi) shiftDeep(k, d); });   /* v808: käsitsi tähtaeg on päris kuupäev */
   IMPORDITUD.forEach(x => { if (x.kinnitatud) x.kinnitatud = shiftDates(x.kinnitatud, d); }); /* ainult impordi kinnitamise päev */
   /* v487: riskipäringu kuupäev on loo-kuupäev (varem jäi 08.06 ja avaandmete seis 21.09 — raport paistis vananenud) */
   CLIENTS.forEach(c => { if (c.risk && c.risk.kuupaev) c.risk.kuupaev = shiftDates(c.risk.kuupaev, d); });
@@ -602,7 +602,7 @@ function lepTaasta(l) {
 function save() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({ objects: OBJEKTID, spacesSeed: typeof SPACES_SEED === "undefined" ? null : SPACES_SEED, spaces: SPACES, offers: OFFERS, leases: LEASES.map(lepKompakt), tlepingud: TLEPINGUD, audit: AUDIT, keyDates: KEY_DATES, parkMuud: PARK_MUUD, parkReg: PARK_REG,
-      imported: IMPORDITUD.filter(x => x.imp), impClients: CLIENTS.filter(c => c.impUus), importFailid: IMPORT_FAILID,
+      imported: IMPORDITUD.filter(x => x.imp), impClients: CLIENTS.filter(c => c.impUus || c.kasitsi || c.muudetud), importFailid: IMPORT_FAILID,
       landlord: COMPANY_ID === "uus" ? ACCOUNT.landlord : undefined }));
     return true;
   } catch (e) { return false; }
@@ -656,7 +656,7 @@ function load() {
     /* vana salvestus võib viidata kliendile/pinnale/ametikohale, mida praeguses
        seemnes enam pole (nt B11G sai oma kliendiregistri) → sellised read maha */
     /* v595: impordiga lisandunud osapooled ja kinnitatud lepingud (seemne omad tulevad koodist) + impordi järjekord */
-    if (Array.isArray(d.impClients)) d.impClients.forEach(c => { if (c && c.id && !CLIENTS.some(x => x.id === c.id)) CLIENTS.push(c); });
+    if (Array.isArray(d.impClients)) d.impClients.forEach(c => { if (!c || !c.id) return; const x = CLIENTS.find(x => x.id === c.id); if (x) Object.assign(x, c); else CLIENTS.push(c); });   /* v808: käsitsi muudetud seemneklient = sama id, uuemad väljad */
     if (Array.isArray(d.imported)) d.imported.forEach(x => { if (x && x.id && !IMPORDITUD.some(y => y.id === x.id)) IMPORDITUD.push(x); });
     if (Array.isArray(d.importFailid)) IMPORT_FAILID.push(...d.importFailid.filter(f => f && f.id));
     /* v602: imporditud lepingu pinnad on üüritud ka siis, kui pinnastik tuli seemnest (seemne vahetus) */

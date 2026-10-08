@@ -3383,6 +3383,8 @@ function p8TeenusKinnita(f, kes, aeg) {
     allkirjad: (f.allkirjad || []).length ? f.allkirjad.map(a => a.kes).join(" · ") + " · digitaalselt" : "—",
     parameetrid: [["Periood", v.perTxt], ...(v.tasu ? [[v.kin ? "Preemia" : "Tasu", `${eur(v.tasu.n)} €/${v.tasu.yh === "aastas" ? "aastas" : "kuus"}`]] : [])],
     lisad: [], tahtajad: [], failid: [{ nimi: `${t.liik} · originaal`, fail: "idb:" + f.pohi, silt: String(f.formaat || "pdf").toUpperCase() }], kontaktid: [] };
+  if (x.pool && x.pool !== "—") { const k = osapoolLoo({ nimi: x.pool, registrikood: x.registrikood, rollid: [impPoolRoll(x)] }, true); x.clientId = k.id; }   /* v808: teenusepakkuja osapooleks */
+  impPooled(x);
   IMPORDITUD.push(x);
   if (v.lopp && impKpOk(v.lopp) && kpD(v.lopp) >= DEMO_TODAY)
     impKalendrisse(x, [{ kp: v.lopp, tyyp: v.kin ? "Kindlustuse lõpp" : "Lepingu lõpp", tekst: v.kin ? "poliis lõpeb — otsusta pikendamine" : "teenusleping lõpeb — otsusta pikendamine", margis: "amber" }]);
@@ -6583,11 +6585,11 @@ function impPaanHTML(x) {
   P.forEach(sp => T.push(rida(`Ava ${escH(sp.nimi)}`, "pinna leht", `href="#/pind/${sp.id}"`)));
   if (x.konteiner) T.push(rida("Laadi originaalkonteiner", escH((x.konteiner.nimi.match(/\.(\w+)$/) || [, "asice"])[1]), `onclick="impLaadi('${x.konteiner.key}','${escH(x.konteiner.nimi).replace(/'/g, "")}')"`));
   const kd = KEY_DATES.filter(k => String(k.objekt).startsWith(x.id + " ")).sort((p, q) => String(p.kuupaev).localeCompare(String(q.kuupaev)));
-  const tdRida = (k) => { const d = paevadeVahe(k.kuupaev), ise = kalIse(k), [Y, M, Dd] = k.kuupaev.split("-");
+  const tdRida = (k) => { const d = paevadeVahe(k.kuupaev), ise = kalIse(k), [Y, M, Dd] = k.kuupaev.split("-"), ki = KEY_DATES.indexOf(k);
     return `<div class="imp-td${ise ? " ise" : ""}${k.kuupaev < tanaIso ? " moodas" : ""}" title="${ise ? "rakendub ise" : "vajab otsust"}"><i></i>
-      <div class="imp-td-t"><b>${escH(k.tyyp)}</b>${k.info ? `<span>${escH(k.info)}</span>` : ""}</div><div class="imp-td-d mono"><b>${Dd}.${M}.${Y}</b><span>${kalSuht(d)}</span></div></div>`; };
+      <div class="imp-td-t"><b>${escH(k.tyyp)}</b>${k.info ? `<span>${escH(k.info)}</span>` : ""}${k.kasitsi ? `<span class="imp-td-teg">käsitsi · <button type="button" class="steplink" onclick="kdVorm(null,${ki})">Muuda</button></span>` : ""}</div><div class="imp-td-d mono"><b>${Dd}.${M}.${Y}</b><span>${kalSuht(d)}</span></div></div>`; };
   const tt = kd.length ? kd.map(tdRida).join("")
-    : (x.tahtajad || []).map(td => { const d = td.slice(0, 10), t = td.slice(13), on = /^\d\d\.\d\d\.\d{4}$/.test(d); return `<div class="td-row"><span class="td-date mono">${on ? d : "—"}</span><span>${escH(on ? t : td)}</span></div>`; }).join("");
+    : arh ? "" : (x.tahtajad || []).map(td => { const d = td.slice(0, 10), t = td.slice(13), on = /^\d\d\.\d\d\.\d{4}$/.test(d); return `<div class="td-row"><span class="td-date mono">${on ? d : "—"}</span><span>${escH(on ? t : td)}</span></div>`; }).join("");
   const TK = impToimik(x), tkOk = TK.filter(t => t.ok).length, tkN = TK.filter(t => t.ok !== null).length;
   const tkRead = TK.map((t, i) => `<button type="button" class="imp-tk-r${t.ok ? " ok" : t.ok === null ? " joon" : ""}" ${t.id ? `data-goto="id:${t.id}"` : t.fail ? `onclick="openPdf('${t.fail}','${x.id} · ${escH(t.nimi).replace(/'/g, "")}')"` : "disabled"}>
       <i>${t.ok ? I.check : ""}</i><span class="imp-tk-t"><b>${escH(t.nimi)}</b><small>${escH(t.olek)}</small></span><span class="mono imp-tk-kp">${escH(t.kp || "")}</span></button>`).join("");
@@ -6595,11 +6597,12 @@ function impPaanHTML(x) {
     ${arh || (x.eelmised || []).length ? `<div class="card pad reveal imp-arh">${I.lock || I.info}<div>${arh ? `<b>Arhiivis · lõppenud ${escH(a.kp)}</b><span>${escH(a.tx)}.${a.jarg ? ` Järglane: <a class="steplink" href="${a.jarg.href}">${escH(a.jarg.id)} →</a>` : ""}</span>` : ""}
       ${(x.eelmised || []).map(e => `<span>Üürnik vahetus Lisa ${e.lisa}-ga (${escH(e.kuni)}): ${escH(e.pool)} → ${escH(x.pool)}.</span>`).join("")}</div></div>` : ""}
     ${T.length ? `<div class="card pad reveal"><div class="overline" style="margin-bottom:6px">Toimingud</div>${T.join("")}</div>` : ""}
+    ${impPooledCard(x)}
     ${impAllkirjadCard(x)}
     <div class="card pad reveal"><div class="between imp-kh"><div class="overline">Toimik</div><span class="imp-kh-m">${tkOk === tkN ? "kõik tekstid struktureeritud" : `${tkOk} / ${tkN} struktureeritud`}</span></div>
       <div class="imp-tk">${tkRead}</div>
       <div class="imp-tk-s">Struktureeritud sisu on otsingus ja agendi vastustes; originaal jääb õiguslikuks tõeks.</div></div>
-    ${tt ? `<div class="card pad reveal imp-tt"><div class="between imp-kh"><div class="overline">Tähtajad</div><a class="steplink" href="#/kalender">Kalender →</a></div><div class="imp-tdl">${tt}</div></div>` : ""}
+    <div class="card pad reveal imp-tt"><div class="between imp-kh"><div class="overline">Tähtajad</div><span class="imp-kh-m">${arh ? "" : `<button type="button" class="steplink" onclick="kdVorm('${x.id}')">+ Lisa tähtaeg</button> · `}<a class="steplink" href="#/kalender">Kalender →</a></span></div>${tt ? `<div class="imp-tdl">${tt}</div>` : `<div class="imp-tk-s">Tähtaegu pole — lisa lõpp- või etteteatamistähtaeg.</div>`}</div>
 
     <div class="card pad reveal">
       <div class="overline" style="margin-bottom:8px">Allkirjastatud originaal</div>
@@ -10429,7 +10432,7 @@ function kalRida(k, i, tanaIso) {
           <span class="kal-tl-p" title="${lbl}" aria-label="${lbl}"></span>
           <div class="kal-tl-sisu">
             <div class="kal-tl-t"><span class="kd-ic ${ki.cls}">${ki.ic}</span><b>${escH(k.tyyp)}</b>${kes ? `<span class="kal-tl-kes">${escH(kes)}</span>` : ""}</div>
-            <div class="kal-tl-s">${calc ? `${eur(calc.vana, 0)} € → <b>${eur(calc.uus, 0)} €</b> (+${calc.pctTxt} %) · ${escH(calc.meetod)}` : escH(kalInfo(k))}</div>
+            <div class="kal-tl-s">${calc ? `${eur(calc.vana, 0)} € → <b>${eur(calc.uus, 0)} €</b> (+${calc.pctTxt} %) · ${escH(calc.meetod)}` : escH(kalInfo(k))}${k.kasitsi ? ` · käsitsi · <button type="button" class="steplink" onclick="event.stopPropagation();kdVorm(null,${KEY_DATES.indexOf(k)})">Muuda</button>` : ""}</div>
           </div>
           <div class="kal-tl-m"><span class="kal-tl-aeg">${kalSuht(d)}</span>${id ? `<span class="mono">${escH(id)}</span>` : ""}</div>
           ${ref ? `<a class="kal-tl-go" href="${ref.href}" title="${verb}" aria-label="${verb}" onclick="event.stopPropagation()">${I.arrow}</a>` : `<span class="kal-tl-go tyhi" aria-hidden="true"></span>`}
@@ -10473,6 +10476,7 @@ View.kalender = (arg) => {
     <div class="kal-tabs-r">
       ${OBJEKTID.length > 1 ? `<select id="kal-obj" class="eri-ky" aria-label="Objekt"><option value="">Kõik objektid</option>${OBJEKTID.map(o => `<option value="${o.id}"${KAL_KO === o.id ? " selected" : ""}>${escH(o.nimi)}</option>`).join("")}</select>` : ""}
       <div class="pf-views kal-kis" role="group" aria-label="Kes tegutseb">${[["", "Kõik"], ["otsus", "Vajab otsust"], ["ise", "Rakendub ise"]].map(([k, t]) => `<button type="button" class="pf-view${KAL_KIS === k ? " on" : ""}" data-kis="${k}" aria-pressed="${KAL_KIS === k}">${t}</button>`).join("")}</div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="kdVorm()">${I.plus} Lisa tähtaeg</button>
       <div class="pf-mode" role="group" aria-label="Vaade">
         <a class="${mode === "loend" ? "on" : ""}" href="#/kalender" title="Loend" aria-label="Loend">${I.rows}</a>
         <a class="${mode === "kuu" ? "on" : ""}" href="#/kalender/kuu" title="Kuu" aria-label="Kuu">${I.cal}</a>
@@ -11373,6 +11377,7 @@ View.ylevaade = (oid) => {
     ${objektidBlock(OBJEKTID, true)}`}
     ${ylTeenused(sc)}
     ${sc.objekt ? "" : ylPersonal()}
+    ${sc.objekt ? "" : ylTervisHTML()}
   </div>`.replace(/ (€|%|pp\b|m²|päeva)/g, "\u00a0$1");
 };
 /* segmendi silt ainult siis, kui mahub polstriga — muidu kannavad legend + title (silti ei kärbita) */
@@ -11589,13 +11594,13 @@ View.portfell = (arg) => {
   } else if (tab === "osapooled") {
     /* v607: osapooled rollidega (üürnik · töötaja · teenusepakkuja) — tuletatud dokumentidest, loomisnuppu pole */
     const koik = osapooled();
-    const VA = { koik: ["Kõik", p => p.akt.length > 0], uurnikud: ["Üürnikud", p => p.akt.length && p.rollid.includes("yyrnik")], tootajad: ["Töötajad", p => p.akt.length && p.rollid.includes("tootaja")],
-      teenused: ["Teenusepakkujad", p => p.akt.length && p.rollid.includes("pakkuja")], arhiiv: ["Arhiiv", p => !p.akt.length] };
+    const VA = { koik: ["Kõik", p => p.akt.length > 0 || (p.kasitsi && !p.arh.length)], uurnikud: ["Üürnikud", p => p.akt.length && p.rollid.includes("yyrnik")], tootajad: ["Töötajad", p => p.akt.length && p.rollid.includes("tootaja")],
+      teenused: ["Teenusepakkujad", p => p.akt.length && p.rollid.some(k => ["pakkuja", "haldur", "hooldaja", "kindlustaja", "turva"].includes(k))], muud: ["Muud", p => p.akt.length && p.rollid.some(k => ["kaendaja", "muu"].includes(k))], arhiiv: ["Arhiiv", p => !p.akt.length && !(p.kasitsi && !p.arh.length)] };
     const rk = VA[sub] ? sub : "koik";
     const mud = pfJarjesta(koik.filter(VA[rk][1]).map(osapoolMudel)); PF_ROWS = mud.map(m => m.r);
     body = `
     <div class="pf-panel reveal">
-      ${pfTopHTML("Otsi nime või registrikoodi…", false, mode)}
+      ${pfTopHTML("Otsi nime või registrikoodi…", false, mode, `<button type="button" class="btn btn-ghost btn-sm pf-new" onclick="osapoolVorm()">${I.plus} Lisa osapool</button>`)}
       ${pfSubtabsHTML(Object.entries(VA).filter(([k, v]) => k === "koik" || koik.some(v[1])).map(([k, v]) => ({ t: v[0], on: k === rk, href: "#/portfell/osapooled" + (k === "koik" ? "" : "/" + k), n: koik.filter(v[1]).length })))}
       ${pfLoendHTML(mud, mode, "Selles vaates osapooli pole.", ["Osapool", "Dokumendid", "Kehtiv / kuu", "Viimane liikumine", "Seis", "Järgmine samm"].map(t => `<span class="th-t">${t}</span>`))}
       ${pfFootHTML(mud.length, "osapool", "osapoolt", mud.reduce((a, m) => a + (m.raha || 0), 0))}
@@ -11893,13 +11898,21 @@ const opSlug = (s) => "op-" + String(s).toLowerCase().normalize("NFD").replace(/
 function osapooled() {
   const map = new Map();
   const lisa = (r, roll) => {
-    const doc = r.l || r.o || {}, c = DB.clientById(doc.clientId) || CLIENTS.find(c => impSamaNimi(c.nimi, r.klient) || (r.x && r.x.registrikood && c.registrikood === r.x.registrikood));
+    const doc = r.l || r.o || {}, c = DB.clientById(doc.clientId) || CLIENTS.find(c => (r.reg && c.registrikood === r.reg) || impSamaNimi(c.nimi, r.klient) || (!r.reg && r.x && r.x.registrikood && c.registrikood === r.x.registrikood));
     const id = c ? c.id : opSlug(r.klient);
     let p = map.get(id); if (!p) map.set(id, p = { id, nimi: c ? c.nimi : r.klient, c, rollid: new Set(), docs: [] });
     p.rollid.add(roll); p.docs.push(r);
   };
-  [...pfLepinguRows(), ...pfPakkumisedRows()].forEach(r => lisa(r, r.kind === "tl" ? "tootaja" : r.x && LIIGID[r.tyyp] !== "kinnisvara" ? "pakkuja" : "yyrnik"));
-  return [...map.values()].map(p => ({ ...p, rollid: Object.keys(ROLLID).filter(k => p.rollid.has(k)), akt: p.docs.filter(r => !r.arh), arh: p.docs.filter(r => r.arh) }));
+  const LR = pfLepinguRows();
+  [...LR, ...pfPakkumisedRows()].forEach(r => lisa(r, r.kind === "tl" ? "tootaja" : r.x && LIIGID[r.tyyp] !== "kinnisvara" ? impPoolRoll(r.x) : "yyrnik"));
+  /* v808: lepingu teised pooled (käendaja, teine üürnik, kindlustusandja …) oma rolliga — sama dokumendi rida, teine nimi */
+  IMPORDITUD.forEach(x => { if (!Array.isArray(x.pooled)) return; const r0 = LR.find(r => r.x === x);
+    x.pooled.filter(p => !p.meie && !p.peamine).forEach(p => lisa({ ...(r0 || { id: x.id, x, kind: "imp", tyyp: x.liik, olek: "Kehtiv" }), klient: p.nimi, reg: p.reg || null, kuus: 0 }, p.roll || "muu")); });   /* üür loeb ainult peamisel */
+  /* v808: käsitsi lisatud osapooled (dokumendita) + käsitsi antud rollid */
+  CLIENTS.forEach(c => { if (!c.kasitsi && !c.rollid) return; let p = map.get(c.id);
+    if (!p && c.kasitsi) map.set(c.id, p = { id: c.id, nimi: c.nimi, c, rollid: new Set(), docs: [] });
+    if (p) (c.rollid || []).forEach(k => p.rollid.add(k)); });
+  return [...map.values()].map(p => ({ ...p, kasitsi: !!(p.c && p.c.kasitsi), rollid: Object.keys(ROLLID).filter(k => p.rollid.has(k)), akt: p.docs.filter(r => !r.arh), arh: p.docs.filter(r => r.arh) }));
 }
 const osapoolById = (id) => osapooled().find(p => p.id === id);
 const riskVana = (c) => !c || !c.risk || (DEMO_TODAY - parseEE(c.risk.kuupaev)) / 864e5 > 365;
@@ -11924,7 +11937,7 @@ function osapoolMudel(p) {
   const reg = p.c ? p.c.registrikood : (p.docs.find(r => r.x && r.x.registrikood) || { x: {} }).x.registrikood;
   /* v627-ar */ const arhA = !p.akt.length && p.arh.length ? p.arh.map(arhiivInfo).sort((a, b) => eeMs(b.kp) - eeMs(a.kp))[0] : null;
   /* v625-k3 */ /* osapoole seis = riskihinnang (dokumendil on seis, osapoolel riskitase); raportita pilli pole — järgmine samm ütleb „Riskiraport puudub" */
-  return { r: { href: "#/osapool/" + p.id }, href: "#/osapool/" + p.id, nimi: p.nimi, seis: p.akt.length ? null : "Endine osapool",   /* v644 (kolleeg, 25b): risk ei ole seisu märk — tekstina tunnuses */
+  return { r: { href: "#/osapool/" + p.id }, href: "#/osapool/" + p.id, nimi: p.nimi, seis: p.akt.length ? null : p.kasitsi && !p.arh.length ? "Dokumente pole" : "Endine osapool",   /* v644 (kolleeg, 25b): risk ei ole seisu märk — tekstina tunnuses */
     tunnus: [p.rollid.map(k => ROLLID[k]).join(" · "), reg ? "reg " + reg : "", p.akt.length && p.c && p.c.risk ? "risk " + String(p.c.risk.skoor).toLowerCase() : ""].filter(Boolean).join(" · "),
     ese: [n(lep, "leping", "lepingut"), n(pak, "pakkumine", "pakkumist"), n(p.arh.length, "arhiivis", "arhiivis")].filter(Boolean).join(" · "),
     tyyp: p.c && p.c.risk ? `riskipäring ${p.c.risk.kuupaev}` : "", imp: false,
@@ -11946,6 +11959,222 @@ function osapoolAllkirjastajad(p) {
   });
   return { list: out, yhine: per.some(k => k > 1) };
 }
+
+/* ==========================================================================
+   v808 — PÕHIRAKENDUSE 2. ETAPI OMADUSED DEMOSSE: osapooled käsitsi (liik · äriregister · rollid · muuda · kustuta),
+   lepingu POOLED (mitu osapoolt, igaühel roll, üks peamine; ülevaatuses lisatavad), portfelli tervis ka Ülevaates,
+   tähtajad käsitsi (lisa · muuda · kustuta — kalendris ja lepingu paanis). Andmed püsivad: CLIENTS (kasitsi/muudetud/rollid),
+   IMPORDITUD[].pooled, KEY_DATES[].kasitsi.
+   ========================================================================== */
+Object.assign(ROLLID, { yyrileandja: "Üürileandja", tooandja: "Tööandja", tellija: "Tellija", haldur: "Haldur", hooldaja: "Hooldaja", kindlustaja: "Kindlustusandja", turva: "Turvafirma", kaendaja: "Käendaja", muu: "Muu" });
+const OP_MEIE_ROLLID = ["yyrileandja", "tooandja", "tellija"];
+const OP_TYYBID = [["Eesti firma", "Eesti ettevõte"], ["Välismaa firma", "Välismaa ettevõte"], ["Eraisik", "Eraisik"]];
+/* lepingu liik → vastaspoole roll (sama tabel mis põhirakenduses: lease→tenant, insurance→insurer, maintenance→maintainer …) */
+const impPoolRoll = (x) => /üüri/i.test(x.liik) ? "yyrnik" : /töö/i.test(x.liik) ? "tootaja" : /kindlustus/i.test(x.liik) ? "kindlustaja" : /haldus/i.test(x.liik) ? "haldur" : /hooldus/i.test(x.liik) ? "hooldaja" : /valve|turva/i.test(x.liik) ? "turva" : "pakkuja";
+/* lepingu pooled: salvestatud x.pooled või vaikimisi (meie + vastaspool peamisena) — vanu kirjeid ei migreerita */
+function impPooled(x) {
+  if (!Array.isArray(x.pooled) || !x.pooled.length) x.pooled = [
+    { nimi: ACCOUNT.landlord.nimi, reg: ACCOUNT.landlord.registrikood || "", roll: /töö/i.test(x.liik) ? "tooandja" : /üüri/i.test(x.liik) ? "yyrileandja" : "tellija", meie: true },
+    { nimi: x.pool, reg: x.registrikood || "", clientId: x.clientId || null, roll: impPoolRoll(x), peamine: true }];
+  return x.pooled;
+}
+const opIdOf = (p) => { const c = p.clientId ? DB.clientById(p.clientId) : CLIENTS.find(k => (p.reg && k.registrikood === p.reg) || impSamaNimi(k.nimi, p.nimi)); return c ? c.id : opSlug(p.nimi); };
+function impPooledCard(x) {
+  const P = impPooled(x), arh = impArhiivis(x);
+  const rida = (p, i) => `<div class="imp-pool${p.peamine ? " peamine" : ""}"><span class="imp-pool-r">${escH(ROLLID[p.roll] || p.roll)}${p.meie ? " · meie" : ""}</span>
+      ${p.meie ? `<b>${escH(p.nimi)}</b>` : `<a class="imp-pool-n" href="#/osapool/${escH(opIdOf(p))}">${escH(p.nimi)}</a>`}${p.reg ? `<span class="mono muted">${escH(p.reg)}</span>` : ""}
+      ${p.peamine ? `<span class="imp-pool-p">peamine</span>` : ""}
+      ${!arh && !p.meie && !p.peamine ? `<span class="imp-pool-teg"><button type="button" class="steplink" onclick="impPoolPeamine('${x.id}',${i})">Tee peamiseks</button><button type="button" class="steplink" onclick="impPoolEemalda('${x.id}',${i})">Eemalda</button></span>` : ""}
+    </div>`;
+  return `<div class="card pad reveal"><div class="between imp-kh"><div class="overline">Pooled</div>${arh ? "" : `<button type="button" class="steplink" onclick="impPoolLisa('${x.id}')">+ Lisa osapool</button>`}</div>
+    <div class="imp-pooled">${P.map(rida).join("")}</div></div>`;
+}
+const opRollValik = (val, id, meie) => `<select id="${id}">${Object.entries(ROLLID).filter(([k]) => meie || !OP_MEIE_ROLLID.includes(k)).map(([k, t]) => `<option value="${k}"${k === val ? " selected" : ""}>${t}</option>`).join("")}</select>`;
+window.impPoolLisa = (id) => { const x = DB.impById(id); if (!x) return;
+  const olemas = impPooled(x), valik = CLIENTS.filter(c => !olemas.some(p => p.clientId === c.id || (p.reg && c.registrikood === p.reg))).sort((a, b) => a.nimi.localeCompare(b.nimi, "et"))
+    .map(c => `<option value="${c.id}">${escH(c.nimi)}${c.registrikood ? " · " + c.registrikood : ""}</option>`).join("");
+  sePaneel({ overline: `${escH(x.id)} · ${escH(x.pool)}`, pealkiri: "Lisa osapool lepingule", sub: "Käendaja, teine üürnik, kindlustusandja — iga osapool oma rolliga selles lepingus. Allkirjastatud dokument ei muutu.",
+    body: `<div class="field"><label for="pl-c">Osapool</label><select id="pl-c" onchange="document.getElementById('pl-uus').style.display=this.value?'none':''"><option value="">— uus osapool —</option>${valik}</select></div>
+      <div id="pl-uus"><div class="field"><label for="pl-nimi">Nimi</label><input id="pl-nimi" placeholder="Ettevõte või isik"></div>
+        <div class="field"><label for="pl-reg">Registrikood / isikukood</label><input id="pl-reg" class="mono" inputmode="numeric"></div></div>
+      <div class="field"><label for="pl-roll">Roll selles lepingus</label>${opRollValik("kaendaja", "pl-roll")}</div>
+      <div class="field"><label><input type="checkbox" id="pl-peamine" style="width:auto;margin-right:8px"> Peamine osapool — näidatakse loendites ja portfellis</label></div>`,
+    foot: `<button type="button" class="btn btn-ghost" onclick="closeSide()">Tühista</button><button type="button" class="btn btn-primary" onclick="impPoolSalvesta('${id}')">Lisa lepingule</button>` });
+};
+window.impPoolSalvesta = (id) => { const x = DB.impById(id); if (!x) return;
+  const cid = document.getElementById("pl-c").value, roll = document.getElementById("pl-roll").value, peamine = document.getElementById("pl-peamine").checked;
+  let c = cid ? DB.clientById(cid) : null;
+  if (!c) { const nimi = plainIn(document.getElementById("pl-nimi").value).trim(), reg = plainIn(document.getElementById("pl-reg").value).trim();
+    if (!nimi) { toast("Anna osapoole nimi või vali olemasolev."); return; }
+    c = osapoolLoo({ nimi, registrikood: reg, rollid: [roll] }); }
+  else if (!(c.rollid || []).includes(roll)) { c.rollid = [...(c.rollid || []), roll]; c.muudetud = true; }
+  const P = impPooled(x), p = { nimi: c.nimi, reg: c.registrikood || "", clientId: c.id, roll };
+  if (peamine) { P.forEach(q => { delete q.peamine; }); p.peamine = true; Object.assign(x, { pool: c.nimi, registrikood: c.registrikood || "", clientId: c.id }); }
+  P.push(p);
+  AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${x.id}: osapool lisatud — ${c.nimi} (${ROLLID[roll] || roll})${peamine ? ", peamine" : ""}.` });
+  DB.save(); closeSide(); toast(`${c.nimi} lisatud lepingule ${x.id}`); router();
+};
+window.impPoolPeamine = (id, i) => { const x = DB.impById(id); if (!x) return; const P = impPooled(x), p = P[i]; if (!p || p.meie) return;
+  const vana = P.find(q => q.peamine); P.forEach(q => { delete q.peamine; }); p.peamine = true;
+  Object.assign(x, { pool: p.nimi, registrikood: p.reg || "", clientId: p.clientId || opIdOf(p) });
+  AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${x.id}: peamine osapool ${vana ? vana.nimi + " → " : ""}${p.nimi}.` });
+  DB.save(); toast(`${p.nimi} on nüüd lepingu peamine osapool`); router();
+};
+window.impPoolEemalda = async (id, i) => { const x = DB.impById(id); if (!x) return; const P = impPooled(x), p = P[i]; if (!p || p.meie || p.peamine) return;
+  if (!(await askConfirm(`Eemaldad ${p.nimi} (${ROLLID[p.roll] || p.roll}) lepingult ${x.id}? Dokument ei muutu, ajalugu jääb sündmuslogisse.`, "Eemalda"))) return;
+  P.splice(i, 1);
+  AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${x.id}: osapool eemaldatud — ${p.nimi} (${ROLLID[p.roll] || p.roll}).` });
+  DB.save(); toast(`${p.nimi} eemaldatud`); router();
+};
+/* impordi ülevaatus (samm 1): dokumendi pooled rollidega — üürileandja (meie), üürnik (peamine) + lisatavad pooled */
+function irPooledHTML(f, pp) {
+  const lisa = f.pooledLisa || [], ava = IMP_UI.poolVorm === f.id;
+  const rida = (nimi, reg, roll, meie, peamine, i) => `<div class="ir-pool"><span class="imp-pool-r">${escH(ROLLID[roll] || roll)}${meie ? " · meie" : ""}</span><b>${escH(nimi || "—")}</b>${reg ? `<span class="mono muted">${escH(reg)}</span>` : ""}${peamine ? `<span class="imp-pool-p">peamine</span>` : ""}${i != null ? `<button type="button" class="ir-chipx" onclick="irPoolEemalda('${f.id}',${i})" title="Eemalda">${I.x}</button>` : ""}</div>`;
+  return `<div class="ir-pooled">
+    ${rida(ACCOUNT.landlord.nimi, ACCOUNT.landlord.registrikood, "yyrileandja", true, false)}${rida(pp.nimi, pp.reg, "yyrnik", false, true)}
+    ${lisa.map((p, i) => rida(p.nimi, p.reg, p.roll, false, false, i)).join("")}
+    ${ava ? `<div class="ir-pool ir-pool-vorm"><input id="irp-nimi" class="ce-in" placeholder="Nimi" aria-label="Nimi"><input id="irp-reg" class="ce-in mono" placeholder="Registrikood" aria-label="Registrikood" inputmode="numeric">${opRollValik("kaendaja", "irp-roll")}
+      <button type="button" class="btn btn-primary btn-sm" onclick="irPoolLisa('${f.id}')">Lisa</button><button type="button" class="steplink" onclick="IMP_UI.poolVorm=null;irUuenda()">Tühista</button></div>`
+      : `<button type="button" class="steplink" onclick="IMP_UI.poolVorm='${f.id}';irUuenda()">+ Lisa osapool (käendaja, teine üürnik …)</button>`}
+  </div>`;
+}
+window.irPoolLisa = (fid) => { const f = IMPF.find(x => x.id === fid); if (!f) return;
+  const nimi = plainIn(document.getElementById("irp-nimi").value).trim(), reg = plainIn(document.getElementById("irp-reg").value).trim(), roll = document.getElementById("irp-roll").value;
+  if (!nimi) { toast("Anna osapoole nimi."); return; }
+  f.pooledLisa = [...(f.pooledLisa || []), { nimi, reg, roll }]; IMP_UI.poolVorm = null; DB.save(); irUuenda();
+};
+window.irPoolEemalda = (fid, i) => { const f = IMPF.find(x => x.id === fid); if (!f || !f.pooledLisa) return; f.pooledLisa.splice(i, 1); DB.save(); irUuenda(); };
+
+/* --- osapool käsitsi: loo · muuda · kustuta (äriregistri otsing nagu „Alusta" sammus) ------------------------------ */
+function osapoolLoo(d, vaikne) {
+  const reg = String(d.registrikood || "").trim(), nimi = String(d.nimi || "").trim();
+  let c = (reg && CLIENTS.find(k => k.registrikood === reg)) || CLIENTS.find(k => impSamaNimi(k.nimi, nimi));
+  if (c) { /* sama osapool oli olemas (registrikood või nimi) — täienda tühjad väljad ja rollid, dubleerimist ei teki */
+    ["kmkr", "aadress", "kontakt", "epost", "tel"].forEach(k => { if (d[k] && !c[k]) c[k] = d[k]; });
+    if (!c.registrikood && reg) c.registrikood = reg;
+    (d.rollid || []).forEach(r => { if (!(c.rollid || []).includes(r)) c.rollid = [...(c.rollid || []), r]; });
+    c.muudetud = true; return c; }
+  c = { id: "c-" + (reg || opSlug(nimi).slice(3) || Date.now()), nimi: nimi || reg, tyyp: d.tyyp || (/^\d{11}$/.test(reg) ? "Eraisik" : "Eesti firma"), registrikood: reg, kmkr: d.kmkr || "", aadress: d.aadress || "",
+    kontakt: d.kontakt || "", epost: d.epost || "", tel: d.tel || "", risk: null, rollid: d.rollid || [], kasitsi: true, impUus: !!vaikne };
+  CLIENTS.push(c);
+  if (!vaikne) AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `Osapool ${c.nimi}${reg ? " (" + reg + ")" : ""} lisatud käsitsi${(c.rollid || []).length ? " · " + c.rollid.map(r => ROLLID[r] || r).join(", ") : ""}.` });
+  return c;
+}
+let OP_VORM = null;
+window.osapoolVorm = (cid) => {
+  const c = cid ? DB.clientById(cid) : null, p = c ? osapoolById(c.id) : null;
+  OP_VORM = { cid: c ? c.id : null, rollid: new Set(c ? (c.rollid || (p ? p.rollid : [])) : []), reg: { res: null, olek: "" } };
+  const v = (k) => escH(c ? c[k] || "" : "");
+  sePaneel({ overline: c ? "Osapool · muuda" : "Uus osapool", pealkiri: c ? escH(c.nimi) : "Lisa osapool",
+    sub: c ? "Nimi ja aadress tulevad äriregistrist — paranda ainult see, mis seal pole." : "Otsi äriregistrist — nimi, registrikood ja aadress täituvad ise. Osapool sünnib tavaliselt lepingust; käsitsi lisad selle, kellega lepingut veel pole.",
+    body: `<div class="field"><label for="op-tyyp">Liik</label><select id="op-tyyp">${OP_TYYBID.map(([val, t]) => `<option value="${val}"${(c ? c.tyyp : "Eesti firma") === val ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="op-nimi">Nimi</label><input id="op-nimi" value="${v("nimi")}" placeholder="Ettevõtte või isiku nimi" autocomplete="off" oninput="opRegOtsi(this.value)"></div>
+      <div class="op-reg-res" id="op-reg-res"></div>
+      <div class="field"><label for="op-reg">Registrikood / isikukood</label><input id="op-reg" class="mono" value="${v("registrikood")}" inputmode="numeric"></div>
+      <div class="field"><label for="op-kmkr">KMKR</label><input id="op-kmkr" class="mono" value="${v("kmkr")}" placeholder="EE…"></div>
+      <div class="field"><label for="op-aadress">Aadress</label><input id="op-aadress" value="${v("aadress")}"></div>
+      <div class="field"><label for="op-kontakt">Kontaktisik</label><input id="op-kontakt" value="${v("kontakt")}"></div>
+      <div class="field"><label for="op-epost">E-post</label><input id="op-epost" type="email" value="${v("epost")}"></div>
+      <div class="field"><label for="op-tel">Telefon</label><input id="op-tel" value="${v("tel")}"></div>
+      <div class="field"><label>Rollid</label><div class="pk-chips" id="op-rollid">${opRollChips()}</div></div>`,
+    foot: `<button type="button" class="btn btn-ghost" onclick="closeSide()">Tühista</button><button type="button" class="btn btn-primary" onclick="osapoolSalvesta()">${c ? "Salvesta" : "Lisa osapool"}</button>` });
+};
+function opRollChips() { return Object.entries(ROLLID).filter(([k]) => !OP_MEIE_ROLLID.includes(k)).map(([k, t]) => `<button type="button" class="pk-chip${OP_VORM.rollid.has(k) ? " on" : ""}" onclick="opRollToggle('${k}')" aria-pressed="${OP_VORM.rollid.has(k)}">${t}</button>`).join(""); }
+window.opRollToggle = (k) => { if (OP_VORM.rollid.has(k)) OP_VORM.rollid.delete(k); else OP_VORM.rollid.add(k); const el = document.getElementById("op-rollid"); if (el) el.innerHTML = opRollChips(); };
+let OP_REG_JRK = 0;
+window.opRegOtsi = async (q) => {
+  const s = String(q || "").trim(), minu = ++OP_REG_JRK, el = document.getElementById("op-reg-res"); if (!el) return;
+  if (s.length < 3 || document.getElementById("op-tyyp").value !== "Eesti firma") { el.innerHTML = ""; return; }
+  let res = [], varu = false;
+  try { const r = await fetch("https://ariregister.rik.ee/est/api/autocomplete?q=" + encodeURIComponent(s)), j = await r.json(); if (minu !== OP_REG_JRK) return; res = (j.data || []).slice(0, 5); }
+  catch (e) { if (minu !== OP_REG_JRK) return; const t = alNorm(s); res = AL_REG_VARU.filter(x => String(x.reg_code).includes(t) || alNorm(x.name).includes(t)).slice(0, 5); varu = true; }
+  OP_VORM.reg.res = res;
+  el.innerHTML = res.map((x, i) => `<button type="button" onclick="opRegVali(${i})"><b>${escH(x.name)}</b> · <span class="mono">${escH(String(x.reg_code))}</span>${alAadress(x) ? ` · ${escH(alAadress(x))}` : ""}</button>`).join("") + (res.length && varu ? `<small class="muted">võrguta — näidisandmed</small>` : "");
+};
+window.opRegVali = (i) => { const x = (OP_VORM.reg.res || [])[i]; if (!x) return;
+  document.getElementById("op-nimi").value = x.name; document.getElementById("op-reg").value = String(x.reg_code); const a = alAadress(x); if (a) document.getElementById("op-aadress").value = a;
+  document.getElementById("op-reg-res").innerHTML = `<small class="muted">${I.check} e-äriregister: ${escH(x.name)} · ${escH(String(x.reg_code))}</small>`;
+};
+window.osapoolSalvesta = () => {
+  const g = (id) => plainIn(document.getElementById(id).value).trim();
+  const d = { tyyp: document.getElementById("op-tyyp").value, nimi: g("op-nimi"), registrikood: g("op-reg"), kmkr: g("op-kmkr"), aadress: g("op-aadress"), kontakt: g("op-kontakt"), epost: g("op-epost"), tel: g("op-tel"), rollid: [...OP_VORM.rollid] };
+  if (!d.nimi) { toast("Nimi on kohustuslik."); return; }
+  if (d.tyyp === "Eesti firma" && d.registrikood && !/^\d{8}$/.test(d.registrikood)) { toast("Eesti ettevõtte registrikood on 8-kohaline."); return; }
+  if (d.tyyp === "Eraisik" && d.registrikood && !/^\d{11}$/.test(d.registrikood)) { toast("Isikukood on 11-kohaline."); return; }
+  const c = OP_VORM.cid ? DB.clientById(OP_VORM.cid) : null;
+  if (c) {
+    const teine = d.registrikood && CLIENTS.find(k => k !== c && k.registrikood === d.registrikood);
+    if (teine) { toast(`Registrikood ${d.registrikood} on juba osapoolel ${teine.nimi}.`); return; }
+    const muut = Object.keys(d).filter(k => k !== "rollid" && String(c[k] || "") !== String(d[k] || "")).map(k => `${k} ${c[k] || "—"} → ${d[k] || "—"}`);
+    const rollMuut = [...d.rollid].sort().join() !== [...(c.rollid || [])].sort().join();
+    Object.assign(c, d, { muudetud: true });
+    AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `Osapool ${c.nimi} muudetud${muut.length ? ": " + muut.join(", ") : ""}${rollMuut ? ` · rollid: ${d.rollid.map(r => ROLLID[r] || r).join(", ") || "—"}` : ""}.` });
+    DB.save(); closeSide(); toast(`${c.nimi} salvestatud`); router(); return;
+  }
+  const olemas = (d.registrikood && CLIENTS.find(k => k.registrikood === d.registrikood)) || CLIENTS.find(k => impSamaNimi(k.nimi, d.nimi));
+  const uus = osapoolLoo(d);
+  DB.save(); closeSide(); toast(olemas ? `${uus.nimi} oli juba olemas — andmed täiendatud` : `${uus.nimi} lisatud`);
+  location.hash = "#/osapool/" + uus.id; router();
+};
+window.osapoolKustuta = async (cid) => { const c = DB.clientById(cid); if (!c) return;
+  if (osapoolById(c.id) && osapoolById(c.id).docs.length) { toast("Osapoolel on dokumente — kustutada ei saa."); return; }
+  if (!(await askConfirm(`Kustutad osapoole ${c.nimi}? Dokumente tal pole; kustutamine jääb sündmuslogisse.`, "Kustuta"))) return;
+  CLIENTS.splice(CLIENTS.indexOf(c), 1);
+  AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `Osapool ${c.nimi}${c.registrikood ? " (" + c.registrikood + ")" : ""} kustutatud.` });
+  DB.save(); toast(`${c.nimi} kustutatud`); location.hash = "#/portfell/osapooled";
+};
+
+/* --- portfelli tervis Ülevaates (sama reeglistik ja kastid mis impordi tulemusel) ---------------------------------- */
+function ixTervisKast(b) {
+  return `<section class="card ix-t ${b.t}">
+      <header class="ix-t-pea"><span class="ix-t-n">${b.n || b.ic || I.info}</span><div class="ix-t-pt"><b>${escH(b.pea)}</b><small>${escH(b.s || "")}</small></div></header>
+      <div class="ix-t-read">${b.read.slice(0, 3).map(r => `<a class="ix-t-r" href="${r.href}" title="${escH(r.t + (r.e ? " · " + r.e : "") + (r.s ? " — " + r.s : ""))}"><span class="ix-t-rt"><b>${escH(r.t)}</b>${r.e ? `<span>${escH(r.e)}</span>` : ""}</span><span class="ix-t-rv mono">${escH(r.v || "")}</span></a>`).join("")}</div>
+      <footer class="ix-t-jalus"><span class="ix-t-veel">${b.read.length > 3 ? `+ ${b.read.length - 3} veel` : ""}</span><a class="ix-t-teg" href="${b.teg.href}">${b.teg.tx}${I.arrow}</a></footer>
+    </section>`;
+}
+function ylTervisHTML() {
+  if (!impLepingud().length && !LEASES.some(l => l.staatus === "Kehtiv")) return "";
+  const B = impTervis();
+  return `<div class="sec-h reveal ix-t-h"><h2>Portfelli tervis</h2><span class="meta">${B.length ? impN(B.length, "asi vajab pilku", "asja vajavad pilku") : "kõik korras"}</span>
+      <span class="ix-leg"><span class="ix-leg-i amber"><i></i>vajab otsust</span><span class="ix-leg-i"><i></i>tasub kontrollida</span></span></div>
+    ${B.length ? `<div class="ix-tervis reveal">${B.map(ixTervisKast).join("")}</div>`
+      : `<section class="card ix-tyhi reveal"><span class="ix-t-n">${I.check}</span><div class="ix-t-pt"><b>Midagi ei vaja praegu pilku</b><small>Tähtajad on kalendris — kui midagi läheneb, tuleb see avalehele.</small></div></section>`}`;
+}
+
+/* --- tähtajad käsitsi: lisa · muuda · kustuta (lepingu paanis ja kalendris) ----------------------------------------- */
+const KD_LIIGID = ["Lepingu lõpp", "Indekseerimine", "Teatamise tähtaeg", "Ülesütlemise võimalus", "Hindade ülevaatus", "Pikendusõigus", "Otsustuskoht", "Muu tähtaeg"];
+function kdDokid() {
+  return [...IMPORDITUD.filter(x => !impArhiivis(x)).map(x => ({ id: x.id, t: `${x.id} · ${x.pool}`, imp: true })), ...LEASES.filter(l => !lepArh(l)).map(l => ({ id: l.id, t: `${l.id} · ${(DB.clientById(l.clientId) || {}).nimi || ""}`, imp: false }))];
+}
+window.kdVorm = (dokId, idx) => {
+  const k = idx != null ? KEY_DATES[idx] : null, D = kdDokid(), valitud = k ? String(k.objekt).split(" · ")[0] : dokId || (D[0] || {}).id;
+  if (!D.length) { toast("Lisa või impordi enne leping — tähtaeg kuulub lepingu juurde."); return; }
+  const teav = (SEADED.teavitused || {}), vaike = k && k.teavitus != null ? k.teavitus : (teav.lopp || teav.loppemine || 90);
+  sePaneel({ overline: k ? "Tähtaeg · muuda" : "Uus tähtaeg", pealkiri: k ? escH(k.tyyp) : "Lisa tähtaeg", sub: "Käsitsi lisatud tähtaeg läheb kalendrisse ja avalehele; teavitus tuleb valitud arv päevi enne.",
+    body: `<div class="field"><label for="kd-dok">Leping</label><select id="kd-dok"${k ? " disabled" : ""}>${D.map(d => `<option value="${d.id}"${d.id === valitud ? " selected" : ""}>${escH(d.t)}</option>`).join("")}</select></div>
+      <div class="field"><label for="kd-liik">Liik</label><select id="kd-liik">${KD_LIIGID.map(t => `<option${k && k.tyyp === t ? " selected" : ""}>${t}</option>`).join("")}${k && !KD_LIIGID.includes(k.tyyp) ? `<option selected>${escH(k.tyyp)}</option>` : ""}</select></div>
+      <div class="field"><label for="kd-kp">Kuupäev</label><input id="kd-kp" type="date" value="${k ? k.kuupaev : ""}"></div>
+      <div class="field"><label for="kd-info">Märkus</label><input id="kd-info" value="${k ? escH(k.info || "") : ""}" placeholder="nt teata üürnikule kirjalikult"></div>
+      <div class="field"><label for="kd-teav">Teavitus, päeva ette</label><input id="kd-teav" type="number" min="0" value="${vaike}"></div>`,
+    foot: `${k ? `<button type="button" class="steplink" style="margin-right:auto" onclick="kdKustuta(${idx})">Kustuta</button>` : ""}<button type="button" class="btn btn-ghost" onclick="closeSide()">Tühista</button><button type="button" class="btn btn-primary" onclick="kdSalvesta(${idx == null ? "null" : idx})">Salvesta</button>` });
+};
+window.kdSalvesta = (idx) => {
+  const id = document.getElementById("kd-dok").value, d = kdDokid().find(x => x.id === id), tyyp = document.getElementById("kd-liik").value, kp = document.getElementById("kd-kp").value;
+  const info = plainIn(document.getElementById("kd-info").value).trim(), teav = Math.max(0, parseInt(document.getElementById("kd-teav").value, 10) || 0);
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(kp)) { toast("Vali leping ja kuupäev."); return; }
+  const uus = { kuupaev: kp, tyyp, objekt: `${d.id} · ${d.t.split(" · ")[1] || ""}${d.imp ? " (imporditud)" : ""}`.trim(), margis: "amber", info, kasitsi: true, teavitus: teav };
+  if (idx != null && KEY_DATES[idx]) { const vana = { ...KEY_DATES[idx] }; Object.assign(KEY_DATES[idx], uus);
+    AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${d.id}: tähtaeg ${vana.tyyp} ${fmtEE(kpD(vana.kuupaev))} → ${tyyp} ${fmtEE(kpD(kp))}${info ? " · " + info : ""}.` }); }
+  else { KEY_DATES.push(uus); AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${d.id}: tähtaeg lisatud — ${tyyp} ${fmtEE(kpD(kp))}${info ? " · " + info : ""} · teavitus ${teav} päeva ette.` }); }
+  DB.save(); closeSide(); toast(`Tähtaeg ${tyyp} · ${fmtEE(kpD(kp))} salvestatud`); router();
+};
+window.kdKustuta = async (idx) => { const k = KEY_DATES[idx]; if (!k || !k.kasitsi) return;
+  if (!(await askConfirm(`Kustutad tähtaja ${k.tyyp} ${fmtEE(kpD(k.kuupaev))}?`, "Kustuta"))) return;
+  KEY_DATES.splice(idx, 1);
+  AUDIT.unshift({ aeg: NOW_EE(), autor: "Tarmo Sepp", tegevus: `${String(k.objekt).split(" · ")[0]}: tähtaeg kustutatud — ${k.tyyp} ${fmtEE(kpD(k.kuupaev))}.` });
+  DB.save(); closeSide(); toast("Tähtaeg kustutatud"); router();
+};
+/* ===== v808 LÕPP ===== */
 /* ===== OP v625 ALGUS ===== */
 /* v625: osapoole leht — päis (rollid · nimi · registriandmed) ja kolm arvu, juhtkaart (järgmine samm), vasakul dokumendid, tähtajad ajajoonena
    (sama täpp mis kalendris) ja arhiiv; paremal kontakt, allkirjastajad (ühine esindusõigus) ja riskiraportid.
@@ -11981,7 +12210,8 @@ View.osapool = (id) => {
     : `<div class="op-tyhi">Kontakt dokumentides puudub.</div>`;
   return `
   <div class="view op">
-    <div class="dok-ylarida reveal"><a class="btn btn-ghost btn-sm" href="#/portfell/osapooled">${I.back} Osapooled</a>${aiKysiNupp("osapoole")}</div>
+    <div class="dok-ylarida reveal"><a class="btn btn-ghost btn-sm" href="#/portfell/osapooled">${I.back} Osapooled</a>${aiKysiNupp("osapoole")}
+      <span class="op-teg"><button type="button" class="btn btn-ghost btn-sm" onclick="osapoolVorm('${escH(c ? c.id : p.id)}')">Muuda</button>${c && c.kasitsi && !p.docs.length ? `<button type="button" class="steplink" onclick="osapoolKustuta('${escH(c.id)}')">Kustuta</button>` : ""}</span></div>
     <div class="op-pea reveal">
       <div class="op-pea-l">
         <div class="overline">${escH(p.rollid.map(k => ROLLID[k]).join(" · ") || "Osapool")}</div>
@@ -12002,7 +12232,7 @@ View.osapool = (id) => {
       <div class="op-pohi">
         <section class="reveal">
           <div class="sec-h"><h2>Dokumendid</h2><span class="meta">${arvMark(p.akt.length) || "0"}</span></div>
-          <div class="op-docs">${pfLoendHTML(mud, "cards", "Kehtivaid dokumente pole — kõik on arhiivis.")}</div>
+          <div class="op-docs">${pfLoendHTML(mud, "cards", p.kasitsi && !p.arh.length ? "Dokumente pole veel — osapool lisandub lepingule impordil või lepingu Pooled-kaardilt." : "Kehtivaid dokumente pole — kõik on arhiivis.")}</div>
         </section>
         <section class="reveal">
           <div class="sec-h"><h2>Tähtajad</h2><span class="meta">${tulevad ? arvMark(tulevad) : ""}</span><a class="steplink op-sec-link" href="#/kalender">Kalender →</a></div>
@@ -13319,7 +13549,7 @@ const IMP_IDB = (() => {
 const IMP_URL = {};
 const impUrl = async (key) => IMP_URL[key] || (IMP_URL[key] = URL.createObjectURL(await IMP_IDB.get(key)));
 /* ülevaatuse olek (mälus): aktiivne kontrollikoht, parandamisel väli, fookuses laps, avatud dokument */
-const IMP_UI = { akt: {}, parandab: null, laps: {}, dok: {}, pindValik: null };
+const IMP_UI = { akt: {}, parandab: null, laps: {}, dok: {}, pindValik: null, poolVorm: null };
 
 /* --- lugemine: ZIP (.asice/.docx), PDF-i tekstikiht, DOCX-i tekst, tekstituvastus, allkirjad ------------------ */
 const impInflate = async (u8) => new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
@@ -14124,6 +14354,10 @@ function impKinnita(f, vaikne) {
       ...(f.konteiner ? { konteiner: { key: f.konteiner.key, nimi: f.nimi, suurus: f.konteiner.suurus, allkirjad: f.allkirjad || [] } } : {}),
       ...((f.parandused || []).length ? { parandatud: f.parandused.map(p => ({ ...p })) } : {}) };
     x.viitab = v.viitab || [];
+    /* v808: lepingu pooled rollidega — meie ettevõte, üürnik peamisena, ülevaatuses lisatud pooled (käendaja jt) */
+    x.pooled = [{ nimi: ACCOUNT.landlord.nimi, reg: ACCOUNT.landlord.registrikood || "", roll: "yyrileandja", meie: true },
+      { nimi: c.nimi, reg: c.registrikood || "", clientId: c.id, roll: "yyrnik", peamine: true },
+      ...(f.pooledLisa || []).map(p => { const k = osapoolLoo({ nimi: p.nimi, registrikood: p.reg, rollid: [p.roll] }, true); return { nimi: k.nimi, reg: k.registrikood || "", clientId: k.id, roll: p.roll }; })];
     if ((f.punktid || []).length && doc.tyyp === "pdf") { x.klauslid = { fail: "idb:" + f.pohi, osad: { PT: "Põhitingimused", "ÜT": "Üldtingimused" }, punktid: f.punktid.map(p => ({ nr: p.nr, osa: p.osa, jagu: p.jagu, pealkiri: p.pealkiri, tekst: p.tekst, lk: p.lk || 1 })) };
       if (typeof KLAUSLID !== "undefined") KLAUSLID[id] = x.klauslid; }
     const p8Ind = p8IndeksTxt(f);   /* v644 (11e): punktid kustutatakse allpool — loe enne */
@@ -14730,7 +14964,8 @@ function irLeping(f) {
   const s1 = irSamm(1, "Mis see on?", s1ok, `
     <button type="button" class="ir-q-v" data-nk="${f.id}|v:pool" onclick="irNayta('${f.id}','${f.id}','v:pool')">Üürileping · ${escH(pp.nimi || "—")}</button>
     <div class="ir-q-s">${osa ? `olemas osapoolena · ${escH(osa.registrikood)}${!impSamaNimi(osa.nimi, v.yy.nimi) ? ` · registris nimega <b>${escH(osa.nimi)}</b> (sama registrikood — nimi on muutunud)` : ""}` : `uus osapool · registrikood ${escH(pp.reg || "—")} — lisandub osapoolte alla kinnitamisel`}${samu.length ? ` · sama osapool ka ${samu.map(o => escH(impKood(o.nimi))).join(", ")} — luuakse üks kord` : ""}</div>${pp.reg ? `<div class="ir-q-s">${p8ArRida(pp.reg, pp.nimi)}</div>` : ""}
-    ${tehtud("pool") ? irTehtudRida(f, f, "pool", "Osapool", by("pool").v) : ""}${kaardid(1)}`);
+    ${tehtud("pool") ? irTehtudRida(f, f, "pool", "Osapool", by("pool").v) : ""}${kaardid(1)}
+    ${irPooledHTML(f, pp)}`);
   /* 2 · millega see seotud on (pinnad on registris olemas — import neid ei loo) */
   const pindOk = !O.some(o => o.samm === 2), valik = IMP_UI.pindValik === f.id || (!P.length);
   const s2 = irSamm(2, "Millega see seotud on?", pindOk && !valik, `
@@ -15006,11 +15241,7 @@ View.importValmis = () => {
   const B = lep.length || impLepingud().length ? impTervis() : [], ootel = impJarjekord(), leitud = new Set(B.map(b => b.id));   /* v644 (11f) */
   const korras = lep.length || impLepingud().length ? IX_KONTROLL.filter(([id]) => !leitud.has(id)) : [];
   const valmis = ootel.filter(t => t.seis === "valmis").length, pilk = ootel.length - valmis;
-  const kast = (b) => `<section class="card ix-t ${b.t}">
-      <header class="ix-t-pea"><span class="ix-t-n">${b.n || b.ic || I.info}</span><div class="ix-t-pt"><b>${escH(b.pea)}</b><small>${escH(b.s || "")}</small></div></header>
-      <div class="ix-t-read">${b.read.slice(0, 3).map(r => `<a class="ix-t-r" href="${r.href}" title="${escH(r.t + (r.e ? " · " + r.e : "") + (r.s ? " — " + r.s : ""))}"><span class="ix-t-rt"><b>${escH(r.t)}</b>${r.e ? `<span>${escH(r.e)}</span>` : ""}</span><span class="ix-t-rv">${escH(r.v || "")}</span>${I.chevR}</a>`).join("")}</div>
-      <footer class="ix-t-jalus"><span class="ix-t-veel">${b.read.length > 3 ? `+ ${b.read.length - 3} veel` : ""}</span><a class="ix-t-teg" href="${b.teg.href}">${b.teg.tx}${I.arrow}</a></footer>
-    </section>`;
+  const kast = ixTervisKast;
   return `
   <div class="view ix">
     <a class="btn btn-ghost btn-sm reveal" href="#/import" style="margin-bottom:18px">${I.back} Import</a>
@@ -15774,9 +16005,10 @@ function renderLooMenu() {
     { ic: I.lease, t: "Leping", s: "üürileping otse, ilma pakkumiseta", href: "#/leping-uus" },
     { ic: I.building, t: "Objekt", s: "hoone → pinnad → plaanid → parkimine", href: "#/objekt-uus" },   /* v804 (kasutaja 30.09) */
     { ic: I.file,  t: "Import", s: "allkirjastatud lepingud · .asice · .pdf · .docx", href: "#/import" },
+    { ic: I.offer, t: "Osapool", s: "ettevõte või isik äriregistrist · rollid", href: "#/portfell/osapooled", msg: "" , fn: "osapoolVorm" },   /* v808 */
   ];
   el.innerHTML = items.map(x => `
-    <button class="np-item" onclick="document.getElementById('loo-pop').classList.remove('open');location.hash='${x.href}';${x.msg ? `toast('${x.msg}')` : ""}">
+    <button class="np-item" onclick="document.getElementById('loo-pop').classList.remove('open');location.hash='${x.href}';${x.fn ? `setTimeout(()=>${x.fn}(),60);` : ""}${x.msg ? `toast('${x.msg}')` : ""}">
       <span class="np-ic">${x.ic}</span>
       <span class="np-tx"><span class="t">${x.t}</span><span class="s">${x.s}</span></span>
     </button>`).join("");

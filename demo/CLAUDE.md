@@ -448,6 +448,18 @@ Koopia algsest repost ainult vajalike failidega:
   Üürniku lepingul „Allkirjasta kohe” (btn-green) + tekstinupp „Aktsepteeri, allkirjastan hiljem”; üürniku pakkumise otsusekaardil
   „Teie kord” märk. Uut seisukaarti oma markup'iga EI tehta — kasuta `juhtKaart`.
 - AI-sisendi keel on ühtne: avalehe suur komposer + sama keelega kompaktne ülariba-komposer (avalehel peidus, `dash-shell` klass body-l).
+- **Põhirakenduse 2. etapi omadused demos (v808, 08.10.2026):** (1) **Osapool käsitsi** — Osapooled saki „Lisa osapool” ja „+ Uus → Osapool”
+  (`osapoolVorm`): liik (Eesti ettevõte · välismaa · eraisik), nimi äriregistri otsinguga (`opRegOtsi`, võrguta `AL_REG_VARU`), registrikood,
+  KMKR, aadress, kontakt, rollid kiipidena; osapoole lehel „Muuda” ja dokumendita osapoolel „Kustuta”. Sama registrikood/nimi → olemasolev
+  täiendatakse, dubleerimist ei teki (`osapoolLoo`). `CLIENTS[]` kannab `kasitsi`/`muudetud`/`rollid` ja püsib (`impClients`). `ROLLID`
+  laienes: üürileandja · tööandja · tellija (meie pool, `OP_MEIE_ROLLID`) · haldur · hooldaja · kindlustusandja · turvafirma · käendaja · muu.
+  (2) **Lepingu POOLED** — imporditud lepingul `x.pooled = [{nimi, reg, clientId, roll, meie?, peamine?}]` (`impPooled` annab vaikimisi meie +
+  vastaspool peamisena; liik → roll `impPoolRoll`): paanis kaart „Pooled” (`impPooledCard`: lisa olemasolev/uus, tee peamiseks → `x.pool`
+  vahetub, eemalda), impordi ülevaatuse 1. sammus read + „Lisa osapool” (`irPooledHTML`, `f.pooledLisa` → kinnitamisel pooled). `osapooled()`
+  tuletab käendaja jt ka `pooled`-ist (üür loeb ainult peamisel). (3) **Portfelli tervis Ülevaates** — `ylTervisHTML` = sama `impTervis()` ja
+  kast `ixTervisKast` mis impordi tulemusel. (4) **Tähtajad käsitsi** — `kdVorm(dokId?, idx?)` (leping · liik `KD_LIIGID` · kuupäev · märkus ·
+  teavitus päevi ette) lepingu paani „Tähtajad” kaardilt ja kalendri „Lisa tähtaeg” nupust; ainult `k.kasitsi` kirjeid saab muuta/kustutada;
+  seemne kuupäevanihe (`shiftStoryDates`) jätab need puutumata. Kõik muudatused kirjutavad `AUDIT`-i.
 
 ## localStorage võtmed
 
