@@ -10,6 +10,8 @@ import { UNCERTAIN } from "./reviewState";
 import type { Proposal, ProposalKeyDate, ProposalParameter, ProposalParty } from "@/types/api";
 
 const CATEGORIES = ["lease", "maintenance", "management", "insurance", "security", "other"];
+/** The backend's PartyRole vocabulary (ingest/schema.py) — the review must stay schema-valid or autosave fails. */
+const PARTY_ROLES = ["landlord", "tenant", "client", "supplier", "insurer", "insured", "employer", "employee", "other"];
 
 interface Props { draft: Proposal; onChange: (p: Proposal) => void; checked: Set<string>; onCheck: (key: string, v: boolean) => void; onAnchor: (page: number | null | undefined) => void }
 
@@ -52,7 +54,10 @@ export function ProposalEditor({ draft, onChange, checked, onCheck, onAnchor }: 
               <div key={i} className={cx("rounded-control p-3 grid gap-2", unc && !checked.has(key) ? "bg-warning-subtle" : "bg-canvas")}>
                 <div className="grid gap-2 sm:grid-cols-[1.5fr_1fr_1fr]">
                   <input className="fld fld-sm" aria-label={t("common.name")} value={p.name} onChange={(e) => setParty(i, { name: e.target.value })} />
-                  <input className="fld fld-sm" aria-label={t("imports.role")} value={p.role} onChange={(e) => setParty(i, { role: e.target.value })} placeholder={t("imports.role")} />
+                  <select className="fld fld-sm" aria-label={t("imports.role")} value={p.role} onChange={(e) => setParty(i, { role: e.target.value })}>
+                    {PARTY_ROLES.map((r) => <option key={r} value={r}>{tEnum("imports.partyRoles", r)}</option>)}
+                    {p.role && !PARTY_ROLES.includes(p.role) && <option value={p.role}>{p.role}</option>}
+                  </select>
                   <input className="fld fld-sm" aria-label={t("portfolio.parties.registryCode")} value={p.registry_code ?? ""} onChange={(e) => setParty(i, { registry_code: e.target.value || null })} placeholder={t("portfolio.parties.registryCode")} />
                 </div>
                 <ConfRow confidence={p.confidence} checkKey={key} checked={checked} onCheck={onCheck} />
