@@ -13,7 +13,7 @@ class FakeChatModel:
 
     async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 32000,
                          images: list[ImageInput] | None = None) -> StructuredResult:
-        from app.agent.prompts import parking_plan, plan_match
+        from app.agent.prompts import general_terms, parking_plan, plan_match
         from app.ingest.heuristic import heuristic_structure
 
         self.calls.append({"system": system, "user": user, "images": len(images or [])})
@@ -21,6 +21,8 @@ class FakeChatModel:
             data = fake_plan_match(user)
         elif system.startswith(parking_plan.MARKER):
             data = fake_parking_plan(user)
+        elif system.startswith(general_terms.MARKER):
+            data = fake_general_terms(user)
         else:
             data = heuristic_structure(user)
         return StructuredResult(data=data, model="fake-heuristic", usage={"input_tokens": len(user) // 4, "output_tokens": 0})
@@ -54,3 +56,16 @@ def fake_parking_plan(user: str) -> dict[str, Any]:
     spots = [{"label": n, "cx": round(bw * 0.6 + i * bw * 1.2, 1), "cy": round(min(h, bh) * 0.6, 1), "w": bw, "h": bh, "rot": 0, "type": "standard"}
              for i, n in enumerate(numbers)]
     return {"spots": spots, "notes": "fake"}
+
+
+def fake_general_terms(user: str) -> dict[str, Any]:
+    """General terms offline: the rule-based tree from Word numbering levels, in the model's output shape."""
+    import json
+
+    from app.ingest.docx_terms import tree_from_levels
+
+    def items(nodes, depth):
+        return [{"text": n.text, **({"subpoints": items(n.children, depth + 1)} if depth < 2 else {})} for n in nodes]
+
+    sections = tree_from_levels(json.loads(user)["paragraphs"])
+    return {"sections": [{"heading": s.heading or "", "points": items(s.children, 0)} for s in sections]}

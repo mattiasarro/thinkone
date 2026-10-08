@@ -14,8 +14,8 @@ def _expected():
     return json.JSONDecoder().raw_decode(raw[raw.index("["):])[0]
 
 
-def test_docx_general_terms_match_reference_extraction():
-    parsed = parse_general_terms(DOCX.read_bytes())
+async def test_docx_general_terms_match_reference_extraction():
+    parsed = await parse_general_terms(DOCX.read_bytes())
     expected = _expected()
     assert parsed.section_count == len(expected) == 18
     exp_refs = [p["ref"] for s in expected for p in s["punktid"]]
