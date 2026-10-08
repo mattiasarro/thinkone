@@ -158,10 +158,13 @@ async def test_scanned_pdf_fails_structuring_and_manual_registration(client: Asy
     # externally signed amendment: new fact version supersedes the old one
     r = await client.post(f"/api/v1/contracts/{c['id']}/amendments", files={"file": ("lisa1.pdf", b"%PDF-1.4 lisa", "application/pdf")},
                           data={"note": "Lisa 1 — makse muutus", "parameters": json.dumps([{"key": "premium", "label": "Kindlustusmakse", "value": "1300", "unit": "EUR"}]),
-                                "key_dates": json.dumps([{"kind": "payment", "date": "2026-07-01", "title": "Uus makse"}]), "valid_from": "2026-07-01"})
+                                "key_dates": json.dumps([{"kind": "payment", "date": "2026-07-01", "title": "Uus makse"}]), "valid_from": "2026-07-01",
+                                "end_date": "2027-06-30"})
     assert r.status_code == 201, r.text
     c2 = (await client.get(f"/api/v1/contracts/{c['id']}")).json()
     assert c2["current_values"]["premium"]["value"] == "1300"
+    # the amended end date moves the existing end key date instead of adding a second one
+    assert c2["end_date"] == "2027-06-30" and [k["due_date"] for k in c2["key_dates"] if k["kind_code"] == "end"] == ["2027-06-30"]
     prem = [f for f in c2["facts"] if f["key"] == "premium"]
     assert len(prem) == 2 and any(f["valid_to"] == "2026-07-01" for f in prem) and any(f["reason"] == "amendment" for f in prem)
     assert len(c2["source_documents"]) == 2

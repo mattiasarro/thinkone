@@ -53,7 +53,9 @@ function Detail({ c }: { c: ContractDetail }) {
     } catch (e) { toast.error(errorMessage(e)); }
   };
 
-  const facts: ContractFact[] = c.facts?.length ? c.facts : Object.entries(c.current_values ?? {}).map(([key, value]) => ({ key, value: value as string | number | null, valid_from: null, reason: null }));
+  // current versions only; superseded fact versions stay in the data (and the audit trail) but not in the grid
+  const allFacts: ContractFact[] = c.facts?.length ? c.facts : Object.entries(c.current_values ?? {}).map(([key, value]) => ({ key, value: value as string | number | null, valid_from: null, reason: null }));
+  const facts = allFacts.filter((f) => !f.valid_to);
 
   return (
     <SourceViewerContext.Provider value={openSource}>
@@ -82,7 +84,8 @@ function Detail({ c }: { c: ContractDetail }) {
                 <Fact label={t("contract.endDate")} value={fmtDate(c.end_date)} />
                 <Fact label={t("contract.signedAt")} value={fmtDate(c.signed_at)} />
                 {facts.map((f) => (
-                  <Fact key={f.key} label={f.label ?? f.key} value={`${valueToString(f.value)}${f.unit ? ` ${f.unit}` : ""}`} sub={[f.text, f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null].filter(Boolean).join(" · ")}
+                  <Fact key={f.id ?? f.key} label={f.label ?? f.key} value={`${valueToString(f.value)}${f.unit ? ` ${f.unit}` : ""}`}
+                        sub={[f.text, f.reason === "amendment" ? t("contract.amendedFact", { date: fmtDate(f.valid_from) }) : f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null].filter(Boolean).join(" · ")}
                         anchor={imported ? <ProvenanceAnchor prov={f.provenance} docs={c.source_documents} /> : null} />
                 ))}
                 {facts.length === 0 && <p className="text-sm text-muted col-span-full">{t("contract.noFacts")}</p>}
@@ -187,7 +190,7 @@ function Detail({ c }: { c: ContractDetail }) {
 
       <KeyDateDialog open={kdDialog.open} onClose={() => setKdDialog({ open: false })} initial={kdDialog.item} contractId={c.id} lockContract />
       <ConfirmDialog open={!!kdDel} onClose={() => setKdDel(null)} onConfirm={onDeleteKd} busy={delKd.isPending} title={t("common.delete")} body={kdDel ? t("keyDates.deleteConfirm", { title: kdDel.title }) : null} />
-      <AmendmentDialog open={amend} onClose={() => setAmend(false)} contractId={c.id} />
+      <AmendmentDialog open={amend} onClose={() => setAmend(false)} contractId={c.id} facts={allFacts} endDate={c.end_date} />
       <SourceViewer contractId={c.id} docId={src?.docId ?? null} page={src?.page ?? null} onClose={() => setSrc(null)} />
     </div>
     </SourceViewerContext.Provider>

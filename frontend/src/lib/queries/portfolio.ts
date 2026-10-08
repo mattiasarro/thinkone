@@ -45,8 +45,8 @@ export function useRemoveContractParty(contractId: string) {
 export function useRegisterAmendment(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (f: { file: File; note: string; parameters: unknown[]; key_dates: unknown[] }) =>
-      api.upload<unknown>(`/contracts/${id}/amendments`, { file: f.file, note: f.note, parameters: JSON.stringify(f.parameters), key_dates: JSON.stringify(f.key_dates) }),
+    mutationFn: (f: { file: File; note: string; parameters: unknown[]; key_dates: unknown[]; valid_from?: string; end_date?: string }) =>
+      api.upload<unknown>(`/contracts/${id}/amendments`, { file: f.file, note: f.note || undefined, parameters: JSON.stringify(f.parameters), key_dates: JSON.stringify(f.key_dates), valid_from: f.valid_from, end_date: f.end_date }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["contract", id] }); qc.invalidateQueries({ queryKey: ["audit"] }); qc.invalidateQueries({ queryKey: ["key-dates"] }); },
   });
 }

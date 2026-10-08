@@ -24,6 +24,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0",
     "structlog>=24.1",
     "email-validator>=2.1",
+    "cryptography>=42",
 ]
 
 [dependency-groups]

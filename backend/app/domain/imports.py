@@ -507,8 +507,19 @@ async def register_amendment(
         changes.append({"key": p["key"], "old": [o.value.get("value") for o in old], "new": p.get("value")})
     contract.current_values = values
     if end_date:
+        from app.domain.keydates import update_key_date
+        from app.models.contracts import KeyDate
+
         changes.append({"key": "end_date", "old": contract.end_date, "new": end_date})
         contract.end_date = end_date
+        # the contract's end key date follows the amendment instead of leaving two end dates in the calendar
+        ends = (await session.execute(select(KeyDate).where(KeyDate.subject_id == contract.id, KeyDate.kind_code == "end", KeyDate.deleted_at.is_(None)))).scalars().all()
+        if ends:
+            for kd in ends:
+                await update_key_date(session, actor, kd.id, due_date=end_date)
+        else:
+            await add_key_date(session, actor, contract_id=contract.id, kind_code="end", due_date=end_date, title=None,
+                               provenance={"source_document_id": str(doc.id)})
     if new_party_id:
         from app.domain.contract_parties import change_primary_by_amendment, primary_parties
 

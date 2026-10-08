@@ -47,8 +47,10 @@ def unpack(data: bytes) -> Container:
 def _parse_signature(xml: bytes) -> Signature | None:
     text = xml.decode("utf-8", "ignore")
     time = _first(r"<[^>]*SigningTime>([^<]+)<", text)
-    subject = _first(r"<[^>]*X509SubjectName>([^<]+)<", text)
-    signer, code = None, None
+    # Real containers (DigiDoc, Smart-ID, Mobiil-ID, e-seals) carry the signer only inside the signing certificate;
+    # X509SubjectName is rare, so decode the first certificate under KeyInfo first.
+    signer, code = _signer_from_certificate(text)
+    subject = None if signer else _first(r"<[^>]*X509SubjectName>([^<]+)<", text)
     if subject:
         # typical: "SERIALNUMBER=PNOEE-38001085718,GIVENNAME=..,SURNAME=..,CN=\"SURNAME,GIVENNAME,38001085718\",C=EE"
         cn = _first(r"CN=\"?([^\",]+(?:,[^\",]+)*)\"?", subject)
@@ -60,6 +62,44 @@ def _parse_signature(xml: bytes) -> Signature | None:
     files = re.findall(r'<[^>]*Reference[^>]*URI="([^"#][^"]*)"', text)
     files = [f for f in files if not f.startswith("#")]
     return Signature(signer=signer, personal_code=code, signing_time=time, signed_files=files)
+
+
+def _signer_from_certificate(text: str) -> tuple[str | None, str | None]:
+    """Signer name + Estonian personal code (or an e-seal's organisation + registry code) from the signing certificate."""
+    key_info = _first(r"<[^>]*KeyInfo[^>]*>(.*?)</[^>]*KeyInfo>", text) if "KeyInfo" in text else None
+    b64 = _first(r"<[^>]*X509Certificate>([^<]+)<", key_info or text)
+    if not b64:
+        return None, None
+    try:
+        import base64
+
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+
+        cert = x509.load_der_x509_certificate(base64.b64decode("".join(b64.split())))
+        subj = cert.subject
+
+        def attr(oid) -> str | None:
+            vals = subj.get_attributes_for_oid(oid)
+            return str(vals[0].value).strip() if vals else None
+
+        given, sur, cn = attr(NameOID.GIVEN_NAME), attr(NameOID.SURNAME), attr(NameOID.COMMON_NAME)
+        serial = attr(NameOID.SERIAL_NUMBER) or ""
+        code = _first(r"PNO[A-Z]{2}-(\d{11})", serial) or _first(r"^(\d{11})$", serial)
+        if given and sur:
+            return f"{given.title()} {sur.title()}", code
+        if cn:
+            parts = [p.strip() for p in cn.split(",")]
+            if len(parts) >= 2 and not code:
+                code = _first(r"(\d{11})", cn)
+            if len(parts) >= 2:
+                return f"{parts[1].title()} {parts[0].title()}", code  # "SURNAME,GIVENNAME,CODE"
+            org = attr(NameOID.ORGANIZATION_NAME)
+            org_id = _first(r"NTR[A-Z]{2}-(\d+)", serial) or _first(r"NTR[A-Z]{2}-(\d+)", attr(x509.ObjectIdentifier("2.5.4.97")) or "")
+            return (org or cn), (org_id or code)
+        return None, code
+    except Exception:  # noqa: BLE001 — a signature we cannot read must not break the import
+        return None, None
 
 
 def _first(pattern: str, text: str) -> str | None:
