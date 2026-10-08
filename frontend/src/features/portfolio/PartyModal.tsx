@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { useSaveParty } from "@/lib/queries/portfolio";
-import type { Party, PartyKind } from "@/types/api";
+import { AriregisterSearch } from "@/components/ui/AriregisterSearch";
+import type { AriregisterHit, Party, PartyKind } from "@/types/api";
 
 const schema = z.object({
   kind: z.enum(["ee_company", "foreign_company", "person"]),
@@ -23,7 +24,7 @@ type Form = z.infer<typeof schema>;
 export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open: boolean; onClose: () => void; initial?: Party | null; defaults?: Partial<Party>; onSaved?: (p: Party) => void }) {
   const save = useSaveParty();
   const toast = useToast();
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { kind: "ee_company", name: "" } });
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { kind: "ee_company", name: "" } });
   useEffect(() => {
     if (!open) return;
     const src = initial ?? defaults;
@@ -33,6 +34,15 @@ export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open
     });
   }, [open, initial, defaults, reset]);
   const kind = watch("kind");
+  const pick = (h: AriregisterHit, d: AriregisterHit | null) => {
+    if (!d) { setValue("kind", "ee_company"); setValue("name", h.name); setValue("registry_code", h.registry_code); setValue("address", h.address ?? ""); setValue("vat_number", h.vat_number ?? ""); return; }
+    if (d.vat_number) setValue("vat_number", d.vat_number);
+    if (d.address) setValue("address", d.address);
+    if (d.email) setValue("email", d.email);
+    if (d.phone) setValue("phone", d.phone);
+    const board = d.representatives.find((r) => r.role_code === "JUHL") ?? d.representatives[0]; // board member as the default contact
+    if (board) setValue("contact_name", board.name);
+  };
   const onSubmit = handleSubmit(async (v) => {
     try {
       const p = await save.mutateAsync({
@@ -49,6 +59,7 @@ export function PartyModal({ open, onClose, initial, defaults, onSaved }: { open
       <><Button onClick={onClose}>{t("common.cancel")}</Button><Button variant="primary" type="submit" form="party-form" busy={save.isPending}>{t("common.save")}</Button></>
     }>
       <form id="party-form" onSubmit={onSubmit} noValidate>
+        {!initial && kind === "ee_company" && <AriregisterSearch id="party-ar-q" onPick={pick} />}
         <FormRow>
           <Select label={t("portfolio.parties.kind")} {...register("kind")} options={[
             { value: "ee_company", label: t("portfolio.parties.kinds.ee_company") }, { value: "foreign_company", label: t("portfolio.parties.kinds.foreign_company") }, { value: "person", label: t("portfolio.parties.kinds.person") },
