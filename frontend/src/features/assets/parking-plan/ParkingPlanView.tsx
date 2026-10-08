@@ -24,6 +24,7 @@ interface Props {
   cursor?: string;
   onSpotPointerDown?: (key: string, e: RPointerEvent<SVGElement>) => void;
   onSpotClick?: (key: string) => void;
+  onSpotHover?: (key: string | null) => void;
   onCanvasPointerDown?: (e: RPointerEvent<SVGSVGElement>) => boolean | void; // return true to take over the drag
   onPointerMove?: (e: RPointerEvent<SVGSVGElement>) => void;
   onPointerUp?: (e: RPointerEvent<SVGSVGElement>) => void;
@@ -33,7 +34,7 @@ interface Props {
 /** Read-only SVG renderer of the schematic: the frame in metres, the uploaded plan underneath, one box per placed spot.
  *  The editor and the lease views share it; pan/zoom lives here so every viewer behaves the same. */
 export const ParkingPlanView = forwardRef<ViewHandle, Props>(function ParkingPlanView(
-  { frame, spots, backgroundUrl, backgroundOpacity = 0.6, className, minHeight = 420, interactive = true, cursor, onSpotPointerDown, onSpotClick, onCanvasPointerDown, onPointerMove, onPointerUp, children }, ref,
+  { frame, spots, backgroundUrl, backgroundOpacity = 0.6, className, minHeight = 420, interactive = true, cursor, onSpotPointerDown, onSpotClick, onSpotHover, onCanvasPointerDown, onPointerMove, onPointerUp, children }, ref,
 ) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -140,7 +141,8 @@ export const ParkingPlanView = forwardRef<ViewHandle, Props>(function ParkingPla
           return (
             <g key={s.key} transform={`translate(${g.x} ${g.y}) rotate(${g.rot})`} opacity={s.dim ? 0.3 : 1} style={{ cursor: onSpotPointerDown || onSpotClick ? "pointer" : undefined }}
               onPointerDown={(e) => { if (onSpotPointerDown) { e.stopPropagation(); svgRef.current?.setPointerCapture(e.pointerId); onSpotPointerDown(s.key, e); } }}
-              onClick={onSpotClick ? () => onSpotClick(s.key) : undefined}>
+              onClick={onSpotClick ? () => onSpotClick(s.key) : undefined}
+              onPointerEnter={onSpotHover ? () => onSpotHover(s.key) : undefined} onPointerLeave={onSpotHover ? () => onSpotHover(null) : undefined}>
               {s.title && <title>{s.title}</title>}
               <rect x={-g.w / 2} y={-g.h / 2} width={g.w} height={g.h} rx={0.15} fill={s.fill || NEUTRAL} fillOpacity={s.highlighted ? 0.95 : 0.75} stroke={stroke}
                 strokeWidth={s.selected || s.highlighted ? 0.18 : 0.07} strokeDasharray={s.dashed ? "0.3 0.2" : undefined} />

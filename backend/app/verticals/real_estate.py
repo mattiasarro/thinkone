@@ -21,6 +21,7 @@ class SpotGeom(BaseModel):
     w: float = Field(gt=0, le=100)
     h: float = Field(gt=0, le=100)
     rot: float = Field(default=0, ge=-360, le=360)
+    lot: str | None = None  # which of the building's lots (``parking_lots``) the box is on; None = the first lot
 
 
 class PlanBackground(BaseModel):
@@ -41,6 +42,13 @@ class ParkingPlanFrame(BaseModel):
     background: PlanBackground | None = None
 
 
+class ParkingLot(ParkingPlanFrame):
+    """One schematic of the building: a floor of the garage, the yard, a lot across the street — tabs in the editor."""
+
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=80)
+
+
 class PropertyAttributes(BaseModel):
     ehr_code: str | None = None
     address: str | None = None
@@ -57,7 +65,8 @@ class PropertyAttributes(BaseModel):
     ehr_payload: dict | None = None  # trimmed raw register payload (architecture §7: adapters snapshot responses)
     template_id: str | None = None  # general-terms template used for this building's leases (object workflow step 5)
     has_parking: bool | None = None  # None = not decided; False = „parkimist pole”
-    parking_plan: ParkingPlanFrame | None = None  # the schematic's frame (metres); spots carry their own ``geom``
+    parking_plan: ParkingPlanFrame | None = None  # legacy single frame (before lots); read as the first lot, cleared on save
+    parking_lots: list[ParkingLot] | None = None  # the schematics (metres); spots carry their own ``geom`` with the lot id
     parking_plan_draft: dict | None = None  # VLM proposal awaiting the operator's review (parking_plan domain)
 
 

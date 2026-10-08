@@ -42,8 +42,8 @@ async def enqueue_structuring(session: AsyncSession, import_job_id: uuid.UUID) -
     await _enqueue(session, "app.worker.tasks.structure_import", {"import_job_id": str(import_job_id)}, queue="import", lock=f"import:{import_job_id}")
 
 
-async def enqueue_parking_plan_derivation(session: AsyncSession, account_id: uuid.UUID, property_id: uuid.UUID) -> None:
-    await _enqueue(session, "app.worker.tasks.derive_parking_plan", {"account_id": str(account_id), "property_id": str(property_id)},
+async def enqueue_parking_plan_derivation(session: AsyncSession, account_id: uuid.UUID, property_id: uuid.UUID, attachment_id: uuid.UUID) -> None:
+    await _enqueue(session, "app.worker.tasks.derive_parking_plan", {"account_id": str(account_id), "property_id": str(property_id), "attachment_id": str(attachment_id)},
                    queue="import", lock=f"parking_plan:{property_id}")
 
 
@@ -110,7 +110,7 @@ async def structure_import(import_job_id: str) -> None:
 
 
 @app.task(name="app.worker.tasks.derive_parking_plan", queue="import", retry=1)
-async def derive_parking_plan(account_id: str, property_id: str) -> None:
+async def derive_parking_plan(account_id: str, property_id: str, attachment_id: str | None = None) -> None:
     """After a parking plan upload: read it with the model and leave the proposal as a draft for the editor."""
     from app.domain import parking_plan as parking_plan_domain
     from app.domain.events import Actor
@@ -118,7 +118,8 @@ async def derive_parking_plan(account_id: str, property_id: str) -> None:
 
     aid = uuid.UUID(account_id)
     async with tenant_session(aid) as session:
-        await parking_plan_domain.derive_draft(session, Actor.system(aid, correlation_id=f"parking_plan:{property_id[:12]}"), uuid.UUID(property_id))
+        await parking_plan_domain.derive_draft(session, Actor.system(aid, correlation_id=f"parking_plan:{property_id[:12]}"), uuid.UUID(property_id),
+                                               attachment_id=uuid.UUID(attachment_id) if attachment_id else None)
 
 
 @app.periodic(cron="15 5 * * *")

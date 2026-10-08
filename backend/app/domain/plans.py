@@ -225,7 +225,7 @@ async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, fi
                 enqueue_parking_plan_derivation,  # the VLM reads the plan in the worker → editor draft
             )
 
-            await enqueue_parking_plan_derivation(session, actor.account_id, prop.id)
+            await enqueue_parking_plan_derivation(session, actor.account_id, prop.id, att.id)
     return rows
 
 

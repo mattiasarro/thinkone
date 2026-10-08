@@ -128,7 +128,7 @@ export function useSaveParkingPlan(propertyId: string) {
 }
 export function useDeriveParkingPlan(propertyId: string) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: () => api.post<ParkingPlan>(`/assets/${propertyId}/parking/plan/derive`), onSuccess: () => invalidateAssets(qc) });
+  return useMutation({ mutationFn: (b: { attachment_id?: string | null; lot_id?: string | null } = {}) => api.post<ParkingPlan>(`/assets/${propertyId}/parking/plan/derive`, b), onSuccess: () => invalidateAssets(qc) });
 }
 export function useDiscardParkingDraft(propertyId: string) {
   const qc = useQueryClient();

@@ -1,4 +1,4 @@
-import type { ParkingPlanFrame, PlanSpot, SpotGeom, SpotType, UUID } from "@/types/api";
+import type { ParkingLot, ParkingPlanFrame, PlanSpot, SpotGeom, SpotType, UUID } from "@/types/api";
 
 /** The schematic is data in metres: each register spot may carry one box (centre x,y · size w,h · rot° clockwise).
  *  The editor works on this state and both it and the read-only view render the same JSON. */
@@ -16,7 +16,7 @@ export interface EditorSpot {
   geom: SpotGeom | null;
 }
 
-export interface EditorState { frame: ParkingPlanFrame; spots: EditorSpot[] }
+export interface EditorState { lots: ParkingLot[]; spots: EditorSpot[] }
 
 export const STANDARD = { w: 2.5, h: 5 };
 export const GRID = 0.25; // metres: move/draw snap
@@ -24,6 +24,7 @@ export const SIZE_STEP = 0.1;
 export const ROT_STEP = 5;
 export const MIN_SIZE = 0.5;
 export const DEFAULT_FRAME: ParkingPlanFrame = { units: "m", width: 60, height: 40, background: null };
+export const newLotId = () => `lot-${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
 export const DEFAULT_M_PER_PX = 0.05; // a plan image with no scale: 2000 px ≈ 100 m
 
 export const snap = (v: number, step: number) => Math.round(v / step) * step;

@@ -205,6 +205,7 @@ class SpotGeomIn(BaseModel):
     w: float
     h: float
     rot: float = 0
+    lot: str | None = None
 
 
 class PlanSpotIn(BaseModel):
@@ -223,7 +224,7 @@ class PlanNewSpotIn(BaseModel):
 
 
 class ParkingPlanIn(BaseModel):
-    frame: dict[str, Any] | None = None
+    lots: list[dict[str, Any]] | None = None  # None = unchanged
     spots: list[PlanSpotIn] = Field(default_factory=list)
     new: list[PlanNewSpotIn] = Field(default_factory=list)
     clear_draft: bool = False
@@ -241,10 +242,15 @@ class PlanAttachmentOut(BaseModel):
 
 class ParkingPlanOut(BaseModel):
     property_id: uuid.UUID
-    frame: dict[str, Any] | None
+    lots: list[dict[str, Any]]
     spots: list[PlanSpotOut]
     draft: dict[str, Any] | None
-    plan_attachment: PlanAttachmentOut | None
+    plan_attachments: list[PlanAttachmentOut]
+
+
+class ParkingDeriveIn(BaseModel):
+    attachment_id: uuid.UUID | None = None
+    lot_id: str | None = None
 
 
 class PlanRowOut(BaseModel):
@@ -439,15 +445,15 @@ async def get_parking_plan(property_id: uuid.UUID, session: AsyncSession = Depen
 
 @router.put("/assets/{property_id}/parking/plan", response_model=ParkingPlanOut)
 async def save_parking_plan(property_id: uuid.UUID, body: ParkingPlanIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ParkingPlanOut:
-    """One save of the editor: frame + boxes of existing spots (+ default space when ``set_space``) + new register rows."""
+    """One save of the editor: lots + boxes of existing spots (+ default space when ``set_space``) + new register rows."""
     spots = []
     for it in body.spots:
-        d: dict[str, Any] = {"id": it.id, "geom": it.geom.model_dump() if it.geom else None}
+        d: dict[str, Any] = {"id": it.id, "geom": it.geom.model_dump(exclude_none=True) if it.geom else None}
         if it.set_space:
             d["space_id"] = it.space_id
         spots.append(d)
-    new = [{**n.model_dump(exclude={"geom"}), "geom": n.geom.model_dump()} for n in body.new]
-    doc = await parking_plan_domain.save_plan(session, p.actor, property_id, frame=body.frame, spots=spots, new=new, clear_draft=body.clear_draft)
+    new = [{**n.model_dump(exclude={"geom"}), "geom": n.geom.model_dump(exclude_none=True)} for n in body.new]
+    doc = await parking_plan_domain.save_plan(session, p.actor, property_id, lots=body.lots, spots=spots, new=new, clear_draft=body.clear_draft)
     return ParkingPlanOut(**doc)
 
 
@@ -459,9 +465,11 @@ async def parking_plan_background(property_id: uuid.UUID, attachment_id: uuid.UU
 
 
 @router.post("/assets/{property_id}/parking/plan/derive", response_model=ParkingPlanOut)
-async def derive_parking_plan(property_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> ParkingPlanOut:
-    """Read the uploaded plan with the model now (the upload also queues this in the worker) → ``draft`` for review."""
-    await parking_plan_domain.derive_draft(session, p.actor, property_id)
+async def derive_parking_plan(property_id: uuid.UUID, body: ParkingDeriveIn | None = None, p: Principal = Depends(current_principal),
+                              session: AsyncSession = Depends(db)) -> ParkingPlanOut:
+    """Read a parking plan with the model now (the upload also queues this in the worker) → ``draft`` for one lot."""
+    body = body or ParkingDeriveIn()
+    await parking_plan_domain.derive_draft(session, p.actor, property_id, attachment_id=body.attachment_id, lot_id=body.lot_id)
     return ParkingPlanOut(**await parking_plan_domain.plan_document(session, property_id))
 
 
