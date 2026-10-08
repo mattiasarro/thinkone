@@ -46,6 +46,19 @@ export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; up
 export interface ParkingImportRow { row: number; ok: boolean; errors: string[]; numbers: string[]; zone: string | null; type: SpotType; reserve: boolean; space_name: string | null; space_id: UUID | null }
 export interface ParkingImportResult { rows: ParkingImportRow[]; created: number; skipped: number; dry_run: boolean }
 export interface PlanRow { filename: string; content_type: string; size: number; target: "space" | "property" | "overview" | "parking" | "skip"; space_id: UUID | null; space_name: string | null; note: string | null; attachment_id: UUID | null }
+export interface SpotGeom { x: number; y: number; w: number; h: number; rot: number }
+export interface PlanBackground { attachment_id: UUID; x: number; y: number; w: number; h: number; opacity?: number }
+export interface ParkingPlanFrame { units?: "m"; width: number; height: number; background?: PlanBackground | null }
+export interface PlanSpot extends ParkingSpot { geom: SpotGeom | null }
+export interface ParkingPlanDraftSpot { spot_id: UUID | null; number: string | null; label: string | null; type: SpotType | null; geom: SpotGeom }
+export interface ParkingPlanDraft { status: "ready" | "failed"; created_at: string; width?: number; height?: number; background?: PlanBackground; spots: ParkingPlanDraftSpot[]; matched?: number; notes?: string; error?: string; model?: string }
+export interface ParkingPlan { property_id: UUID; frame: ParkingPlanFrame | null; spots: PlanSpot[]; draft: ParkingPlanDraft | null; plan_attachment: { id: UUID; filename: string; content_type: string } | null }
+export interface ParkingPlanSave {
+  frame?: ParkingPlanFrame | null;
+  spots?: { id: UUID; geom: SpotGeom | null; space_id?: UUID | null; set_space?: boolean }[];
+  new?: { number: string; zone?: string | null; type?: SpotType; geom: SpotGeom; space_id?: UUID | null }[];
+  clear_draft?: boolean;
+}
 export interface SplitUnitInput { name: string; parts: Partial<Record<SpacePartKey, number>>; price_per_m2: number; parking_numbers: string[] }
 
 export type AttachmentSubject = "asset" | "company" | "contract" | "template";

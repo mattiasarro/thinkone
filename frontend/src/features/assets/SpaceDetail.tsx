@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
-import { useAsset, useDeleteAsset, useKeyDates, useMergeSpace, useSplitSpace } from "@/lib/queries/portfolio";
+import { useAsset, useDeleteAsset, useKeyDates, useMergeSpace, useParkingPlan, useSplitSpace } from "@/lib/queries/portfolio";
+import { ParkingPlanPreview } from "./parking-plan/ParkingPlanEditor";
 import { Card, CardHeader, CardBody, PageHead, Stat } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
@@ -114,6 +115,7 @@ export function SpaceDetail({ id }: { id: string }) {
             <CardHeader title={t("assets.space.parking")} actions={property && (property.attributes as { has_parking?: boolean | null })?.has_parking !== false && <Button size="sm" variant="text" onClick={() => setSpotsDlg(true)}>{t("assets.parkingReg.editSpaceSpots")}</Button>} />
             <CardBody>
               {spots.length === 0 ? <p className="text-sm text-muted">{a.parking_spots ? `${a.parking_spots}` : t("assets.space.noParkingSpots")}</p> : <div className="flex flex-wrap gap-1">{spots.map((s) => <SpotChip key={s.id} s={s} title={`${tEnum("assets.parkingReg.statuses", s.status)}${s.contract ? ` · ${s.contract.number}` : ""}`} />)}</div>}
+              {property && spots.length > 0 && <SpacePlanPreview propertyId={property.id} spaceId={p.id} />}
             </CardBody>
           </Card>
           <Card>
@@ -131,6 +133,16 @@ export function SpaceDetail({ id }: { id: string }) {
         body={<span>{t("assets.space.deleteConfirm", { name: p.name, area: fmtNum(a.rentable_area_m2), property: property?.name ?? "" })}{spots.length > 0 && <span className="block mt-1 text-muted">{t("assets.space.deleteParkingNote", { numbers: spots.map((s) => s.number).join(", ") })}</span>}</span>} />
     </div>
   );
+}
+
+/** The building's schematic with this space's spots highlighted; nothing until boxes have been drawn. */
+function SpacePlanPreview({ propertyId, spaceId }: { propertyId: string; spaceId: string }) {
+  const plan = useParkingPlan(propertyId);
+  const prop = useAsset(propertyId);
+  if (!plan.data || !prop.data) return null;
+  const spaces = prop.data.children.filter((c) => c.type_code === "space");
+  const mine = new Set(plan.data.spots.filter((s) => s.space_id === spaceId).map((s) => s.id));
+  return <div className="mt-3"><ParkingPlanPreview plan={plan.data} spaces={spaces} highlight={mine} /></div>;
 }
 
 function PropertySpotsDialog({ propertyId, spaceId, spaceName, onClose }: { propertyId: string; spaceId: string; spaceName: string; onClose: () => void }) {

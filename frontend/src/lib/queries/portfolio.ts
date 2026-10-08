@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractSummary, KeyDate, KeyDateKind, ParkingImportResult, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractSummary, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -87,7 +87,7 @@ export function useImportSpaces(propertyId: string) {
     onSuccess: (_r, v) => { if (!v.dryRun) invalidateAssets(qc); },
   });
 }
-const invalidateAssets = (qc: ReturnType<typeof useQueryClient>) => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset"] }); qc.invalidateQueries({ queryKey: ["parking"] }); qc.invalidateQueries({ queryKey: ["audit"] }); };
+const invalidateAssets = (qc: ReturnType<typeof useQueryClient>) => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset"] }); qc.invalidateQueries({ queryKey: ["parking"] }); qc.invalidateQueries({ queryKey: ["parking-plan"] }); qc.invalidateQueries({ queryKey: ["audit"] }); };
 
 // ---- parking register ----
 export function useParking(propertyId: string | undefined) {
@@ -116,6 +116,23 @@ export function useDeleteParking(propertyId: string) {
 export function useSetHasParking(propertyId: string) {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (has_parking: boolean) => api.post<Asset>(`/assets/${propertyId}/parking/has-parking`, { has_parking }), onSuccess: () => invalidateAssets(qc) });
+}
+
+// ---- parking schematic (boxes per register spot) ----
+export function useParkingPlan(propertyId: string | undefined) {
+  return useQuery({ queryKey: ["parking-plan", propertyId], queryFn: () => api.get<ParkingPlan>(`/assets/${propertyId}/parking/plan`), enabled: !!propertyId });
+}
+export function useSaveParkingPlan(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (b: ParkingPlanSave) => api.put<ParkingPlan>(`/assets/${propertyId}/parking/plan`, b), onSuccess: () => invalidateAssets(qc) });
+}
+export function useDeriveParkingPlan(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => api.post<ParkingPlan>(`/assets/${propertyId}/parking/plan/derive`), onSuccess: () => invalidateAssets(qc) });
+}
+export function useDiscardParkingDraft(propertyId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => api.delete(`/assets/${propertyId}/parking/plan/draft`), onSuccess: () => invalidateAssets(qc) });
 }
 
 // ---- plans (bulk floor-plan upload) ----
