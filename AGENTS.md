@@ -14,8 +14,8 @@ first.
      the api start command runs migrations, so api goes first)
    - `frontend/**` changed: `railway redeploy --service frontend --from-source --yes`
    - docs or `data/` only: push, no redeploy
-4. Wait for each deployment to reach SUCCESS and check it's healthy: `https://api-production-b9c7d.up.railway.app/api/health`
-   returns ok and `https://frontend-production-ba0c.up.railway.app/login` loads. If a deploy fails, read its build/deploy
+4. Wait for each deployment to reach SUCCESS and check it's healthy: `https://api.prod.thinkone.ai/api/health`
+   returns ok and `https://prod.thinkone.ai/login` loads. If a deploy fails, read its build/deploy
    logs and fix it rather than leaving production broken.
 
 Service setup, env vars and rollback are in `deploy/RAILWAY.md`.

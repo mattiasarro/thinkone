@@ -35,6 +35,11 @@ Railway's JSON config-as-code is deprecated, so build and start settings live on
 | `frontend` | `/frontend`    | Dockerfile `Dockerfile` | `node server.js` | `/login` | ON_FAILURE | `/frontend/**` |
 
 Generate a public domain for `api` (target port 8000) and `frontend` (target port 3000); the worker stays private.
+Production custom domains (zone `thinkone.ai`, DNS at Zone.ee): `prod.thinkone.ai` → frontend (port 3000),
+`api.prod.thinkone.ai` → api (port 8000). Each is a CNAME to the per-domain `*.up.railway.app` target Railway shows
+when the domain is added (`railway domain <fqdn> --service <svc> --json`), plus a `_railway-verify.<host>` TXT record
+with the token from the same output — Railway would not pass ownership validation on the CNAME alone. The
+`*.up.railway.app` domains stay attached as fallbacks.
 `api` and `worker` build the same image; only the start command differs. The api start command runs
 `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`, so
 migrations run on every deploy (idempotent). Both apps bind IPv4 (`0.0.0.0`): Railway's health check and public proxy reach the container over IPv4, and a
