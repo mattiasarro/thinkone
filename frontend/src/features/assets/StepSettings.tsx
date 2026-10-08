@@ -24,14 +24,15 @@ export function StepSettings({ property, onBack, onFinish }: { property: AssetDe
   const a = property.attributes as PropertyAttributes;
   const update = useUpdateAsset();
   const upload = useUploadAttachment();
-  const templates = useTemplates(property.company_id);
+  // All templates, not just the company's: account-wide general terms (company_id null) apply to every building.
+  const templates = useTemplates(null);
   const toast = useToast();
   const [busyRole, setBusyRole] = useState<string | null>(null);
   const { register, handleSubmit } = useForm<Form>({ defaultValues: { vat_taxable: a.vat_taxable ?? true, utility_cost_winter: a.utility_cost_winter != null ? String(a.utility_cost_winter) : "", utility_cost_summer: a.utility_cost_summer != null ? String(a.utility_cost_summer) : "", template_id: a.template_id ?? "" } });
   const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
   const area = spaces.reduce((s, x) => s + (Number((x.attributes as Partial<SpaceAttributes>).rentable_area_m2) || 0), 0);
   const withPlan = spaces.filter((s) => s.attachments.some((x) => x.role === "floor_plan")).length;
-  const general = (templates.data ?? []).filter((x) => x.kind === "general_terms" && x.is_current);
+  const general = (templates.data ?? []).filter((x) => x.kind === "general_terms" && x.is_current && (x.company_id == null || x.company_id === property.company_id));
 
   const onSubmit = handleSubmit(async (v) => {
     try {
