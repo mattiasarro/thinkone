@@ -3,7 +3,8 @@ import { useState } from "react";
 import { t } from "@/i18n";
 import { cx } from "@/lib/format";
 import { IconChevron, IconLock } from "@/components/ui/Icons";
-import type { Clause } from "@/types/api";
+import type { Clause, SourceDocument } from "@/types/api";
+import { ProvenanceAnchor } from "./ProvenanceAnchor";
 
 interface Node { clause: Clause; children: Node[] }
 
@@ -20,12 +21,12 @@ function buildTree(clauses: Clause[]): Node[] {
   return roots;
 }
 
-export function ClauseTree({ clauses, imported }: { clauses: Clause[]; imported?: boolean }) {
+export function ClauseTree({ clauses, imported, docs = [] }: { clauses: Clause[]; imported?: boolean; docs?: SourceDocument[] }) {
   const tree = buildTree(clauses);
-  return <div>{tree.map((n) => <ClauseNode key={n.clause.id} node={n} imported={imported} depth={0} />)}</div>;
+  return <div>{tree.map((n) => <ClauseNode key={n.clause.id} node={n} imported={imported} docs={docs} depth={0} />)}</div>;
 }
 
-function ClauseNode({ node, imported, depth }: { node: Node; imported?: boolean; depth: number }) {
+function ClauseNode({ node, imported, docs, depth }: { node: Node; imported?: boolean; docs: SourceDocument[]; depth: number }) {
   const [open, setOpen] = useState(depth < 1);
   const c = node.clause;
   const number = imported && c.source_number ? c.source_number : c.number;
@@ -43,8 +44,9 @@ function ClauseNode({ node, imported, depth }: { node: Node; imported?: boolean;
           {c.heading && <div className="font-semibold text-sm pt-1 flex items-center gap-2">{c.heading}{c.locked && <IconLock width={12} height={12} className="text-muted" aria-label={t("contract.locked")} />}</div>}
           {(!hasChildren || open || !c.heading) && c.text && <p className={cx("text-sm whitespace-pre-wrap", c.heading ? "text-muted mt-1" : "pt-1")}>{c.text}</p>}
         </div>
+        {imported && <ProvenanceAnchor prov={c.provenance} docs={docs} className="mt-0.5" />}
       </div>
-      {open && hasChildren && <div className="mt-1">{node.children.map((ch) => <ClauseNode key={ch.clause.id} node={ch} imported={imported} depth={depth + 1} />)}</div>}
+      {open && hasChildren && <div className="mt-1">{node.children.map((ch) => <ClauseNode key={ch.clause.id} node={ch} imported={imported} docs={docs} depth={depth + 1} />)}</div>}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
 import { useAudit, useContract, useDeleteKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
@@ -14,6 +14,7 @@ import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownl
 import { fmtDate, fmtDateTime, valueToString, daysUntil } from "@/lib/format";
 import { KeyDateDialog } from "@/features/keydates/KeyDateDialog";
 import { ClauseTree } from "./ClauseTree";
+import { ProvenanceAnchor } from "./ProvenanceAnchor";
 import { AmendmentDialog } from "./AmendmentDialog";
 import { AttachmentsList } from "./AttachmentsList";
 import { PartiesCard } from "./PartiesCard";
@@ -77,7 +78,8 @@ function Detail({ c }: { c: ContractDetail }) {
                 <Fact label={t("contract.endDate")} value={fmtDate(c.end_date)} />
                 <Fact label={t("contract.signedAt")} value={fmtDate(c.signed_at)} />
                 {facts.map((f) => (
-                  <Fact key={f.key} label={f.label ?? f.key} value={`${valueToString(f.value)}${f.unit ? ` ${f.unit}` : ""}`} sub={[f.text, f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null].filter(Boolean).join(" · ")} />
+                  <Fact key={f.key} label={f.label ?? f.key} value={`${valueToString(f.value)}${f.unit ? ` ${f.unit}` : ""}`} sub={[f.text, f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null].filter(Boolean).join(" · ")}
+                        anchor={imported ? <ProvenanceAnchor prov={f.provenance} docs={c.source_documents} /> : null} />
                 ))}
                 {facts.length === 0 && <p className="text-sm text-muted col-span-full">{t("contract.noFacts")}</p>}
               </div>
@@ -87,7 +89,7 @@ function Detail({ c }: { c: ContractDetail }) {
           <Card>
             <CardHeader title={t("contract.clauses")} overline={imported ? t("contract.importedNote") : undefined} />
             <CardBody>
-              {c.clauses.length === 0 ? <p className="text-sm text-muted">{t("contract.noClauses")}</p> : <ClauseTree clauses={c.clauses} imported={imported} />}
+              {c.clauses.length === 0 ? <p className="text-sm text-muted">{t("contract.noClauses")}</p> : <ClauseTree clauses={c.clauses} imported={imported} docs={c.source_documents} />}
             </CardBody>
           </Card>
 
@@ -127,6 +129,7 @@ function Detail({ c }: { c: ContractDetail }) {
                         <span className="block text-sm font-medium truncate">{k.title}</span>
                         <span className="block text-xs text-muted">{tEnum("keyDates.kinds", k.kind_code)} · {fmtDate(k.due_date)} · <span className={n < 0 ? "text-error" : n <= 30 ? "text-warning" : ""}>{n < 0 ? t("home.overdue") : t("home.inDays", { n })}</span></span>
                       </span>
+                      {imported && <ProvenanceAnchor prov={k.provenance} docs={c.source_documents} />}
                       <button type="button" className="icon-btn !w-8 !h-8" aria-label={t("common.edit")} onClick={() => setKdDialog({ open: true, item: k })}><IconEdit width={14} height={14} /></button>
                       <button type="button" className="icon-btn !w-8 !h-8 text-error" aria-label={t("common.delete")} onClick={() => setKdDel(k)}><IconTrash width={14} height={14} /></button>
                     </li>
@@ -185,10 +188,10 @@ function Detail({ c }: { c: ContractDetail }) {
   );
 }
 
-function Fact({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Fact({ label, value, sub, anchor }: { label: string; value: string; sub?: string; anchor?: ReactNode }) {
   return (
     <div className="rounded-control p-3 min-w-0" style={{ background: "var(--color-surface-subtle)" }}>
-      <div className="text-xs text-muted truncate" title={label}>{label}</div>
+      <div className="flex items-start justify-between gap-2"><div className="text-xs text-muted truncate" title={label}>{label}</div>{anchor}</div>
       <div className="font-semibold text-sm mt-0.5 break-words">{value}</div>
       {sub && <div className="text-xs text-muted mt-0.5 line-clamp-2" title={sub}>{sub}</div>}
     </div>
