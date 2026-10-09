@@ -3,7 +3,7 @@
 ## Branches and environments
 
 - **`dev` is the working branch.** Develop on it, commit to it and push it. It deploys to the **dev** Railway project
-  (`https://dev.futureone.ai`, API `https://api.dev.futureone.ai`).
+  (`https://dev.thinkone.ai`, API `https://api.dev.thinkone.ai`).
 - **`main` is production** (`https://prod.thinkone.ai`, API `https://api.prod.thinkone.ai`, Railway project `prod`).
   Do not push to `main` or deploy production unless the user explicitly asks for a production release.
 - The two Railway projects share nothing (separate Postgres, bucket, secrets). The working directory is linked to
@@ -25,7 +25,7 @@ When you make a change, commit it, push it and deploy it to dev. Do not stop at 
      goes first)
    - `frontend/**` changed: `deploy/deploy.sh frontend`
    - docs, `deploy/` or `data/` only: push, no deploy
-5. Check it's healthy: `https://api.dev.futureone.ai/api/health` returns ok and `https://dev.futureone.ai/login`
+5. Check it's healthy: `https://api.dev.thinkone.ai/api/health` returns ok and `https://dev.thinkone.ai/login`
    loads (Railway fallbacks while the custom DNS is pending: `https://api-dev-701f.up.railway.app`,
    `https://frontend-dev-3256.up.railway.app`). If a deploy fails, read its build/deploy logs
    (`railway logs -d <deployment id>`) and fix it rather than leaving dev broken.
