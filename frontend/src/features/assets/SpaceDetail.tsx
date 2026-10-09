@@ -66,13 +66,19 @@ export function SpaceDetail({ id }: { id: string }) {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start">
         <div className="grid gap-5">
           <Card>
-            <CardHeader title={t("assets.space.now")} />
+            <CardHeader title={inactive ? t("assets.space.inactiveTitle") : p.status === "jagatud" ? t("assets.space.splitNowTitle", { n: p.split_units.length }) : t("assets.space.now")} />
             <CardBody>
               {inactive ? <p className="text-sm text-muted">{t("assets.space.inactiveNote", { name: p.split_parent?.name ?? "—" })}</p>
               : p.status === "jagatud" ? (
+                <div className="grid gap-3">
+                <p className="text-sm text-muted">{t("assets.space.splitNowNote", { n: p.split_units.length })}</p>
                 <ul className="grid gap-2 text-sm">{p.split_units.map((u) => <li key={u.id} className="flex items-center gap-2"><Link href={`/app/portfell/pind/${u.id}`} className="text-primary font-semibold">{u.name}</Link><span className="text-muted">{fmtNum((u.attributes as Partial<SpaceAttributes> | undefined)?.rentable_area_m2)} m²</span>{u.status && <Pill tone={statusTone(u.status)} className="ml-auto">{tEnum("assets.status", u.status)}</Pill>}</li>)}</ul>
-              ) : current.length === 0 ? <p className="text-sm text-muted">{t("assets.space.noContract")}</p> : (
-                <ul className="grid gap-3">{current.map((al) => <ContractRow key={al.id} al={al} />)}</ul>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {p.split_parent && <p className="text-sm text-muted">{t("assets.space.unitNote", { name: p.split_parent.name, area: fmtNum((p.split_parent.attributes as Partial<SpaceAttributes> | undefined)?.rentable_area_m2) })}</p>}
+                  {current.length === 0 ? <p className="text-sm text-muted">{t("assets.space.noContract")}</p> : <ul className="grid gap-3">{current.map((al) => <ContractRow key={al.id} al={al} />)}</ul>}
+                </div>
               )}
             </CardBody>
           </Card>

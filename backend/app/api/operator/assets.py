@@ -331,7 +331,7 @@ async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) ->
         if attrs.get("split_from"):
             sp = await session.get(Asset, uuid.UUID(attrs["split_from"]))
             if sp:
-                split_parent = AssetRefOut(id=sp.id, name=sp.name, type_code=sp.type_code)
+                split_parent = AssetRefOut(id=sp.id, name=sp.name, type_code=sp.type_code, attributes=sp.attributes or {})
         if attrs.get("split_into"):
             units = [await session.get(Asset, uuid.UUID(i)) for i in attrs["split_into"]]
             units = [u for u in units if u and not u.deleted_at]
