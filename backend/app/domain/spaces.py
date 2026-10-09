@@ -49,16 +49,16 @@ async def split_block_reason(session: AsyncSession, s: Asset) -> str | None:
         return "Üksust edasi ei jagata — ühenda enne tagasi"
     if (attrs.get("type") or "").lower() in ("laobokss", "laoboks"):
         return "Laoboksi ei jagata"
-    parts = attrs.get("parts") or {}
-    if sum(1 for k in parts if k in MAIN_PARTS and parts[k] > 0) < 2:
-        return "Pinnal on üks ruumiosa — jagada saab pinda, kus on nt ladu ja kontor"
-    if await registry.any_allocations(session, [s.id]):
-        return "Jagada saab ainult pinda, millel pole lepingut"
+    if await registry.live_allocations(session, [s.id]):
+        return "Pind on lepingus — jagada saab pinda, millel pole kehtivat lepingut"
     return None
 
 
 async def split(session: AsyncSession, actor: Actor, space_id: uuid.UUID, units: list[dict[str, Any]]) -> list[Asset]:
-    """``units``: [{name, parts: {ladu: 120, ...}, price_per_m2, parking_numbers: [...]}, ...] (2+ units)."""
+    """``units``: [{name, parts: {ladu: 120, ...} | rentable_area_m2, price_per_m2, parking_numbers: [...]}, ...] (2+ units).
+
+    With a parts breakdown on the parent the units divide the parts (sums per part must match); without one they
+    state their rentable areas, which must sum to the parent's. One main part type is fine (a warehouse into two)."""
     s = await assets_domain.get_asset(session, space_id)
     reason = await split_block_reason(session, s)
     if reason:
@@ -78,18 +78,26 @@ async def split(session: AsyncSession, actor: Actor, space_id: uuid.UUID, units:
         raise DomainError("Üksuste nimed peavad olema erinevad ja majas uued")
     used: dict[str, float] = {}
     areas: list[float] = []
+    parent_has_main = any(k in MAIN_PARTS and v > 0 for k, v in parent_parts.items())
     for u, n in zip(units, names, strict=True):
         parts = {k: round(float(v), 2) for k, v in (u.get("parts") or {}).items() if v and float(v) > 0}
         bad = set(parts) - set(SPACE_PART_LABELS)
         if bad:
             raise DomainError(f"Tundmatu ruumiosa: {', '.join(sorted(bad))}")
-        if not any(k in MAIN_PARTS for k in parts):
-            raise DomainError(f"„{n}”: igal üksusel peab olema põhiruum (nt ladu või kontor) — olmealast üksi üksust ei tehta")
-        for k, v in parts.items():
-            used[k] = round(used.get(k, 0) + v, 2)
-        area = round(sum(parts.values()), 2)
-        if area <= 0:
-            raise DomainError(f"„{n}”: üksusel peab olema vähemalt üks ruumiosa")
+        if parent_parts:
+            if parent_has_main and not any(k in MAIN_PARTS for k in parts):
+                raise DomainError(f"„{n}”: igal üksusel peab olema põhiruum (nt ladu või kontor) — olmealast üksi üksust ei tehta")
+            for k, v in parts.items():
+                used[k] = round(used.get(k, 0) + v, 2)
+            area = round(sum(parts.values()), 2)
+            if area <= 0:
+                raise DomainError(f"„{n}”: üksusel peab olema vähemalt üks ruumiosa")
+        else:  # the parent has no parts breakdown → each unit states its rentable area directly
+            if parts:
+                raise DomainError(f"„{n}”: pinnal pole ruumiosi — anna üksuse üüripind")
+            area = round(float(u.get("rentable_area_m2") or 0), 2)
+            if area <= 0:
+                raise DomainError(f"„{n}”: üksuse üüripind peab olema suurem kui 0")
         price = u.get("price_per_m2")
         if price is None or float(price) <= 0:
             raise DomainError(f"„{n}”: hind peab olema positiivne arv")
@@ -124,7 +132,7 @@ async def split(session: AsyncSession, actor: Actor, space_id: uuid.UUID, units:
                 elec_left -= ea
         else:
             ea = round(elec_left) if elec else None
-        new_attrs: dict[str, Any] = {"type": unit_type, "rentable_area_m2": areas[i], "parts": parts, "price_per_m2": float(u["price_per_m2"]),
+        new_attrs: dict[str, Any] = {"type": unit_type, "rentable_area_m2": areas[i], "parts": parts or None, "price_per_m2": float(u["price_per_m2"]),
                                      "electrical_capacity_a": ea, "floor": attrs.get("floor"), "split_from": str(s.id)}
         old = reusable.get(n.lower())
         if old:  # same unit as in an earlier split → reactivate it with the new figures, keeping its id, documents and log

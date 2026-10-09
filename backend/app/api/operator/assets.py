@@ -267,7 +267,8 @@ class PlanRowOut(BaseModel):
 
 class SplitUnitIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    parts: dict[str, float]
+    parts: dict[str, float] = Field(default_factory=dict)  # when the parent has a parts breakdown
+    rentable_area_m2: float | None = Field(default=None, gt=0)  # when it has none
     price_per_m2: float = Field(gt=0)
     parking_numbers: list[str] = Field(default_factory=list)
 

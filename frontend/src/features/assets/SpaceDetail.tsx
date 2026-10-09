@@ -180,8 +180,8 @@ function ContractRow({ al }: { al: Allocation }) {
   );
 }
 
-type UnitDraft = { name: string; price: string; parts: Record<SpacePartKey, string>; parking: string[] };
-const emptyUnit = (): UnitDraft => ({ name: "", price: "", parts: { ladu: "", kontor: "", myygisaal: "", olmeala: "", yhisala: "" }, parking: [] });
+type UnitDraft = { name: string; price: string; area: string; parts: Record<SpacePartKey, string>; parking: string[] };
+const emptyUnit = (): UnitDraft => ({ name: "", price: "", area: "", parts: { ladu: "", kontor: "", myygisaal: "", olmeala: "", yhisala: "" }, parking: [] });
 const n = (v: string) => Number(String(v).replace(",", ".")) || 0;
 
 /** Split a space into rental units (demo v588/v639): parts are divided between units; the sums must match the parent. */
@@ -194,17 +194,19 @@ function SplitDialog({ open, onClose, space }: { open: boolean; onClose: () => v
   const mySpots = space.parking_spots;
   const former = space.former_units ?? [];
   const [units, setUnits] = useState<UnitDraft[]>(() => former.length >= 2
-    ? former.map((u) => { const ua = (u.attributes ?? {}) as Partial<SpaceAttributes>; const parts = emptyUnit().parts; for (const k of keys) if (ua.parts?.[k]) parts[k] = String(ua.parts[k]); return { name: u.name, price: ua.price_per_m2 != null ? String(ua.price_per_m2) : "", parts, parking: [] }; })
+    ? former.map((u) => { const ua = (u.attributes ?? {}) as Partial<SpaceAttributes>; const parts = emptyUnit().parts; for (const k of keys) if (ua.parts?.[k]) parts[k] = String(ua.parts[k]); return { name: u.name, price: ua.price_per_m2 != null ? String(ua.price_per_m2) : "", area: ua.rentable_area_m2 != null ? String(ua.rentable_area_m2) : "", parts, parking: [] }; })
     : [
       { ...emptyUnit(), name: `${space.name}A`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
       { ...emptyUnit(), name: `${space.name}B`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
     ]);
   const setUnit = (i: number, patch: Partial<UnitDraft>) => setUnits((u) => u.map((x, j) => (j === i ? { ...x, ...patch } : x)));
-  const unitArea = (u: UnitDraft) => keys.reduce((s, k) => s + n(u.parts[k]), 0);
+  const byParts = keys.length > 0;  // without a parts breakdown on the parent, each unit states its rentable area
+  const unitArea = (u: UnitDraft) => (byParts ? keys.reduce((s, k) => s + n(u.parts[k]), 0) : n(u.area));
   const total = units.reduce((s, u) => s + unitArea(u), 0);
   const leftover = (k: SpacePartKey) => Math.round(((parentParts[k] ?? 0) - units.reduce((s, u) => s + n(u.parts[k]), 0)) * 100) / 100;
   const save = async () => {
-    const body: SplitUnitInput[] = units.map((u) => ({ name: u.name.trim(), price_per_m2: n(u.price), parking_numbers: u.parking, parts: Object.fromEntries(keys.filter((k) => n(u.parts[k]) > 0).map((k) => [k, n(u.parts[k])])) }));
+    const body: SplitUnitInput[] = units.map((u) => ({ name: u.name.trim(), price_per_m2: n(u.price), parking_numbers: u.parking,
+      parts: byParts ? Object.fromEntries(keys.filter((k) => n(u.parts[k]) > 0).map((k) => [k, n(u.parts[k])])) : {}, ...(byParts ? {} : { rentable_area_m2: n(u.area) }) }));
     try { const res = await splitMut.mutateAsync(body); toast.success(t("assets.space.splitDone", { name: space.name, units: res.map((x) => x.name).join(" + ") })); onClose(); } catch (e) { toast.error(errorMessage(e)); }
   };
   return (
@@ -217,10 +219,11 @@ function SplitDialog({ open, onClose, space }: { open: boolean; onClose: () => v
               <Input label={t("assets.space.unitName")} value={u.name} onChange={(e) => setUnit(i, { name: e.target.value })} />
               <Input label={t("assets.space.unitPrice")} type="number" step="0.01" inputMode="decimal" value={u.price} onChange={(e) => setUnit(i, { price: e.target.value })} />
             </div>
-            <div className="field-label">{t("assets.space.unitParts")} <span className="text-xs text-muted font-normal font-mono">· {fmtNum(unitArea(u))} m²</span></div>
-            <div className="grid gap-x-3 grid-cols-2 sm:grid-cols-5">
+            {!byParts && <Input label={t("assets.space.unitArea")} type="number" step="0.01" inputMode="decimal" value={u.area} hint={i === units.length - 1 && Math.abs(total - (a.rentable_area_m2 ?? 0)) > 0.05 ? `${total < (a.rentable_area_m2 ?? 0) ? "+" : ""}${fmtNum(Math.round(((a.rentable_area_m2 ?? 0) - total) * 100) / 100)}` : undefined} onChange={(e) => setUnit(i, { area: e.target.value })} />}
+            {byParts && <div className="field-label">{t("assets.space.unitParts")} <span className="text-xs text-muted font-normal font-mono">· {fmtNum(unitArea(u))} m²</span></div>}
+            {byParts && <div className="grid gap-x-3 grid-cols-2 sm:grid-cols-5">
               {keys.map((k) => <Input key={k} label={`${tEnum("assets.partNames", k)} (${fmtNum(parentParts[k])})`} type="number" step="0.01" inputMode="decimal" value={u.parts[k]} hint={i === units.length - 1 && leftover(k) !== 0 ? `${leftover(k) > 0 ? "+" : ""}${fmtNum(leftover(k))}` : undefined} onChange={(e) => setUnit(i, { parts: { ...u.parts, [k]: e.target.value } })} />)}
-            </div>
+            </div>}
             {mySpots.length > 0 && (
               <div><div className="field-label">{t("assets.space.unitParking")}</div><div className="flex flex-wrap gap-1">{mySpots.map((s) => { const on = u.parking.includes(s.number); const elsewhere = !on && units.some((o) => o.parking.includes(s.number)); return <SpotChip key={s.id} s={s} on={on} onClick={() => !elsewhere && setUnit(i, { parking: on ? u.parking.filter((x) => x !== s.number) : [...u.parking, s.number] })} title={elsewhere ? t("assets.parkingPickTaken") : undefined} />; })}</div></div>
             )}

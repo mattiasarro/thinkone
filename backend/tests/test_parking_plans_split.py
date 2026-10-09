@@ -256,6 +256,36 @@ async def test_split_and_merge_space(client: AsyncClient, admin: dict):
     assert (await client.get(f"/api/v1/assets/{prop['id']}")).json()["occupancy"]["units"] == 3
 
 
+async def test_split_single_part_and_no_parts_space(client: AsyncClient, admin: dict):
+    """A plain warehouse (one part type) or a space without a parts breakdown can be divided; an ended lease does not block it."""
+    company = await make_company(client)
+    prop = await make_property(client, company["id"])
+    ladu = await make_space(client, prop["id"], "Ladu 1", 1000, type="ladu", parts={"ladu": 1000}, price_per_m2=5)
+    ended = await make_contract(admin["account"]["id"], company_id=company["id"], status="ended", start_date=date(2020, 1, 1), end_date=date(2021, 1, 1))
+    assert (await client.post("/api/v1/allocations", json={"contract_id": str(ended), "asset_id": ladu["id"], "kind": "exclusive"})).status_code == 201
+    assert (await client.get(f"/api/v1/assets/{ladu['id']}")).json()["split_block_reason"] is None
+    r = await client.post(f"/api/v1/assets/{ladu['id']}/split", json={"units": [{"name": "Ladu 1-1", "parts": {"ladu": 600}, "price_per_m2": 5},
+                                                                                 {"name": "Ladu 1-2", "parts": {"ladu": 400}, "price_per_m2": 5}]})
+    assert r.status_code == 201, r.text
+    assert [(u["attributes"]["rentable_area_m2"], u["attributes"]["type"]) for u in r.json()] == [(600, "ladu"), (400, "ladu")]
+    live = await make_contract(admin["account"]["id"], company_id=company["id"])
+    plain = await make_space(client, prop["id"], "Pind 9", 300)
+    assert (await client.post("/api/v1/allocations", json={"contract_id": str(live), "asset_id": plain["id"], "kind": "exclusive"})).status_code == 201
+    assert "kehtivat lepingut" in (await client.get(f"/api/v1/assets/{plain['id']}")).json()["split_block_reason"]
+    plain = await make_space(client, prop["id"], "Pind 10", 300)
+    r = await client.post(f"/api/v1/assets/{plain['id']}/split", json={"units": [{"name": "Pind 10-1", "parts": {"ladu": 100}, "price_per_m2": 5},
+                                                                                  {"name": "Pind 10-2", "rentable_area_m2": 200, "price_per_m2": 5}]})
+    assert r.status_code == 400 and "ruumiosi" in r.json()["detail"]
+    r = await client.post(f"/api/v1/assets/{plain['id']}/split", json={"units": [{"name": "Pind 10-1", "rentable_area_m2": 100, "price_per_m2": 5},
+                                                                                  {"name": "Pind 10-2", "rentable_area_m2": 150, "price_per_m2": 5}]})
+    assert r.status_code == 400 and "250" in r.json()["detail"]
+    r = await client.post(f"/api/v1/assets/{plain['id']}/split", json={"units": [{"name": "Pind 10-1", "rentable_area_m2": 100, "price_per_m2": 5},
+                                                                                  {"name": "Pind 10-2", "rentable_area_m2": 200, "price_per_m2": 6}]})
+    assert r.status_code == 201, r.text
+    assert [u["attributes"]["rentable_area_m2"] for u in r.json()] == [100, 200] and "parts" not in r.json()[0]["attributes"]
+    assert (await client.get(f"/api/v1/assets/{plain['id']}")).json()["status"] == "jagatud"
+
+
 async def test_delete_guard_keeps_documented_spaces(client: AsyncClient, admin: dict):
     company = await make_company(client)
     prop = await make_property(client, company["id"])

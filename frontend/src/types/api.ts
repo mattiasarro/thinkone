@@ -64,7 +64,7 @@ export interface ParkingPlanSave {
   new?: { number: string; zone?: string | null; type?: SpotType; geom: SpotGeom; space_id?: UUID | null }[];
   clear_draft?: boolean;
 }
-export interface SplitUnitInput { name: string; parts: Partial<Record<SpacePartKey, number>>; price_per_m2: number; parking_numbers: string[] }
+export interface SplitUnitInput { name: string; parts: Partial<Record<SpacePartKey, number>>; rentable_area_m2?: number; price_per_m2: number; parking_numbers: string[] }
 
 export type AttachmentSubject = "asset" | "company" | "contract" | "template";
 export type AttachmentRole = "floor_plan" | "site_plan" | "overview_plan" | "parking_plan" | "logo" | "generic" | "annex";
