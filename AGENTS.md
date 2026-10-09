@@ -26,7 +26,7 @@ When you make a change, commit it, push it and deploy it to dev. Do not stop at 
    - `frontend/**` changed: `deploy/deploy.sh frontend`
    - docs, `deploy/` or `data/` only: push, no deploy
 5. Check it's healthy: `https://api.dev.thinkone.ai/api/health` returns ok and `https://dev.thinkone.ai/login`
-   loads (Railway fallbacks while the custom DNS is pending: `https://api-dev-701f.up.railway.app`,
+   loads (Railway fallbacks: `https://api-dev-701f.up.railway.app`,
    `https://frontend-dev-3256.up.railway.app`). If a deploy fails, read its build/deploy logs
    (`railway logs -d <deployment id>`) and fix it rather than leaving dev broken.
 

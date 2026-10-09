@@ -58,7 +58,7 @@ when the domain is added (`railway domain <fqdn> --service <svc> --json`), plus 
 with the token from the same output — Railway would not pass ownership validation on the CNAME alone. The
 `*.up.railway.app` domains stay attached as fallbacks.
 Dev custom domains (same zone `thinkone.ai` at Zone.ee): `dev.thinkone.ai` → frontend, `api.dev.thinkone.ai` → api.
-Records Railway asks for (ownership is still *validating* until they exist):
+Records at Zone.ee (added 9 Oct 2026):
 
 | Host | Type | Value |
 | ---- | ---- | ----- |
@@ -67,9 +67,9 @@ Records Railway asks for (ownership is still *validating* until they exist):
 | `api.dev` | CNAME | `wb7vkbtk.up.railway.app` |
 | `_railway-verify.api.dev` | TXT | `railway-verify=c20dc30868955d3b85facb0989e84155d728b63359fdf1f434b8a00cf2ab23cd` |
 
-Check with `railway domain list --service frontend --json` / `railway domain status`. Until these resolve, use the
-`*.up.railway.app` fallbacks; the dev frontend proxies to the api's Railway domain (`API_INTERNAL_URL`), so the app
-works either way, but `PUBLIC_URL` (links in e-mails) already points at `https://dev.thinkone.ai`.
+Check with `railway domain list --service frontend --json` / `railway domain status`. The dev frontend proxies to the api's
+Railway domain (`API_INTERNAL_URL`), so the app works through either hostname; `PUBLIC_URL` (links in e-mails) is
+`https://dev.thinkone.ai`.
 `api` and `worker` build the same image; only the start command differs. The api start command runs
 `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`, so
 migrations run on every deploy (idempotent). Both apps bind IPv4 (`0.0.0.0`): Railway's health check and public proxy reach the container over IPv4, and a
