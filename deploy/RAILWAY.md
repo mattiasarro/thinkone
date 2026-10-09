@@ -1,7 +1,23 @@
 # ThinkOne on Railway — setup
 
-One Railway project, four services: **postgres** (managed), **api**, **worker**, **frontend**. Object storage is a
-**Railway bucket** in the EU-West (ams) region (S3 API); Cloudflare R2 works the same way behind the S3 seam. Everything environment-specific is an env var (architecture §9).
+Two Railway projects in the **ThinkOne** workspace, each with four services — **Postgres** (managed), **api**,
+**worker**, **frontend** — plus a **Railway bucket** in the EU-West (ams) region (S3 API). The projects share nothing
+(own database, bucket, secrets). Everything environment-specific is an env var (architecture §9).
+
+| Project | ID | Environment | Branch | Frontend | API | Bucket |
+| ------- | -- | ----------- | ------ | -------- | --- | ------ |
+| `prod` | `cd1607c6-06af-406c-bb80-1c7cf036c692` | `production` (`344deb4f-f1c1-4d37-a22f-3800dafd3b6e`) | `main` | `prod.thinkone.ai` (fallback `frontend-production-ba0c.up.railway.app`) | `api.prod.thinkone.ai` (fallback `api-production-b9c7d.up.railway.app`) | `functional-parcel-hPuf` |
+| `dev` | `5ad19bb3-612e-4088-b188-cc58c94214a9` | `dev` (`133ca1aa-f44a-40a6-9364-862a9fea7338`) | `dev` | `dev.futureone.ai` (fallback `frontend-dev-3256.up.railway.app`) | `api.dev.futureone.ai` (fallback `api-dev-701f.up.railway.app`) | `thinkone-dev-files` |
+
+Day-to-day work happens on `dev` against the dev project (see `AGENTS.md`); the working directory is `railway link`ed
+to it. Target prod explicitly with `-p cd1607c6-06af-406c-bb80-1c7cf036c692 -e production` on CLI commands.
+
+The dev project was built by repeating the steps below with the repo branch set to `dev` (`railway add --service <name>`
+for each empty service, then connect the GitHub source with branch `dev`). Dev reuses the same Anthropic, RIK
+(äriregister) and Postmark credentials as prod; `SECRET_KEY`, `POSTMARK_WEBHOOK_SECRET`, the database and the bucket
+are its own. Dev `APP_ENV` is `prod` too (it only toggles secure cookies / the fake blob store). Create Railway
+services **one at a time** — several concurrent MCP `create-service` calls wedged an environment's change queue and the
+project had to be recreated.
 
 ## 0. Prerequisites
 
@@ -40,6 +56,19 @@ Production custom domains (zone `thinkone.ai`, DNS at Zone.ee): `prod.thinkone.a
 when the domain is added (`railway domain <fqdn> --service <svc> --json`), plus a `_railway-verify.<host>` TXT record
 with the token from the same output — Railway would not pass ownership validation on the CNAME alone. The
 `*.up.railway.app` domains stay attached as fallbacks.
+Dev custom domains (zone `futureone.ai`, DNS at GoDaddy): `dev.futureone.ai` → frontend, `api.dev.futureone.ai` → api.
+Records Railway asks for (ownership is still *validating* until they exist):
+
+| Host | Type | Value |
+| ---- | ---- | ----- |
+| `dev` | CNAME | `62x4jns1.up.railway.app` |
+| `_railway-verify.dev` | TXT | `railway-verify=624b7a19a3e09b5d1b1531bfc78e0bd3a7bbc3ebc0ae3dbd6481f87b7248b6d2` |
+| `api.dev` | CNAME | `jmgfa4uh.up.railway.app` |
+| `_railway-verify.api.dev` | TXT | `railway-verify=c3b0a1c749e49bff76058ae03dbeae1b99877ee9b52ebddcf8e9d2183197b223` |
+
+Check with `railway domain list --service frontend --json` / `railway domain status`. Until these resolve, use the
+`*.up.railway.app` fallbacks; the dev frontend proxies to the api's Railway domain (`API_INTERNAL_URL`), so the app
+works either way, but `PUBLIC_URL` (links in e-mails) already points at `https://dev.futureone.ai`.
 `api` and `worker` build the same image; only the start command differs. The api start command runs
 `python scripts/migrate.py` (Alembic to head + Procrastinate schema when missing + grants) before `uvicorn`, so
 migrations run on every deploy (idempotent). Both apps bind IPv4 (`0.0.0.0`): Railway's health check and public proxy reach the container over IPv4, and a
@@ -105,6 +134,8 @@ HOSTNAME=0.0.0.0                         #   IPv6-only and needs an IPv6-bound a
 3. Deploy **frontend**; open its domain → `/register` creates the first account + admin user.
 4. Postmark: add webhook `https://<api-domain>/api/v1/webhooks/postmark` for Delivery, Bounce, Spam complaint, with a
    custom header `X-Webhook-Secret: <POSTMARK_WEBHOOK_SECRET>`.
+   Prod has this; dev does not yet (add a second webhook for `https://api.dev.futureone.ai/api/v1/webhooks/postmark`
+   with dev's `POSTMARK_WEBHOOK_SECRET` if delivery/bounce events matter there).
 5. Health check: `https://<api-domain>/api/health` → `{"status":"ok"}`; API docs at `/api/docs`.
 
 ## 5. Day-2
