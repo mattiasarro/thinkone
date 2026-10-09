@@ -20,7 +20,7 @@ export function PlansUploader({ property, onDone }: { property: AssetDetail; onD
   const [files, setFiles] = useState<File[]>([]);
   const [rows, setRows] = useState<PlanRow[] | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
+  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne");
 
   // The server asks the model once for every file not in `mapping`; after the first proposal the mapping covers
   // every row, so corrections and the final confirm never re-run the matching behind the operator's back.
@@ -85,7 +85,7 @@ const ROLE_LABEL = { overview_plan: "assets.overviewPlan", site_plan: "assets.si
 
 export function StepPlans({ property, onBack, onNext }: { property: AssetDetail; onBack: () => void; onNext: () => void }) {
   const toast = useToast();
-  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
+  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne");
   const withPlan = spaces.filter((s) => s.attachments.some((a) => a.role === "floor_plan"));
   // Building-level plans: koondplaan (unit overview), asendiplaan (site plan) and parkimisskeem.
   const buildingPlans = property.attachments.filter((a) => a.role in ROLE_LABEL);

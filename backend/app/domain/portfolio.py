@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain import registry
 from app.domain.errors import NotFound
 from app.domain.events import Actor, emit
 from app.models.contracts import (
@@ -127,7 +128,7 @@ async def summary(session: AsyncSession) -> dict[str, Any]:
     by_status = dict((await session.execute(select(Contract.status, func.count()).where(Contract.deleted_at.is_(None)).group_by(Contract.status))).all())
     props = (await session.execute(select(func.count()).select_from(Asset).where(Asset.type_code == "property", Asset.deleted_at.is_(None)))).scalar_one()
     spaces = [a for a in (await session.execute(select(Asset).where(Asset.type_code == "space", Asset.deleted_at.is_(None)))).scalars()
-              if not (a.attributes or {}).get("split_into")]
+              if registry.is_lettable(a)]
     occupied = 0
     if spaces:
         today = date.today()

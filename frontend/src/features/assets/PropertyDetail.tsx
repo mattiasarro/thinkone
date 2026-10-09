@@ -30,7 +30,7 @@ export function PropertyDetail({ id }: { id: string }) {
   if (q.error || !q.data) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const p = q.data;
   const a = p.attributes as PropertyAttributes;
-  const spaces = p.children.filter((c) => c.type_code === "space" && c.status !== "jagatud").sort((x, y) => x.name.localeCompare(y.name, "et", { numeric: true }));
+  const spaces = p.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne").sort((x, y) => x.name.localeCompare(y.name, "et", { numeric: true }));
   const occupied = spaces.filter((s) => s.status === "üüritud" || s.status === "täidetud").length;
   const free = spaces.filter((s) => s.status === "vaba").length;
   const company = companies.data?.find((c) => c.id === p.company_id);

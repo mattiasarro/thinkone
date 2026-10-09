@@ -143,7 +143,8 @@ space                        (Pind)                  property_id, name, type, re
                                                      area), parts {ladu, kontor, müügisaal, olmeala,
                                                      ühisala} summing to it, price_per_m2,
                                                      electrical_capacity_a, split_from/split_into
-                                                     (rental units of a split space); parking_spots
+                                                     (rental units of a split space), active=false
+                                                     (a unit merged back — kept, not lettable); parking_spots
                                                      count only on buildings without a register
 parking_spot                 (Parkimiskoht)          asset type under the property (demo v551/v660):
                                                      number, zone, type tavaline|elektriauto|
@@ -241,7 +242,7 @@ Key modeling rules from the spec, enforced in the domain layer:
 - **Quote → N leases.** Accepting a quote covering N spaces creates N lease drafts (one per space), each pre-filled: general terms (locked), main terms generated from property/space/quote data, quote's structured special terms copied into Annex 3.
 - **Money is net.** All prices stored without VAT; VAT presentation derived from `property.vat_taxable` (inherited onto the lease at creation) and the standard Estonian rate (config value with effective date, not hard-coded).
 - **Rentable area is the only area** (demo v656): net area and coefficient were dropped from the model; the optional parts breakdown must sum to the rentable area. Electrical capacity is amperes (the general terms cap it at 63 A).
-- **A space that any document referenced cannot be deleted** (demo v794) — live or archived leases, imports and (later) quotes keep it; its parking spots stay in the register without a space. Splitting a space into rental units and merging them back are explicit, event-logged actions, never edits.
+- **A space that any document referenced cannot be deleted** (demo v794) — live or archived leases, imports and (later) quotes keep it; its parking spots stay in the register without a space. Splitting a space into rental units and merging them back are explicit, event-logged actions, never edits. Merge is allowed once no unit is in a live lease (ended ones are history) and makes the units **inactive** („mitteaktiivne”: `active: false`) instead of deleting them — their documents and log stay, they are not lettable and not counted; the next split of the same parent reuses an inactive unit whose name matches, so it keeps its id and history.
 
 ### Clause structure, numbering & references
 

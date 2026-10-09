@@ -87,6 +87,7 @@ class SpaceAttributes(BaseModel):
     floor: str | None = None
     split_from: str | None = None  # parent space id when this is a rental unit of a split space
     split_into: list[str] | None = None  # unit ids when this space has been split („Jagatud”)
+    active: bool | None = None  # False = „mitteaktiivne”: a unit merged back into its parent; data and history kept, not lettable
     # tolerated legacy fields (spec v2 columns dropped by the demo in v656); not shown in UI
     net_area_m2: float | None = Field(default=None, ge=0)
     coefficient: float | None = Field(default=None, ge=0)

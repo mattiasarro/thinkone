@@ -111,6 +111,7 @@ class AssetDetailOut(AssetOut):
     parking_spots: list[ParkingSpotOut] = []  # a space's default spots / a property's whole register
     split_parent: AssetRefOut | None = None
     split_units: list[AssetRefOut] = []
+    former_units: list[AssetRefOut] = []  # inactive units of an earlier split — the next split reuses them by name
     delete_block_reason: str | None = None
     split_block_reason: str | None = None
 
@@ -319,6 +320,7 @@ async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) ->
     spots: list[ParkingSpotOut] = []
     split_parent = None
     split_units: list[AssetRefOut] = []
+    former: list[AssetRefOut] = []
     delete_reason = await assets_domain.delete_block_reason(session, a)
     split_reason = None
     if a.type_code == "space" and a.parent_id:
@@ -336,13 +338,16 @@ async def get_asset(asset_id: uuid.UUID, session: AsyncSession = Depends(db)) ->
             split_units = [AssetRefOut(id=u.id, name=u.name, type_code=u.type_code, status=st.get(u.id) if isinstance(st.get(u.id), str) else None,
                                        attributes=u.attributes or {}) for u in units]
         split_reason = await spaces_domain.split_block_reason(session, a)
+        if not attrs.get("split_into"):
+            former = [AssetRefOut(id=u.id, name=u.name, type_code=u.type_code, status=registry.INACTIVE_STATUS, attributes=u.attributes or {})
+                      for u in await spaces_domain.former_units(session, a)]
     elif a.type_code == "property":
         spots = [ParkingSpotOut(**r) for r in await parking_domain.spot_rows(session, a.id)]
     return AssetDetailOut(**base.model_dump(), children=[AssetChildOut(**c.model_dump(), attachments=child_atts[c.id]) for c in children],
                           attachments=[AttachmentSummaryOut.model_validate(x) for x in atts],
                           allocations=await _allocs_out(session, allocs),
                           parent=AssetRefOut(id=parent.id, name=parent.name, type_code=parent.type_code, attributes=parent.attributes or {}) if parent else None,
-                          parking_spots=spots, split_parent=split_parent, split_units=split_units,
+                          parking_spots=spots, split_parent=split_parent, split_units=split_units, former_units=former,
                           delete_block_reason=delete_reason, split_block_reason=split_reason)
 
 

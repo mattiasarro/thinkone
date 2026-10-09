@@ -27,12 +27,12 @@ export interface Party { id: UUID; kind: PartyKind; name: string; registry_code:
 export type PartyInput = Omit<Party, "id">;
 
 export type AssetType = "property" | "space" | "parking_spot" | "department" | "position";
-export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata" | "jagatud";
+export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata" | "jagatud" | "mitteaktiivne";
 export type SpacePartKey = "ladu" | "kontor" | "myygisaal" | "olmeala" | "yhisala";
 export const SPACE_PART_KEYS: SpacePartKey[] = ["ladu", "kontor", "myygisaal", "olmeala", "yhisala"];
 export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; ehr_source?: string | null; ehr_payload?: Record<string, unknown> | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null; template_id?: string | null; has_parking?: boolean | null }
 /** A space has one area (rentable) plus an optional breakdown into parts that sums to it; electrical capacity is in amperes. */
-export interface SpaceAttributes { type?: string | null; rentable_area_m2: number; parts?: Partial<Record<SpacePartKey, number>> | null; price_per_m2?: number | null; electrical_capacity_a?: number | null; parking_spots?: number | null; floor?: string | null; split_from?: string | null; split_into?: string[] | null }
+export interface SpaceAttributes { type?: string | null; rentable_area_m2: number; parts?: Partial<Record<SpacePartKey, number>> | null; price_per_m2?: number | null; electrical_capacity_a?: number | null; parking_spots?: number | null; floor?: string | null; split_from?: string | null; split_into?: string[] | null; active?: boolean | null }
 export interface Asset { id: UUID; type_code: AssetType; name: string; company_id: UUID | null; parent_id: UUID | null; attributes: Record<string, unknown>; capacity: number | null; status: AssetStatus | null; children_count?: number; occupancy?: { units: number; occupied: number; free: number } | null }
 export interface AssetInput { type_code: AssetType; name: string; company_id?: UUID | null; parent_id?: UUID | null; attributes: Record<string, unknown>; capacity?: number | null }
 export interface Allocation { id: UUID; kind: "exclusive" | "coverage" | string; contract?: { id: UUID; number: string | null; title: string; status?: string; party_name?: string | null } | null; asset?: { id: UUID; name: string; type_code: AssetType; parent_id?: UUID | null }; period_start?: ISODate | null; period_end?: ISODate | null; valid_from?: ISODate | null; valid_to?: ISODate | null }
@@ -41,7 +41,7 @@ export type SpotStatus = "vaba" | "üüritud" | "reserv" | "kasutusest väljas";
 export type SpotType = "tavaline" | "elektriauto" | "ligipääsetav";
 export interface ParkingSpot { id: UUID; number: string; zone: string | null; type: SpotType; reserve: boolean; out_of_service: boolean; status: SpotStatus | null; space_id: UUID | null; space_name: string | null; contract: { id: UUID; number: string; title: string; status: string } | null }
 export interface AssetRef { id: UUID; name: string; type_code: AssetType; status?: AssetStatus | null; attributes?: Record<string, unknown> }
-export interface AssetDetail extends Asset { children: AssetChild[]; attachments: Attachment[]; allocations: Allocation[]; parent?: AssetRef | null; parking_spots: ParkingSpot[]; split_parent?: AssetRef | null; split_units: AssetRef[]; delete_block_reason?: string | null; split_block_reason?: string | null }
+export interface AssetDetail extends Asset { children: AssetChild[]; attachments: Attachment[]; allocations: Allocation[]; parent?: AssetRef | null; parking_spots: ParkingSpot[]; split_parent?: AssetRef | null; split_units: AssetRef[]; former_units?: AssetRef[]; delete_block_reason?: string | null; split_block_reason?: string | null }
 
 export interface SpaceImportRow { row: number; ok: boolean; errors: string[]; data: Record<string, unknown> }
 export interface SpaceImportResult { rows: SpaceImportRow[]; created: number; updated: number; parking_created?: number }

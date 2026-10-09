@@ -165,7 +165,7 @@ async def delete_block_reason(session: AsyncSession, a: Asset) -> str | None:
     if a.type_code == "space":
         if attrs.get("split_into"):
             return "Pind on jagatud üksusteks — ühenda üksused enne tagasi."
-        if attrs.get("split_from"):
+        if attrs.get("split_from") and not registry.is_inactive(a):
             return "See on jagatud pinna üksus — ühenda üksused ema-pinna lehel."
     kids = await children_of(session, a.id)
     ids = [a.id] + [k.id for k in kids]
@@ -177,7 +177,7 @@ async def delete_block_reason(session: AsyncSession, a: Asset) -> str | None:
         number, status = rows if rows else ("?", "")
         if a.type_code == "parking_spot":
             return f"Koht on lepingus {number} — dokumendi ajalugu viitab sellele."
-        archived = status in ("ended", "cancelled", "early_terminated", "archived")
+        archived = status in registry.ENDED_STATUSES
         what = "Pind" if a.type_code == "space" else "Vara"
         return f"{what} on lepingus {number}{' (arhiivis)' if archived else ''} — dokumendi ajalugu viitab sellele."
     return None
@@ -240,6 +240,8 @@ async def allocate(session: AsyncSession, actor: Actor, *, contract_id: uuid.UUI
         raise DomainError("Ainu- ja kvoodiseos saab olla ainult üksusel (pind, ametikoht); konteinerile sobib coverage")
     if registry.is_split_parent(a):
         raise DomainError("Jagatud pinda ei saa siduda — seo üksus")
+    if registry.is_inactive(a):
+        raise DomainError("Mitteaktiivset pinda ei saa siduda — see on ühendatud tagasi ema-pinnaks")
     if period_start is None and period_end is None:
         period_start, period_end = c.start_date, c.end_date
     if kind == "exclusive" and await registry.has_overlapping_exclusive(session, a.id, period_start, period_end):
@@ -524,6 +526,8 @@ async def _check_space_of(session: AsyncSession, property_id: uuid.UUID, space_i
     sp = await session.get(Asset, sid)
     if not sp or sp.deleted_at or sp.type_code != "space" or sp.parent_id != property_id:
         raise DomainError("Pind peab olema sama hoone pind")
+    if registry.is_inactive(sp):
+        raise DomainError(f"„{sp.name}” on mitteaktiivne — parkimiskohta ei saa sellele anda")
     return sp
 
 

@@ -15,6 +15,7 @@ export function statusTone(status: string | null | undefined): Tone {
     case "imported": case "manual": case "jagatud": return "info";
     case "reserv": return "warning";
     case "kasutusest väljas": return "error";
+    case "mitteaktiivne": return "neutral";
     case "vaba": return "primary";
     default: return "neutral";
   }

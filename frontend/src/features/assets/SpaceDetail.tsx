@@ -32,6 +32,7 @@ export function SpaceDetail({ id }: { id: string }) {
   const router = useRouter();
   const [edit, setEdit] = useState(false);
   const [split, setSplit] = useState(false);
+  const [mergeDlg, setMergeDlg] = useState(false);
   const [del, setDel] = useState(false);
   const [spotsDlg, setSpotsDlg] = useState(false);
   const p = q.data;
@@ -49,7 +50,9 @@ export function SpaceDetail({ id }: { id: string }) {
   const onDelete = async () => {
     try { await remove.mutateAsync(id); toast.success(t("assets.space.deleted", { name: p.name })); router.replace(property ? `/app/portfell/objekt/${property.id}` : "/app/portfell?tab=esemed"); } catch (e) { toast.error(errorMessage(e)); }
   };
-  const onMerge = async () => { try { await merge.mutateAsync(); toast.success(t("assets.space.merged", { name: p.name })); } catch (e) { toast.error(errorMessage(e)); } };
+  const onMerge = async () => { try { await merge.mutateAsync(); setMergeDlg(false); toast.success(t("assets.space.merged", { name: p.name })); } catch (e) { toast.error(errorMessage(e)); } };
+  const inactive = p.status === "mitteaktiivne";
+  const former = p.former_units ?? [];
   return (
     <div className="grid gap-5">
       <LinkButton href={property ? `/app/portfell/objekt/${property.id}` : "/app/portfell?tab=esemed"} variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{property?.name ?? t("assets.space.back")}</LinkButton>
@@ -65,7 +68,8 @@ export function SpaceDetail({ id }: { id: string }) {
           <Card>
             <CardHeader title={t("assets.space.now")} />
             <CardBody>
-              {p.status === "jagatud" ? (
+              {inactive ? <p className="text-sm text-muted">{t("assets.space.inactiveNote", { name: p.split_parent?.name ?? "—" })}</p>
+              : p.status === "jagatud" ? (
                 <ul className="grid gap-2 text-sm">{p.split_units.map((u) => <li key={u.id} className="flex items-center gap-2"><Link href={`/app/portfell/pind/${u.id}`} className="text-primary font-semibold">{u.name}</Link><span className="text-muted">{fmtNum((u.attributes as Partial<SpaceAttributes> | undefined)?.rentable_area_m2)} m²</span>{u.status && <Pill tone={statusTone(u.status)} className="ml-auto">{tEnum("assets.status", u.status)}</Pill>}</li>)}</ul>
               ) : current.length === 0 ? <p className="text-sm text-muted">{t("assets.space.noContract")}</p> : (
                 <ul className="grid gap-3">{current.map((al) => <ContractRow key={al.id} al={al} />)}</ul>
@@ -92,7 +96,7 @@ export function SpaceDetail({ id }: { id: string }) {
             <CardBody>
               <ul className="grid gap-2">
                 {current.map((al) => al.contract && <li key={al.id}><LinkButton href={`/app/portfell/leping/${al.contract.id}`} className="w-full justify-between">{t("assets.space.openContract")} · {al.contract.number}<IconArrowRight width={16} height={16} /></LinkButton></li>)}
-                {p.status === "jagatud" ? <li><Button className="w-full" onClick={onMerge} busy={merge.isPending}>{t("assets.space.merge")}</Button></li>
+                {inactive ? null : p.status === "jagatud" ? <li><Button className="w-full" onClick={() => setMergeDlg(true)}>{t("assets.space.merge")}</Button></li>
                   : <li><Button className="w-full" onClick={() => setSplit(true)} disabled={!!p.split_block_reason} title={p.split_block_reason ?? undefined}>{t("assets.space.split")}</Button></li>}
                 <li><Button variant="text" className="btn-destructive w-full" onClick={() => setDel(true)} disabled={!!p.delete_block_reason} title={p.delete_block_reason ?? undefined}><IconTrash width={16} height={16} />{t("assets.space.delete")}</Button></li>
                 {p.delete_block_reason && <li className="text-xs text-muted">{p.delete_block_reason}</li>}
@@ -111,6 +115,15 @@ export function SpaceDetail({ id }: { id: string }) {
               </dl>
             </CardBody>
           </Card>
+          {former.length > 0 && (
+            <Card>
+              <CardHeader title={t("assets.space.formerUnits")} />
+              <CardBody>
+                <ul className="grid gap-2 text-sm">{former.map((u) => <li key={u.id} className="flex items-center gap-2"><Link href={`/app/portfell/pind/${u.id}`} className="text-primary font-semibold">{u.name}</Link><span className="text-muted">{fmtNum((u.attributes as Partial<SpaceAttributes> | undefined)?.rentable_area_m2)} m²</span><Pill tone={statusTone(u.status)} className="ml-auto">{tEnum("assets.status", u.status)}</Pill></li>)}</ul>
+                <p className="text-xs text-muted mt-2">{t("assets.space.formerUnitsSub")}</p>
+              </CardBody>
+            </Card>
+          )}
           <Card>
             <CardHeader title={t("assets.space.parking")} actions={property && (property.attributes as { has_parking?: boolean | null })?.has_parking !== false && <Button size="sm" variant="text" onClick={() => setSpotsDlg(true)}>{t("assets.parkingReg.editSpaceSpots")}</Button>} />
             <CardBody>
@@ -129,6 +142,8 @@ export function SpaceDetail({ id }: { id: string }) {
       </Modal>
       {property && <SplitDialog open={split} onClose={() => setSplit(false)} space={p} />}
       {property && spotsDlg && <PropertySpotsDialog propertyId={property.id} spaceId={p.id} spaceName={p.name} onClose={() => setSpotsDlg(false)} />}
+      <ConfirmDialog open={mergeDlg} onClose={() => setMergeDlg(false)} onConfirm={onMerge} busy={merge.isPending} title={t("assets.space.merge")}
+        body={t("assets.space.mergeConfirm", { name: p.name, units: p.split_units.map((u) => u.name).join(" + ") })} />
       <ConfirmDialog open={del} onClose={() => setDel(false)} onConfirm={onDelete} busy={remove.isPending} title={t("assets.space.delete")}
         body={<span>{t("assets.space.deleteConfirm", { name: p.name, area: fmtNum(a.rentable_area_m2), property: property?.name ?? "" })}{spots.length > 0 && <span className="block mt-1 text-muted">{t("assets.space.deleteParkingNote", { numbers: spots.map((s) => s.number).join(", ") })}</span>}</span>} />
     </div>
@@ -176,10 +191,14 @@ function SplitDialog({ open, onClose, space }: { open: boolean; onClose: () => v
   const toast = useToast();
   const parentParts = a.parts ?? {};
   const keys = SPACE_PART_KEYS.filter((k) => parentParts[k]);
-  const [units, setUnits] = useState<UnitDraft[]>(() => [
-    { ...emptyUnit(), name: `${space.name}A`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
-    { ...emptyUnit(), name: `${space.name}B`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
-  ]);
+  const mySpots = space.parking_spots;
+  const former = space.former_units ?? [];
+  const [units, setUnits] = useState<UnitDraft[]>(() => former.length >= 2
+    ? former.map((u) => { const ua = (u.attributes ?? {}) as Partial<SpaceAttributes>; const parts = emptyUnit().parts; for (const k of keys) if (ua.parts?.[k]) parts[k] = String(ua.parts[k]); return { name: u.name, price: ua.price_per_m2 != null ? String(ua.price_per_m2) : "", parts, parking: [] }; })
+    : [
+      { ...emptyUnit(), name: `${space.name}A`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
+      { ...emptyUnit(), name: `${space.name}B`, price: a.price_per_m2 != null ? String(a.price_per_m2) : "" },
+    ]);
   const setUnit = (i: number, patch: Partial<UnitDraft>) => setUnits((u) => u.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const unitArea = (u: UnitDraft) => keys.reduce((s, k) => s + n(u.parts[k]), 0);
   const total = units.reduce((s, u) => s + unitArea(u), 0);
@@ -188,9 +207,8 @@ function SplitDialog({ open, onClose, space }: { open: boolean; onClose: () => v
     const body: SplitUnitInput[] = units.map((u) => ({ name: u.name.trim(), price_per_m2: n(u.price), parking_numbers: u.parking, parts: Object.fromEntries(keys.filter((k) => n(u.parts[k]) > 0).map((k) => [k, n(u.parts[k])])) }));
     try { const res = await splitMut.mutateAsync(body); toast.success(t("assets.space.splitDone", { name: space.name, units: res.map((x) => x.name).join(" + ") })); onClose(); } catch (e) { toast.error(errorMessage(e)); }
   };
-  const mySpots = space.parking_spots;
   return (
-    <Modal open={open} onClose={onClose} title={`${t("assets.space.splitTitle")} · ${space.name}`} sub={t("assets.space.splitSub")} wide
+    <Modal open={open} onClose={onClose} title={`${t("assets.space.splitTitle")} · ${space.name}`} sub={former.length >= 2 ? `${t("assets.space.splitSub")} ${t("assets.space.formerUnitsHint")}` : t("assets.space.splitSub")} wide
       footer={<><span className={cx("text-sm mr-auto font-mono", Math.abs(total - (a.rentable_area_m2 ?? 0)) > 0.05 ? "text-error" : "text-muted")}>{t("assets.space.unitsTotal", { sum: fmtNum(total), area: fmtNum(a.rentable_area_m2) })}</span><Button onClick={onClose}>{t("common.cancel")}</Button><Button variant="primary" busy={splitMut.isPending} onClick={save}>{t("assets.space.split")}</Button></>}>
       <div className="grid gap-4">
         {units.map((u, i) => (

@@ -26,6 +26,7 @@ from app.agent.prompts import plan_match
 from app.agent.providers.base import chat_model
 from app.domain import assets as assets_domain
 from app.domain import attachments as attachments_domain
+from app.domain import registry
 from app.domain.errors import DomainError
 from app.domain.events import Actor, emit
 from app.models.registry import Asset
@@ -156,7 +157,7 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
     prop = await assets_domain.get_asset(session, property_id)
     if prop.type_code != "property":
         raise DomainError("Plaane saab siduda ainult hoone pindadega")
-    spaces = [s for s in await assets_domain.children_of(session, prop.id, "space") if not (s.attributes or {}).get("split_into")]
+    spaces = [s for s in await assets_domain.children_of(session, prop.id, "space") if registry.is_lettable(s)]
     by_id = {str(s.id): s for s in spaces}
     expanded = expand_files(files)
     # one model call for every file the operator has not placed yet

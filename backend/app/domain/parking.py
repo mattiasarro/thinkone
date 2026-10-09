@@ -133,6 +133,10 @@ async def import_spots(session: AsyncSession, actor: Actor, property_id: uuid.UU
                 item.ok = False
                 item.errors.append(f"pinda „{item.space_name}” selles hoones pole")
                 continue
+            if registry.is_inactive(sp):
+                item.ok = False
+                item.errors.append(f"„{sp.name}” on mitteaktiivne — parkimiskohta ei saa sellele anda")
+                continue
             item.space_id = sp.id
         fresh = [n for n in item.numbers if n not in existing and n not in seen]
         result.skipped += len(item.numbers) - len(fresh)
@@ -223,6 +227,8 @@ async def assign_numbers(session: AsyncSession, actor: Actor, prop: Asset, numbe
     """Make exactly these numbers the space's default spots (removing them from other spaces of the building).
 
     Returns the number of register rows created when ``create_missing`` (CSV import = first entry of the register)."""
+    if space is not None and registry.is_inactive(space):
+        raise DomainError(f"„{space.name}” on mitteaktiivne — parkimiskohta ei saa sellele anda")
     all_spots = await list_spots(session, prop.id)
     before = _numbers_by_space(all_spots)
     spots = {(s.attributes or {}).get("number"): s for s in all_spots}

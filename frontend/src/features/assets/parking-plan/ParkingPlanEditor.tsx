@@ -42,7 +42,7 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
   const discard = useDiscardParkingDraft(property.id);
   const toast = useToast();
   const view = useRef<ViewHandle>(null);
-  const spaces = useMemo(() => property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud"), [property.children]);
+  const spaces = useMemo(() => property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne"), [property.children]);
   const spaceIndex = useMemo(() => new Map(spaces.map((s, i) => [s.id, i])), [spaces]);
 
   const [state, setState] = useState<EditorState>(() => initState(plan));

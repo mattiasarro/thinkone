@@ -22,6 +22,9 @@ DEFAULT_WORDS = {"free": "vaba", "partial": "osaliselt", "occupied": "hõivatud"
 # parking register statuses (demo v663): out of service › rented › reserve › free; the EV type is shown separately
 SPOT_STATUS = {"out": "kasutusest väljas", "occupied": "üüritud", "reserve": "reserv", "free": "vaba"}
 SPLIT_STATUS = "jagatud"
+INACTIVE_STATUS = "mitteaktiivne"
+# contract statuses after which an allocation is history only (the asset is free to be merged, deleted-guarded, …)
+ENDED_STATUSES = ("ended", "cancelled", "early_terminated", "archived")
 # unit types that do not count towards a container's occupancy (the register's own units, not lettable space)
 AUXILIARY_UNITS = {"parking_spot"}
 
@@ -39,6 +42,15 @@ def status_word(vertical: str, level: str) -> str:
 
 def is_split_parent(asset: Asset) -> bool:
     return asset.type_code == "space" and bool((asset.attributes or {}).get("split_into"))
+
+
+def is_inactive(asset: Asset) -> bool:
+    """A space merged back into its parent: kept with its history and log, but not lettable and not counted."""
+    return asset.type_code == "space" and (asset.attributes or {}).get("active") is False
+
+
+def is_lettable(asset: Asset) -> bool:
+    return not is_split_parent(asset) and not is_inactive(asset)
 
 
 def active_allocations_stmt(asset_ids: list[uuid.UUID], today: date):
@@ -76,6 +88,8 @@ def unit_status(asset: Asset, level: str) -> str:
         if attrs.get("reserve"):
             return SPOT_STATUS["reserve"]
         return SPOT_STATUS["free"]
+    if is_inactive(asset):
+        return INACTIVE_STATUS
     if is_split_parent(asset):
         return SPLIT_STATUS
     return status_word(asset.asset_type.vertical, level)
@@ -91,7 +105,7 @@ async def asset_statuses(session: AsyncSession, assets: list[Asset], today: date
     if containers:
         stmt = select(Asset).where(Asset.parent_id.in_([c.id for c in containers]), Asset.deleted_at.is_(None))
         for child in (await session.execute(stmt)).scalars():
-            if child.asset_type.kind == "unit" and child.type_code not in AUXILIARY_UNITS and not is_split_parent(child):
+            if child.asset_type.kind == "unit" and child.type_code not in AUXILIARY_UNITS and is_lettable(child):
                 children[child.parent_id].append(child)
     all_units = {u.id: u for u in units}
     for kids in children.values():
@@ -123,7 +137,7 @@ async def has_overlapping_exclusive(session: AsyncSession, asset_id: uuid.UUID, 
         .join(Contract, Contract.id == Allocation.contract_id)
         .where(
             Allocation.asset_id == asset_id, Allocation.kind == "exclusive", Allocation.deleted_at.is_(None),
-            Contract.deleted_at.is_(None), Contract.status.not_in(["ended", "cancelled", "early_terminated", "archived"]),
+            Contract.deleted_at.is_(None), Contract.status.not_in(list(ENDED_STATUSES)),
         )
     )
     if period_start is not None:
@@ -142,4 +156,16 @@ async def any_allocations(session: AsyncSession, asset_ids: list[uuid.UUID]) -> 
     from sqlalchemy import func
 
     stmt = select(Allocation.asset_id, func.count()).where(Allocation.asset_id.in_(asset_ids), Allocation.deleted_at.is_(None)).group_by(Allocation.asset_id)
+    return {aid: n for aid, n in (await session.execute(stmt)).all()}
+
+
+async def live_allocations(session: AsyncSession, asset_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Count of allocations per asset whose contract has not ended (draft, signed, active, …) — the asset is still committed."""
+    if not asset_ids:
+        return {}
+    from sqlalchemy import func
+
+    stmt = (select(Allocation.asset_id, func.count()).join(Contract, Contract.id == Allocation.contract_id)
+            .where(Allocation.asset_id.in_(asset_ids), Allocation.deleted_at.is_(None), Contract.deleted_at.is_(None),
+                   Contract.status.not_in(list(ENDED_STATUSES))).group_by(Allocation.asset_id))
     return {aid: n for aid, n in (await session.execute(stmt)).all()}

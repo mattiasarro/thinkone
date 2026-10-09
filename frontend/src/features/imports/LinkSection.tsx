@@ -82,7 +82,7 @@ function spaceKey(name: string): string | null {
 /** „Kas see on Pind 13?” (demo 11b): one concrete, free space of the building with the same rentable area (±0.15 m²). */
 function suggestSpace(spaces: Asset[], area: number | null): Asset | null {
   if (area == null) return null;
-  const same = spaces.filter((s) => Math.abs(Number((s.attributes as Partial<SpaceAttributes>).rentable_area_m2) - area) <= 0.15 && s.status !== "jagatud");
+  const same = spaces.filter((s) => Math.abs(Number((s.attributes as Partial<SpaceAttributes>).rentable_area_m2) - area) <= 0.15 && s.status !== "jagatud" && s.status !== "mitteaktiivne");
   const free = same.filter((s) => s.status === "vaba");
   return same.length === 1 ? same[0] : free.length === 1 ? free[0] : null;
 }
@@ -122,7 +122,7 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
       const hint = `${draft.asset_hint.name ?? ""} ${draft.asset_hint.address ?? ""}`.toLowerCase();
       // a space named like the hint („P_29” → Pind 29) picks both the building and the space
       const key = draft.asset_hint.name ? spaceKey(draft.asset_hint.name) : null;
-      const byName = key ? (allSpaces.data ?? []).filter((s) => s.parent_id && s.status !== "jagatud" && spaceKey(s.name) === key) : [];
+      const byName = key ? (allSpaces.data ?? []).filter((s) => s.parent_id && s.status !== "jagatud" && s.status !== "mitteaktiivne" && spaceKey(s.name) === key) : [];
       if (byName.length === 1 && byName[0].parent_id) { onChange({ ...state, asset_id: byName[0].parent_id, space_id: byName[0].id, allocation_kind: "exclusive", parking_numbers: null }); return; }
       if (allSpaces.isLoading) return;
       const m = properties.data.find((p) => (p.name && hint.includes(p.name.toLowerCase())) || ((p.attributes.address as string | undefined)?.toLowerCase() && hint.includes((p.attributes.address as string).toLowerCase())))
@@ -157,7 +157,7 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
           {(properties.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>
         <Select label={t("imports.space")} value={state.space_id} placeholder={t("common.selectPlaceholder")} disabled={!state.asset_id} onChange={(e) => onChange({ ...state, space_id: e.target.value, parking_numbers: null })}>
-          {(spaces.data ?? []).filter((s) => s.status !== "jagatud").map((s) => <option key={s.id} value={s.id}>{s.name} · {fmtNum((s.attributes as Partial<SpaceAttributes>).rentable_area_m2)} m²{s.status && s.status !== "vaba" ? ` · ${tEnum("assets.status", s.status)}` : ""}</option>)}
+          {(spaces.data ?? []).filter((s) => s.status !== "jagatud" && s.status !== "mitteaktiivne").map((s) => <option key={s.id} value={s.id}>{s.name} · {fmtNum((s.attributes as Partial<SpaceAttributes>).rentable_area_m2)} m²{s.status && s.status !== "vaba" ? ` · ${tEnum("assets.status", s.status)}` : ""}</option>)}
         </Select>
       </div>
       {suggestion && (

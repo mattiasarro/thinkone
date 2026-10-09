@@ -110,7 +110,7 @@ export function ParkingRegister({ property, compact }: { property: AssetDetail; 
   const [confirmDel, setConfirmDel] = useState(false);
   const [editSpace, setEditSpace] = useState<{ id: string; name: string } | null>(null);
   const spots = useMemo(() => parking.data ?? [], [parking.data]);
-  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud");
+  const spaces = property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne");
   const hasParking = (property.attributes as { has_parking?: boolean | null }).has_parking;
   const act = async (fn: () => Promise<unknown>, msg?: string) => { try { await fn(); if (msg) toast.success(msg); setSel(new Set()); } catch (e) { toast.error(errorMessage(e)); } };
   const patch = (p: Record<string, unknown>) => act(() => update.mutateAsync({ ids: [...sel], patch: p }), t("assets.parkingReg.updated"));

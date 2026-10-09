@@ -213,13 +213,47 @@ async def test_split_and_merge_space(client: AsyncClient, admin: dict):
     assert r.status_code == 409 and "Pind 5A" in r.json()["detail"]
     r = await client.request("DELETE", f"/api/v1/allocations/{r.status_code and (await client.get(f'/api/v1/assets/{units[0]['id']}/allocations')).json()[0]['id']}")
     assert r.status_code == 204
+    # an ended contract on a unit is history and does not block the merge; the unit is kept (inactive), not deleted
+    ended = await make_contract(admin["account"]["id"], company_id=company["id"], status="ended", start_date=date(2020, 1, 1), end_date=date(2021, 1, 1))
+    r = await client.post("/api/v1/allocations", json={"contract_id": str(ended), "asset_id": units[1]["id"], "kind": "exclusive"})
+    assert r.status_code == 201
     r = await client.post(f"/api/v1/assets/{sp['id']}/merge")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "vaba" and "split_into" not in r.json()["attributes"]
-    names = [a["name"] for a in (await client.get("/api/v1/assets", params={"parent_id": prop["id"], "type_code": "space"})).json()]
-    assert names == ["Pind 5", "X"]
+    rows = {a["name"]: a for a in (await client.get("/api/v1/assets", params={"parent_id": prop["id"], "type_code": "space"})).json()}
+    assert set(rows) == {"Pind 5", "Pind 5A", "Pind 5B", "X"}
+    assert rows["Pind 5A"]["status"] == "mitteaktiivne" and rows["Pind 5B"]["attributes"]["active"] is False
     by = {s["number"]: s["space_name"] for s in (await client.get(f"/api/v1/assets/{prop['id']}/parking")).json()}
     assert by == {"1": "Pind 5", "2": "Pind 5", "3": "Pind 5"}
+    p = (await client.get(f"/api/v1/assets/{prop['id']}")).json()
+    assert p["occupancy"]["units"] == 2  # Pind 5 + X; inactive units do not count
+    summary = (await client.get("/api/v1/portfolio/summary")).json()
+    assert summary["assets"]["spaces"] == 2
+    # inactive: not lettable, no parking, not splittable; its history and parent link stay
+    r = await client.post("/api/v1/allocations", json={"contract_id": str(cid), "asset_id": units[0]["id"], "kind": "exclusive"})
+    assert r.status_code == 400 and "itteaktiivse" in r.json()["detail"]
+    r = await client.post(f"/api/v1/assets/{prop['id']}/parking/assign", json={"space_id": units[0]["id"], "numbers": ["1"]})
+    assert r.status_code == 400 and "mitteaktiivne" in r.json()["detail"]
+    inactive = (await client.get(f"/api/v1/assets/{units[1]['id']}")).json()
+    assert inactive["status"] == "mitteaktiivne" and inactive["split_parent"]["name"] == "Pind 5" and inactive["split_block_reason"]
+    assert len(inactive["allocations"]) == 1 and "arhiivis" in inactive["delete_block_reason"]
+    r = await client.request("DELETE", f"/api/v1/assets/{units[0]['id']}")  # never documented → may be deleted
+    assert r.status_code == 204
+    parent = (await client.get(f"/api/v1/assets/{sp['id']}")).json()
+    assert [u["name"] for u in parent["former_units"]] == ["Pind 5B"] and parent["split_block_reason"] is None
+    # split again: the matching former unit is reactivated with the new figures and keeps its id and history
+    again = {"units": [{"name": "Pind 5B", "parts": {"kontor": 40, "olmeala": 10}, "price_per_m2": 10, "parking_numbers": ["3"]},
+                       {"name": "Pind 5C", "parts": {"ladu": 250}, "price_per_m2": 8}]}
+    r = await client.post(f"/api/v1/assets/{sp['id']}/split", json=again)
+    assert r.status_code == 201, r.text
+    reused = {u["name"]: u for u in r.json()}
+    assert reused["Pind 5B"]["id"] == units[1]["id"] and reused["Pind 5B"]["status"] == "vaba"
+    assert reused["Pind 5B"]["attributes"]["rentable_area_m2"] == 50 and reused["Pind 5B"]["attributes"]["price_per_m2"] == 10
+    assert "active" not in reused["Pind 5B"]["attributes"] and reused["Pind 5B"]["attributes"]["split_from"] == sp["id"]
+    assert len((await client.get(f"/api/v1/assets/{units[1]['id']}")).json()["allocations"]) == 1
+    by = {s["number"]: s["space_name"] for s in (await client.get(f"/api/v1/assets/{prop['id']}/parking")).json()}
+    assert by == {"1": None, "2": None, "3": "Pind 5B"}
+    assert (await client.get(f"/api/v1/assets/{prop['id']}")).json()["occupancy"]["units"] == 3
 
 
 async def test_delete_guard_keeps_documented_spaces(client: AsyncClient, admin: dict):

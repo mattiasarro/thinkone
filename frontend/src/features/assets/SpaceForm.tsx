@@ -44,7 +44,7 @@ export function SpaceForm({ propertyId, companyId, space, onDone, onCancel, stan
       electrical_capacity_a: a.electrical_capacity_a ?? undefined, parking_spots: a.parking_spots ?? undefined, floor: a.floor ?? "",
     },
   });
-  const locked = !!space && space.status !== "vaba" && space.status !== "jagatud" && space.status !== null;
+  const locked = !!space && space.status !== "vaba" && space.status !== "jagatud" && space.status !== "mitteaktiivne" && space.status !== null;
 
   const onSubmit = handleSubmit(async (v) => {
     // Area parts (ladu/kontor/…) are not edited here; they come from the spaces import and are kept as-is via `...a`.
