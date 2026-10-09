@@ -18,21 +18,22 @@ When you make a change, commit it, push it and deploy it to dev. Do not stop at 
    - backend: `cd backend && uv run pytest -q`
    - frontend: `cd frontend && npx tsc --noEmit && npx eslint .`
 3. `git push origin dev`
-4. Redeploy the affected services in the dev project. Pushing to GitHub does **not** trigger a deploy:
-   - `backend/**` changed: `railway redeploy --service api --from-source --yes`, then the same for `worker` (same image;
-     the api start command runs migrations, so api goes first)
-   - `frontend/**` changed: `railway redeploy --service frontend --from-source --yes`
-   - docs or `data/` only: push, no redeploy
-5. Wait for each deployment to reach SUCCESS and check it's healthy: `https://api.dev.futureone.ai/api/health`
-   returns ok and `https://dev.futureone.ai/login` loads (Railway fallbacks: `https://api-dev-701f.up.railway.app`,
-   `https://frontend-dev-3256.up.railway.app`). If a deploy fails, read its build/deploy logs and fix it rather
-   than leaving dev broken.
+4. Deploy the affected services in the dev project with `deploy/deploy.sh` (it deploys the pushed HEAD commit and
+   waits for SUCCESS; pushing to GitHub does **not** trigger a deploy, and `railway redeploy --from-source` can build a
+   stale commit):
+   - `backend/**` changed: `deploy/deploy.sh api worker` (same image; the api start command runs migrations, so api
+     goes first)
+   - `frontend/**` changed: `deploy/deploy.sh frontend`
+   - docs, `deploy/` or `data/` only: push, no deploy
+5. Check it's healthy: `https://api.dev.futureone.ai/api/health` returns ok and `https://dev.futureone.ai/login`
+   loads (Railway fallbacks while the custom DNS is pending: `https://api-dev-701f.up.railway.app`,
+   `https://frontend-dev-3256.up.railway.app`). If a deploy fails, read its build/deploy logs
+   (`railway logs -d <deployment id>`) and fix it rather than leaving dev broken.
 
 ## Releasing to production (only when asked)
 
 1. `git checkout main && git merge --ff-only dev && git push origin main`, then `git checkout dev`.
-2. Redeploy in the prod project, explicitly: `railway redeploy --service api --from-source --yes
-   -p cd1607c6-06af-406c-bb80-1c7cf036c692 -e production`, then `worker`, then `frontend` (as affected).
+2. `deploy/deploy.sh --prod api worker frontend` (only the services affected since the last release; api first).
 3. Check `https://api.prod.thinkone.ai/api/health` and `https://prod.thinkone.ai/login`.
 
 Service setup, env vars, project IDs and rollback are in `deploy/RAILWAY.md`.

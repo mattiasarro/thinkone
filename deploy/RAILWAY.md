@@ -10,7 +10,8 @@ Two Railway projects in the **ThinkOne** workspace, each with four services — 
 | `dev` | `5ad19bb3-612e-4088-b188-cc58c94214a9` | `dev` (`133ca1aa-f44a-40a6-9364-862a9fea7338`) | `dev` | `dev.futureone.ai` (fallback `frontend-dev-3256.up.railway.app`) | `api.dev.futureone.ai` (fallback `api-dev-701f.up.railway.app`) | `thinkone-dev-files` |
 
 Day-to-day work happens on `dev` against the dev project (see `AGENTS.md`); the working directory is `railway link`ed
-to it. Target prod explicitly with `-p cd1607c6-06af-406c-bb80-1c7cf036c692 -e production` on CLI commands.
+to it. Deploy with `deploy/deploy.sh [--prod] <service>...` — it deploys the pushed HEAD commit by SHA and waits for
+SUCCESS. Target prod on other CLI commands with `-p cd1607c6-06af-406c-bb80-1c7cf036c692 -e production`.
 
 The dev project was built by repeating the steps below with the repo branch set to `dev` (`railway add --service <name>`
 for each empty service, then connect the GitHub source with branch `dev`). Dev reuses the same Anthropic, RIK
