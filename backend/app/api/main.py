@@ -44,6 +44,9 @@ def create_app() -> FastAPI:
     from app.api.operator import router as operator_router
 
     app.include_router(operator_router, prefix="/api/v1")
+    from app.api.portal import router as portal_router
+
+    app.include_router(portal_router, prefix="/api/v1")
     return app
 
 

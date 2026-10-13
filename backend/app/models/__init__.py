@@ -26,4 +26,12 @@ from app.models.core import (  # noqa: F401
     Template,
     User,
 )
+from app.models.quotes import (  # noqa: F401
+    DocumentVersion,
+    Message,
+    Quote,
+    QuoteSpace,
+    QuoteSpecialTerm,
+    ShareLink,
+)
 from app.models.registry import Allocation, Asset, AssetType  # noqa: F401

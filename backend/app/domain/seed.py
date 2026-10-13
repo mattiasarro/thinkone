@@ -40,6 +40,10 @@ KEY_DATE_KINDS = [
 DEFAULT_ACCOUNT_SETTINGS = {
     "notify_days": {"end": 90, "indexation": 30, "probation": 14, "salary_review": 30, "quote_expiry": 3},
     "locale": "et",
+    # Phase 3 — quote defaults (demo `seVaike`): validity, lease period, deposit months, silence before a reminder,
+    # share-link validity of the contract stage. VAT rates are dated (architecture §2: a config value with an effective date).
+    "quote": {"validity_days": 14, "period_months": 60, "deposit_months": 3, "silence_days": 5, "contract_link_days": 30},
+    "vat_rates": [{"from": "2025-07-01", "rate": 0.24}, {"from": "2024-01-01", "rate": 0.22}, {"from": "1900-01-01", "rate": 0.20}],
 }
 
 

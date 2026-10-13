@@ -164,6 +164,7 @@ class DomainEvent(Base):
     account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("account.id"), index=True)
     actor_type: Mapped[str] = mapped_column(String(10))  # human | system | agent
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    actor_label: Mapped[str | None] = mapped_column(String(200), nullable=True)  # e.g. "link holder (mari@example.com)"
     on_behalf_of: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     entity_type: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

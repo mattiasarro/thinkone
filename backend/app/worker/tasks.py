@@ -128,3 +128,12 @@ async def scan_key_dates(timestamp: int) -> None:
     from app.domain.keydates import scan_and_notify_all
 
     await scan_and_notify_all()
+
+
+@app.periodic(cron="30 5 * * *")
+@app.task(name="app.worker.tasks.expire_quotes", queue="default")
+async def expire_quotes(timestamp: int) -> None:
+    """Quote validity passed → expired (spec: „kehtivusaja möödumisel automaatselt Aegunud”)."""
+    from app.domain.quotes import expire_due_all
+
+    await expire_due_all()

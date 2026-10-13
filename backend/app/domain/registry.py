@@ -23,6 +23,7 @@ DEFAULT_WORDS = {"free": "vaba", "partial": "osaliselt", "occupied": "hõivatud"
 SPOT_STATUS = {"out": "kasutusest väljas", "occupied": "üüritud", "reserve": "reserv", "free": "vaba"}
 SPLIT_STATUS = "jagatud"
 INACTIVE_STATUS = "mitteaktiivne"
+QUOTED_STATUS = "pakkumisel"
 # contract statuses after which an allocation is history only (the asset is free to be merged, deleted-guarded, …)
 ENDED_STATUSES = ("ended", "cancelled", "early_terminated", "archived")
 # unit types that do not count towards a container's occupancy (the register's own units, not lettable space)
@@ -116,8 +117,15 @@ async def asset_statuses(session: AsyncSession, assets: list[Asset], today: date
         for alloc in (await session.execute(active_allocations_stmt(list(all_units), today))).scalars():
             by_asset[alloc.asset_id].append(alloc)
     levels = {uid: unit_level(u, by_asset.get(uid, [])) for uid, u in all_units.items()}
+    # a free space sitting in an open quote reads „pakkumisel” (demo: Vaba → Pakkumisel while a quote is open)
+    quoted: set[uuid.UUID] = set()
+    free_spaces = [uid for uid, u in all_units.items() if u.type_code == "space" and levels[uid] == "free"]
+    if free_spaces:
+        from app.domain.quotes import open_quote_space_ids
+
+        quoted = await open_quote_space_ids(session, free_spaces)
     for u in units:
-        result[u.id] = unit_status(u, levels[u.id])
+        result[u.id] = QUOTED_STATUS if u.id in quoted and unit_status(u, levels[u.id]) == status_word(u.asset_type.vertical, "free") else unit_status(u, levels[u.id])
     for c in containers:
         kids = children.get(c.id, [])
         occupied = sum(1 for k in kids if levels[k.id] != "free")

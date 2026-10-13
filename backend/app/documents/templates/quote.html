@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="head">
+  <div>
+    <div class="brand">{{ company.name if company else '' }}</div>
+    <div class="meta">{{ company.address if company and company.address else '' }}{% if company and company.registry_code %} · reg {{ company.registry_code }}{% endif %}{% if company and company.vat_number %} · KMKR {{ company.vat_number }}{% endif %}</div>
+  </div>
+  {% if logo_data_uri %}<div class="logo"><img src="{{ logo_data_uri }}" alt=""></div>{% endif %}
+</div>
+
+<h1>Pakkumine {{ q.number }}</h1>
+<div class="meta">{{ q.created_at|date_et }} · kehtib kuni <strong>{{ q.valid_until|date_et }}</strong> · rendiperiood {{ q.period_months }} kuud{% if version %} · versioon V{{ version }}{% endif %}</div>
+
+<div class="grid" style="margin-top:12pt">
+  <div class="box accent">
+    <div class="muted" style="font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em">Pakkumise saaja</div>
+    <div><strong>{{ party.name }}</strong>{% if party.registry_code %} <span class="muted">reg {{ party.registry_code }}</span>{% endif %}</div>
+    {% if q.contact.name %}<div>{{ q.contact.name }}{% if q.contact.email %} · {{ q.contact.email }}{% endif %}{% if q.contact.phone %} · {{ q.contact.phone }}{% endif %}</div>{% endif %}
+    {% if party.address %}<div class="muted">{{ party.address }}</div>{% endif %}
+  </div>
+  <div class="box">
+    <div class="muted" style="font-size:8.5pt;text-transform:uppercase;letter-spacing:.04em">Objekt</div>
+    <div><strong>{{ property.name }}</strong></div>
+    {% if property.attributes.address %}<div class="muted">{{ property.attributes.address }}</div>{% endif %}
+    <div class="muted">{{ spaces|length }} pind{% if spaces|length != 1 %}a{% endif %} · {{ totals.area_m2|m2 }}</div>
+  </div>
+</div>
+
+{% if q.commercial.text %}
+<h2>Pakkumine</h2>
+<pre class="text">{{ q.commercial.text }}</pre>
+{% endif %}
+
+<h2>Üüripinnad ja hind</h2>
+<table>
+  <thead><tr><th>Pind</th><th>Tüüp</th><th class="num">Üüripind</th><th class="num">€/m² kuus</th><th class="num">Üür kuus (neto)</th></tr></thead>
+  <tbody>
+  {% for s in spaces %}
+    <tr>
+      <td><strong>{{ s.name }}</strong>{% if s.parts %}<div class="muted" style="font-size:9pt">{{ s.parts }}</div>{% endif %}</td>
+      <td>{{ s.type or '—' }}</td>
+      <td class="num">{{ s.area_m2|m2 }}</td>
+      <td class="num">{{ s.line.price_per_m2|num }}{% if s.schedule %}<div class="muted" style="font-size:9pt">keskmine {{ s.line.avg_price_per_m2|num }}</div>{% endif %}</td>
+      <td class="num">{{ s.line.monthly_net|eur }}</td>
+    </tr>
+    {% if s.schedule %}
+    <tr class="sub"><td colspan="5">Astmeline üür: {% for st in s.schedule %}{% if st.until_month %}{{ loop.index == 1 and '1' or (s.schedule[loop.index0-1].until_month + 1) }}.–{{ st.until_month }}. kuu {{ st.price|num }} €/m²{% else %}alates {{ (s.schedule[loop.index0-1].until_month + 1) if loop.index0 > 0 else 1 }}. kuust {{ st.price|num }} €/m²{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</td></tr>
+    {% endif %}
+    {% if s.parking.spots or s.parking.count or s.electrical_a %}
+    <tr class="sub"><td colspan="5">
+      {% if s.parking.spots %}Parkimiskohad: {{ s.parking.spots|map(attribute='number')|join(', ') }}{% elif s.parking.count %}Parkimiskohti: {{ s.parking.count }}{% endif %}
+      {% if s.electrical_a %}{% if s.parking.spots or s.parking.count %} · {% endif %}Elektrivõimsus: {{ s.electrical_a|amps }}{% endif %}
+    </td></tr>
+    {% endif %}
+  {% endfor %}
+    <tr class="total"><td colspan="2">Kokku</td><td class="num">{{ totals.area_m2|m2 }}</td><td class="num">{{ totals.avg_price_per_m2|num }}</td><td class="num">{{ totals.monthly_net|eur }}</td></tr>
+    {% if totals.vat_taxable %}
+    <tr class="sub"><td colspan="4">Käibemaks {{ (totals.vat_rate * 100)|num(0) }} %</td><td class="num">{{ totals.vat|eur }}</td></tr>
+    <tr class="total"><td colspan="4">Üür kuus koos käibemaksuga</td><td class="num">{{ totals.monthly_gross|eur }}</td></tr>
+    {% else %}
+    <tr class="sub"><td colspan="5">Üür ei ole käibemaksuga maksustatav.</td></tr>
+    {% endif %}
+    {% if totals.stepped %}<tr class="sub"><td colspan="5">Astmelise üüri puhul on näidatud esimese perioodi hind; rendiperioodi keskmine üür on {{ totals.monthly_net_avg|eur }} kuus (neto).</td></tr>{% endif %}
+  </tbody>
+</table>
+
+{% if totals.utility_winter is not none or totals.utility_summer is not none %}
+<p class="muted" style="font-size:9.5pt">Kõrvalkulud (informatiivne, eelmise aasta keskmine): talvel {{ totals.utility_winter|eur }} kuus, suvel {{ totals.utility_summer|eur }} kuus{% if property.attributes.utility_source == 'moderan' %} · allikas Moderan{% endif %}.</p>
+{% endif %}
+
+{% if q.features %}
+<p style="font-size:9.5pt"><span class="muted">Pinna omadused:</span> {% for f in q.features %}{{ f.label }}{% if f.value %} {{ f.value }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% endif %}
+
+{% if special_terms %}
+<h2>Eritingimused</h2>
+<ol class="terms">
+  {% for term in special_terms %}<li>{{ term.text }}{% if term.overrides_label %} <span class="muted">(kirjutab üle: {{ term.overrides_label }})</span>{% endif %}</li>{% endfor %}
+</ol>
+{% endif %}
+
+{% if attachments %}
+<h2>Lisad</h2>
+<ol class="terms">{% for a in attachments %}<li>Lisa {{ a.number }} — {{ a.title }}</li>{% endfor %}</ol>
+{% endif %}
+
+<p class="note">Pakkumine ei ole siduv ettepanek lepingu sõlmimiseks; üürileping sõlmitakse pakkumise aktsepteerimisel üürileandja üldtingimuste alusel. Pakkumine kehtib kuni {{ q.valid_until|date_et }}.</p>
+<div class="sign">
+  <div>Lugupidamisega</div>
+  <div><strong>{{ sender_name or (company.name if company else '') }}</strong></div>
+  {% if company %}<div class="muted">{{ company.name }}{% if company.email %} · {{ company.email }}{% endif %}{% if company.phone %} · {{ company.phone }}{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

@@ -25,7 +25,8 @@ from app.models.registry import Asset
 
 ENTITY_WORDS = {"contract": "Leping", "asset": "Ese", "party": "Osapool", "import_job": "Import", "source_document": "Dokument", "key_date": "Tähtaeg",
                 "allocation": "Hõive", "attachment": "Fail", "template": "Mall", "company": "Ettevõte", "account": "Konto", "membership": "Kasutaja",
-                "notification": "Teavitus", "user": "Kasutaja", "contract_party": "Lepingu osapool"}
+                "notification": "Teavitus", "user": "Kasutaja", "contract_party": "Lepingu osapool", "quote": "Pakkumine", "share_link": "Jagamislink",
+                "message": "Sõnum", "document_version": "Dokumendi versioon"}
 
 
 @dataclass
@@ -139,6 +140,11 @@ async def resolve_entities(session: AsyncSession, rows: list[EventRow]) -> None:
         for j in (await session.execute(select(ImportJob).where(ImportJob.id.in_(ids["import_job"])))).scalars():
             title = ((j.reviewed or j.proposal or {}).get("contract") or {}).get("title")
             labels[("import_job", j.id)] = (title or "Import", f"/app/portfell/import/{j.id}")
+    if ids.get("quote"):
+        from app.models.quotes import Quote
+
+        for q, name in (await session.execute(select(Quote, Party.name).join(Party, Party.id == Quote.party_id).where(Quote.id.in_(ids["quote"])))).all():
+            labels[("quote", q.id)] = (f"{q.number} · {name}", f"/app/portfell/pakkumine/{q.id}")
     if ids.get("key_date"):
         for kd in (await session.execute(select(KeyDate).where(KeyDate.id.in_(ids["key_date"])))).scalars():
             labels[("key_date", kd.id)] = (kd.title, f"/app/portfell/leping/{kd.subject_id}" if kd.subject_type == "contract" else "/app/kalender")
@@ -148,6 +154,10 @@ async def resolve_entities(session: AsyncSession, rows: list[EventRow]) -> None:
         elif r.entity_type == "allocation" and r.payload.get("contract_id"):
             r.entity_label = r.payload.get("asset_name") or r.payload.get("contract_number")
             r.entity_link = f"/app/portfell/leping/{r.payload['contract_id']}"
+        elif r.entity_type in ("message", "share_link", "document_version") and r.payload.get("subject_id"):
+            st = r.payload.get("subject_type")
+            r.entity_label = r.payload.get("excerpt") or r.payload.get("email") or (f"V{r.payload['number']}" if r.payload.get("number") else None)
+            r.entity_link = f"/app/portfell/pakkumine/{r.payload['subject_id']}" if st == "quote" else f"/app/portfell/leping/{r.payload['subject_id']}" if st == "contract" else None
         elif r.entity_type == "contract_party" and r.payload.get("contract_id"):
             r.entity_label = " · ".join(x for x in [r.payload.get("party_name"), r.payload.get("role")] if x) or r.payload.get("contract_number")
             r.entity_link = f"/app/portfell/leping/{r.payload['contract_id']}"
@@ -229,7 +239,7 @@ def _wrap(text: str, n: int) -> list[str]:
 
 
 def _row(ev: DomainEvent, actor_name: str | None) -> EventRow:
-    return EventRow(id=ev.id, ts=ev.ts, actor_type=ev.actor_type, actor_user_id=ev.actor_user_id, actor_name=actor_name,
+    return EventRow(id=ev.id, ts=ev.ts, actor_type=ev.actor_type, actor_user_id=ev.actor_user_id, actor_name=actor_name or ev.actor_label,
                     entity_type=ev.entity_type, entity_id=ev.entity_id, action=ev.action, payload=ev.payload or {}, reason=ev.reason,
                     on_behalf_of=ev.on_behalf_of, correlation_id=ev.correlation_id)
 

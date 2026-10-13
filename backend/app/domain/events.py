@@ -27,10 +27,20 @@ class Actor:
     on_behalf_of: uuid.UUID | None = None
     correlation_id: str | None = field(default_factory=lambda: uuid.uuid4().hex[:16])
     role: str = "operator"
+    label: str | None = None  # who, when there is no user row: "link holder (email)" for accountless clients
 
     @classmethod
     def system(cls, account_id: uuid.UUID, correlation_id: str | None = None) -> Actor:
         return cls(account_id=account_id, actor_type="system", correlation_id=correlation_id or uuid.uuid4().hex[:16])
+
+    @classmethod
+    def link_holder(cls, account_id: uuid.UUID, email: str) -> Actor:
+        """A client acting through a share link — weaker identity than eID, acceptable pre-signature (architecture §8)."""
+        return cls(account_id=account_id, actor_type="human", role="client", label=f"link holder ({email})")
+
+    @property
+    def is_client(self) -> bool:
+        return self.role == "client"
 
 
 def emit(
@@ -46,6 +56,7 @@ def emit(
         account_id=actor.account_id,
         actor_type=actor.actor_type,
         actor_user_id=actor.user_id,
+        actor_label=actor.label,
         on_behalf_of=actor.on_behalf_of,
         entity_type=entity_type,
         entity_id=entity_id,
