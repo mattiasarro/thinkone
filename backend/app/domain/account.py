@@ -26,6 +26,7 @@ def effective_settings(account: Account) -> dict[str, Any]:
     """Stored settings over the defaults, so a missing key never reaches the client."""
     merged = {**DEFAULT_ACCOUNT_SETTINGS, **(account.settings or {})}
     merged["notify_days"] = {**DEFAULT_ACCOUNT_SETTINGS["notify_days"], **((account.settings or {}).get("notify_days") or {})}
+    merged["quote"] = {**DEFAULT_ACCOUNT_SETTINGS["quote"], **((account.settings or {}).get("quote") or {})}
     return merged
 
 
@@ -50,7 +51,8 @@ async def update_account(
             if not isinstance(value, int) or value < 0 or value > 730:
                 raise DomainError(f"Teavituse päevade arv peab olema 0–730 ({key})")
             notify_days[key] = value
-        new_settings = {**current, **{k: v for k, v in settings.items() if k != "notify_days"}, "notify_days": notify_days}
+        quote = {**current["quote"], **{k: v for k, v in (settings.get("quote") or {}).items() if v is not None}}
+        new_settings = {**current, **{k: v for k, v in settings.items() if k not in ("notify_days", "quote")}, "notify_days": notify_days, "quote": quote}
         if new_settings != current:
             changes["settings"] = [current, new_settings]
             account.settings = new_settings

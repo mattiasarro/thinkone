@@ -320,3 +320,21 @@ async def test_rls_and_events(client: AsyncClient, admin: dict):
     events = (await client.get("/api/v1/audit", params={"entity_type": "quote", "entity_id": q["id"], "resolve": "true"})).json()
     assert {e["action"] for e in events} >= {"quote.created"}
     assert events[-1]["entity_label"].startswith(q["number"]) and events[-1]["entity_link"] == f"/app/portfell/pakkumine/{q['id']}"
+
+
+async def test_threads_and_quote_settings(client: AsyncClient, admin: dict):
+    ctx = await _setup(client)
+    r = await client.patch("/api/v1/account", json={"settings": {"quote": {"validity_days": 21, "period_months": 36}}})
+    assert r.status_code == 200, r.text
+    assert r.json()["settings"]["quote"]["validity_days"] == 21 and r.json()["settings"]["quote"]["deposit_months"] == 3
+    q = await _create(client, ctx, ["Pind 12"])
+    assert q["valid_until"] == (date.today() + timedelta(days=21)).isoformat() and q["period_months"] == 36
+    q = (await client.post(f"/api/v1/quotes/{q['id']}/send", json={"message": "Palun vaadake."})).json()
+    token = await _token_of(client, q["id"])
+    anon = AsyncClient(transport=client._transport, base_url="http://test")
+    await anon.post(f"/api/v1/portal/{token}/messages", json={"text": "Tere, küsimus."})
+    await anon.aclose()
+    th = (await client.get("/api/v1/messages/threads")).json()
+    assert len(th) == 1 and th[0]["unread"] == 1 and th[0]["last_body"] == "Tere, küsimus." and th[0]["link"] == f"/app/portfell/pakkumine/{q['id']}"
+    assert len((await client.get("/api/v1/messages/threads", params={"unanswered": "true"})).json()) == 1
+    assert (await client.get("/api/v1/messages/threads", params={"q": "zzz"})).json() == []

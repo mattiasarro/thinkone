@@ -11,6 +11,7 @@ from app.api.operator import (
     imports,
     integrations,
     keydates,
+    messages,
     notifications,
     parties,
     portfolio,
@@ -36,3 +37,4 @@ router.include_router(contracts.router)
 router.include_router(imports.router)
 router.include_router(portfolio.router)
 router.include_router(quotes.router)
+router.include_router(messages.router)

@@ -20,8 +20,25 @@ class NotifyDays(BaseModel):
     quote_expiry: int = Field(ge=0, le=730)
 
 
+class QuoteDefaults(BaseModel):
+    validity_days: int = Field(ge=0, le=365)
+    period_months: int = Field(ge=1, le=600)
+    deposit_months: int = Field(ge=0, le=24)
+    silence_days: int = Field(ge=1, le=90)
+    contract_link_days: int = Field(ge=1, le=365)
+
+
+class QuoteDefaultsPatch(BaseModel):
+    validity_days: int | None = Field(default=None, ge=0, le=365)
+    period_months: int | None = Field(default=None, ge=1, le=600)
+    deposit_months: int | None = Field(default=None, ge=0, le=24)
+    silence_days: int | None = Field(default=None, ge=1, le=90)
+    contract_link_days: int | None = Field(default=None, ge=1, le=365)
+
+
 class AccountSettings(BaseModel):
     notify_days: NotifyDays
+    quote: QuoteDefaults
     locale: str = "et"
 
 
@@ -41,6 +58,7 @@ class NotifyDaysPatch(BaseModel):
 
 class AccountSettingsPatch(BaseModel):
     notify_days: NotifyDaysPatch | None = None
+    quote: QuoteDefaultsPatch | None = None
     locale: str | None = None
 
 
