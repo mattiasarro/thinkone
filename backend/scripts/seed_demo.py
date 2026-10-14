@@ -74,6 +74,15 @@ def main() -> None:
 
     import_file(SAMPLES / "MARU_uurileping_P29.pdf", "application/pdf", spaces.get("Pind 29", {}).get("id"))
     import_file(SAMPLES / "Hooldusleping_H5-08.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", prop["id"])
+    # Phase 3: one party with a sent quote (share link printed) and one lease draft sent to the client — the eval set asks about these
+    fi = c.post("/api/v1/parties", json={"kind": "ee_company", "name": "Future Invest OÜ", "registry_code": "12345678", "contact_name": "Mari Maasikas",
+                                        "email": "mari.maasikas@example.com", "roles": ["tenant"]}).json()
+    q = c.post("/api/v1/quotes", json={"party_id": fi["id"], "property_id": prop["id"], "space_ids": [spaces["Pind 12"]["id"]]}).json()
+    q = c.post(f"/api/v1/quotes/{q['id']}/send", json={"message": "Palun vaadake pakkumist."}).json()
+    print("quote:", q["number"], q["status"], "portal:", q["link"]["url"] if q.get("link") else None)
+    d = c.post("/api/v1/leases", json={"party_id": fi["id"], "property_id": prop["id"], "months": 36, "spaces": [{"space_id": spaces["Pind 4"]["id"]}]}).json()
+    neg = c.post(f"/api/v1/leases/{d['id']}/send", json={}).json()
+    print("lease draft:", d["number"], "portal:", neg["link"]["url"] if neg.get("link") else None)
     h = c.get("/api/v1/portfolio/health").json()
     print("health:", h["totals"], [(f["code"], f["count"]) for f in h["findings"]])
 
