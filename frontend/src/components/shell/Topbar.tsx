@@ -21,6 +21,7 @@ export function Topbar({ me, onOpenMobile }: { me: Me; onOpenMobile: () => void 
           </button>
         }>
           <div role="menu" className="min-w-[200px]">
+            <Link role="menuitem" className="drop-item" href="/app/portfell/pakkumine/uus" onClick={() => setNewOpen(false)}>{t("nav.newQuote")}</Link>
             <Link role="menuitem" className="drop-item" href="/app/portfell/objekt/uus" onClick={() => setNewOpen(false)}>{t("home.addAsset")}</Link>
             <Link role="menuitem" className="drop-item" href="/app/portfell/import" onClick={() => setNewOpen(false)}>{t("home.importContract")}</Link>
             <Link role="menuitem" className="drop-item" href="/app/portfell?tab=osapooled&new=1" onClick={() => setNewOpen(false)}>{t("home.addParty")}</Link>

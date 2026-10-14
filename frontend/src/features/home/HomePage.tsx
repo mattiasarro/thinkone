@@ -5,6 +5,7 @@ import { t, tEnum } from "@/i18n";
 import { useMe } from "@/lib/queries/auth";
 import { useKeyDates, usePortfolioHealth, usePortfolioSummary } from "@/lib/queries/portfolio";
 import { useImports } from "@/lib/queries/imports";
+import { useQuotes } from "@/lib/queries/quotes";
 import { addDays, daysUntil, fmtDate, isoDay } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Pill, severityTone } from "@/components/ui/Pill";
@@ -21,6 +22,7 @@ export function HomePage() {
   const imports = useImports();
   const health = usePortfolioHealth();
   const summary = usePortfolioSummary();
+  const quotes = useQuotes({ view: "open" });
 
   const h = today.getHours();
   const greet = h < 11 ? "home.greetingMorning" : h < 18 ? "home.greetingDay" : "home.greetingEvening";
@@ -42,12 +44,17 @@ export function HomePage() {
       if (j.status !== "review") continue;
       out.push({ key: `imp-${j.id}`, href: `/app/portfell/import/${j.id}`, icon: <IconImport />, sort: -0.5, title: j.reviewed?.contract.title || j.proposal?.contract.title || j.source_document?.filename || t("common.untitled"), sub: t("home.importInReview"), pill: <Pill tone="warning">{tEnum("imports.status", j.status)}</Pill> });
     }
+    for (const x of quotes.data ?? []) {
+      if (x.next_step?.side !== "operator") continue;
+      const left = daysUntil(x.valid_until);
+      out.push({ key: `q-${x.id}`, href: `/app/portfell/pakkumine/${x.id}`, icon: <IconFile />, sort: x.next_step.urgent ? -0.8 : Math.min(left, 5), title: `${x.number} · ${x.party.name}`, sub: x.next_step.title, pill: <Pill tone={x.next_step.urgent ? (left <= 0 ? "error" : "warning") : "neutral"}>{tEnum("quotes.status", x.status)}</Pill> });
+    }
     for (const f of health.data?.findings ?? []) {
       if (f.severity === "info") continue;
       out.push({ key: `hf-${f.code}`, href: "/app/ylevaade", icon: <IconAlert />, sort: f.severity === "error" ? -1 : -0.2, title: f.title, sub: t("home.finding", { count: f.count }), pill: <Pill tone={severityTone(f.severity)}>{tEnum("overview.severity", f.severity)}</Pill> });
     }
     return out.sort((a, b) => a.sort - b.sort);
-  }, [kd.data, imports.data, health.data]);
+  }, [kd.data, imports.data, health.data, quotes.data]);
 
   const loading = kd.isLoading || imports.isLoading || health.isLoading;
 
@@ -60,7 +67,8 @@ export function HomePage() {
 
       <SetupCard summary={summary.data} />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickLink href="/app/portfell/pakkumine/uus" icon={<IconFile />} label={t("home.createQuote")} />
         <QuickLink href="/app/portfell/objekt/uus" icon={<IconBuilding />} label={t("home.addAsset")} />
         <QuickLink href="/app/portfell/import" icon={<IconImport />} label={t("home.importContract")} />
         <QuickLink href="/app/portfell?tab=osapooled&new=1" icon={<IconUsers />} label={t("home.addParty")} />

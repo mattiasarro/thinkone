@@ -52,7 +52,7 @@ class FactOut(BaseModel):
     id: uuid.UUID
     key: str
     label: str | None
-    value: str | None
+    value: str | float | int | bool | None
     unit: str | None
     text: str | None
     valid_from: date | None

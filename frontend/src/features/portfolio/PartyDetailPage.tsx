@@ -12,10 +12,14 @@ import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconEdit, IconTrash } from "@/components/ui/Icons";
 import { PartyModal } from "./PartyModal";
 import { PartyContractsTable } from "./PartyContractsTable";
+import { useQuotes } from "@/lib/queries/quotes";
+import { QuotesTable } from "@/features/quotes/QuotesTab";
+import { IconPlus } from "@/components/ui/Icons";
 
 export function PartyDetailPage({ id }: { id: string }) {
   const party = useParty(id);
   const contracts = usePartyContracts(id);
+  const quotes = useQuotes({ party_id: id, view: "all" });
   const [edit, setEdit] = useState(false);
   const [del, setDel] = useState(false);
   const remove = useDeleteParty();
@@ -31,7 +35,7 @@ export function PartyDetailPage({ id }: { id: string }) {
     <div className="grid gap-5">
       <LinkButton href="/app/portfell?tab=osapooled" variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{t("portfolio.tabs.parties")}</LinkButton>
       <PageHead title={p.name} sub={<span className="flex flex-wrap gap-1 mt-1"><span className="pill">{tEnum("portfolio.parties.kinds", p.kind)}</span>{p.roles.map((r) => <span key={r} className="pill primary">{tEnum("portfolio.parties.roleNames", r)}</span>)}</span>}
-        actions={<><Button onClick={() => setEdit(true)}><IconEdit width={16} height={16} />{t("common.edit")}</Button><Button variant="text" className="btn-destructive" onClick={() => setDel(true)}><IconTrash width={16} height={16} />{t("common.delete")}</Button></>} />
+        actions={<><LinkButton href={`/app/portfell/pakkumine/uus?party_id=${p.id}`} variant="primary"><IconPlus width={16} height={16} />{t("quotes.create")}</LinkButton><Button onClick={() => setEdit(true)}><IconEdit width={16} height={16} />{t("common.edit")}</Button><Button variant="text" className="btn-destructive" onClick={() => setDel(true)}><IconTrash width={16} height={16} />{t("common.delete")}</Button></>} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-start">
         <Card>
           <CardHeader title={t("assets.detailsTab")} />
@@ -48,6 +52,10 @@ export function PartyDetailPage({ id }: { id: string }) {
         <Card>
           <CardHeader title={t("portfolio.parties.contracts")} />
           {contracts.isLoading ? <div className="p-6"><Loading /></div> : contracts.error ? <div className="p-6"><ErrorState error={contracts.error} onRetry={() => contracts.refetch()} /></div> : (contracts.data ?? []).length === 0 ? <EmptyState title={t("portfolio.parties.noContracts")} /> : <PartyContractsTable rows={contracts.data ?? []} />}
+        </Card>
+        <Card className="xl:col-span-2">
+          <CardHeader title={t("quotes.forParty")} />
+          {quotes.isLoading ? <div className="p-6"><Loading /></div> : quotes.error ? <div className="p-6"><ErrorState error={quotes.error} onRetry={() => quotes.refetch()} /></div> : (quotes.data ?? []).length === 0 ? <EmptyState title={t("quotes.noneForParty")} /> : <QuotesTable rows={quotes.data ?? []} />}
         </Card>
       </div>
       <PartyModal open={edit} onClose={() => setEdit(false)} initial={p} />

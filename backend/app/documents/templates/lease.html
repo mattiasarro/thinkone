@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% macro clause_rows(items) %}
+  {% for r in items %}
+    {% if r.level == 0 %}
+      <h3 class="sec">{{ r.number }}. {{ r.heading }}</h3>
+    {% else %}
+      <div class="cl{% if r.id in overridden %} ov{% endif %}" id="c-{{ r.id }}" data-clause="{{ r.id }}">
+        <span class="no">{{ r.number }}</span>
+        <span class="tx">{% if r.heading %}<strong>{{ r.heading }}.</strong> {% endif %}{{ r.text }}
+          {% if r.id in overridden %}<span class="ovn">(muudetud: Lisa 3 p {{ overridden[r.id].number }})</span>{% endif %}
+          {% if not for_client and r.provenance and r.provenance.get('check') %}<span class="chk">Kontrolli sõnastust</span>{% endif %}
+        </span>
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+{% block body %}
+<style>
+  .sec { font-size: 11pt; margin: 14pt 0 4pt; text-transform: uppercase; letter-spacing: .03em; }
+  .cl { display: flex; gap: 8pt; padding: 3pt 0; page-break-inside: avoid; }
+  .cl .no { flex: none; width: 34pt; font-variant-numeric: tabular-nums; color: #596170; }
+  .cl .tx { flex: 1; }
+  .cl.ov .tx { color: #596170; }
+  .ovn { color: #1f6f4a; font-size: 9pt; }
+  .chk { color: #8a5a12; font-size: 8.5pt; border: 1px solid #8a5a12; border-radius: 4pt; padding: 0 3pt; margin-left: 4pt; }
+  .part { margin-top: 22pt; page-break-before: auto; }
+  .part h2 { font-size: 14pt; text-align: center; border: 0; margin-bottom: 10pt; }
+  .annex { margin-top: 26pt; page-break-before: always; }
+</style>
+<div class="head">
+  <div><div class="brand">{{ company.name if company else '' }}</div><div class="meta">Äriruumide üürileping</div></div>
+  {% if logo_data_uri %}<div class="logo"><img src="{{ logo_data_uri }}" alt=""></div>{% endif %}
+</div>
+<h1>Üürileping nr {{ c.number }}</h1>
+<div class="meta">{% if c.signed_at %}Allkirjastatud {{ c.signed_at|date_et }}{% else %}Mustand{% if version %} · V{{ version }}{% endif %}{% endif %} · {{ deal.handover|date_et }} – {{ deal.end|date_et }}</div>
+
+<div class="grid" style="margin-top:12pt">
+  <div class="box accent"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">Üürileandja</div><div><strong>{{ company.name if company else '—' }}</strong></div>{% if company and company.registry_code %}<div class="muted">reg {{ company.registry_code }}</div>{% endif %}</div>
+  <div class="box"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">Üürnik</div><div><strong>{{ party.name if party else '—' }}</strong></div>{% if party and party.registry_code %}<div class="muted">reg {{ party.registry_code }}</div>{% endif %}</div>
+</div>
+
+<div class="part"><h2>Põhitingimused</h2>{{ clause_rows(main) }}</div>
+
+{% if special %}
+<div class="annex" id="annex-3"><h2>Lisa 3 — Eritingimused</h2>
+  <p class="muted" style="font-size:9.5pt">Eritingimused on ülimuslikud üld- ja põhitingimuste suhtes.</p>
+  {% for r in special %}{% if for_client and r.status != 'accepted' %}{% else %}
+  <div class="cl" id="c-{{ r.id }}" data-clause="{{ r.id }}"><span class="no">{{ r.number }}</span><span class="tx">{{ r.text }}
+    {% if r.overrides_clause_id and r.overrides_clause_id in by_id %}<span class="ovn">(kirjutab üle: p {{ by_id[r.overrides_clause_id].number }}{% if by_id[r.overrides_clause_id].container == 'general' %} üldtingimustes{% endif %})</span>{% elif r.overrides_label %}<span class="ovn">(kirjutab üle: {{ r.overrides_label }})</span>{% endif %}
+    {% if not for_client and r.status and r.status != 'accepted' %}<span class="chk">{{ 'sõnastamisel' if r.status == 'drafting' else 'ettepanek' }}</span>{% endif %}
+  </span></div>
+  {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% if general %}
+<div class="part annex"><h2>Üldtingimused</h2>{{ clause_rows(general) }}</div>
+{% endif %}
+
+<div class="part" style="page-break-before: always"><h2>Lisad</h2>
+<ol class="terms">{% for a in annexes %}<li>Lisa {{ a.number }} — {{ a.title }}{% if a.missing %} <span class="chk">lisamata</span>{% endif %}</li>{% endfor %}</ol>
+</div>
+{% endblock %}

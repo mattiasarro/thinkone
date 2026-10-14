@@ -191,6 +191,8 @@ def preview_numbers(parsed: ParsedTerms) -> list[str]:
             self.locked = True
             self.category = "general"
             self.provenance = None
+            self.container = "body"
+            self.fact_key = self.status = self.origin_note = self.overrides_clause_id = self.overrides_label = self.original_text = None
 
     rows = []
 

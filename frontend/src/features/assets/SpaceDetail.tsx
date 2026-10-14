@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { useAsset, useDeleteAsset, useKeyDates, useMergeSpace, useParkingPlan, useSplitSpace } from "@/lib/queries/portfolio";
 import { ParkingPlanPreview } from "./parking-plan/ParkingPlanEditor";
+import { useQuotes } from "@/lib/queries/quotes";
 import { Card, CardHeader, CardBody, PageHead, Stat } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
@@ -38,6 +39,7 @@ export function SpaceDetail({ id }: { id: string }) {
   const p = q.data;
   const contractIds = useMemo(() => (p?.allocations ?? []).map((a) => a.contract?.id).filter(Boolean) as string[], [p]);
   const kd = useKeyDates({ from: new Date().toISOString().slice(0, 10) }, contractIds.length > 0);
+  const quotes = useQuotes({ space_id: id, view: "open" });
   if (q.isLoading) return <Loading rows={5} />;
   if (q.error || !p) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const a = p.attributes as Partial<SpaceAttributes>;
@@ -78,6 +80,11 @@ export function SpaceDetail({ id }: { id: string }) {
                 <div className="grid gap-3">
                   {p.split_parent && <p className="text-sm text-muted">{t("assets.space.unitNote", { name: p.split_parent.name, area: fmtNum((p.split_parent.attributes as Partial<SpaceAttributes> | undefined)?.rentable_area_m2) })}</p>}
                   {current.length === 0 ? <p className="text-sm text-muted">{t("assets.space.noContract")}</p> : <ul className="grid gap-3">{current.map((al) => <ContractRow key={al.id} al={al} />)}</ul>}
+                  {(quotes.data ?? []).length > 0 && (
+                    <ul className="grid gap-2 text-sm">
+                      {(quotes.data ?? []).map((x) => <li key={x.id} className="flex items-center gap-2"><Link href={`/app/portfell/pakkumine/${x.id}`} className="font-semibold text-primary truncate">{x.number} · {x.party.name}</Link><Pill tone={statusTone(x.status)} className="ml-auto">{tEnum("quotes.status", x.status)}</Pill></li>)}
+                    </ul>
+                  )}
                 </div>
               )}
             </CardBody>
@@ -102,6 +109,7 @@ export function SpaceDetail({ id }: { id: string }) {
             <CardBody>
               <ul className="grid gap-2">
                 {current.map((al) => al.contract && <li key={al.id}><LinkButton href={`/app/portfell/leping/${al.contract.id}`} className="w-full justify-between">{t("assets.space.openContract")} · {al.contract.number}<IconArrowRight width={16} height={16} /></LinkButton></li>)}
+                {(p.status === "vaba" || p.status === "pakkumisel") && <li><LinkButton href={`/app/portfell/pakkumine/uus?space_id=${p.id}`} variant="primary" className="w-full">{t("quotes.create")}</LinkButton></li>}
                 {inactive ? null : p.status === "jagatud" ? <li><Button className="w-full" onClick={() => setMergeDlg(true)}>{t("assets.space.merge")}</Button></li>
                   : <li><Button className="w-full" onClick={() => setSplit(true)} disabled={!!p.split_block_reason} title={p.split_block_reason ?? undefined}>{t("assets.space.split")}</Button></li>}
                 <li><Button variant="text" className="btn-destructive w-full" onClick={() => setDel(true)} disabled={!!p.delete_block_reason} title={p.delete_block_reason ?? undefined}><IconTrash width={16} height={16} />{t("assets.space.delete")}</Button></li>

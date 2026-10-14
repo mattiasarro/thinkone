@@ -17,6 +17,12 @@ export function statusTone(status: string | null | undefined): Tone {
     case "kasutusest väljas": return "error";
     case "mitteaktiivne": return "neutral";
     case "vaba": return "primary";
+    // quotes (Phase 3) + the registry projection „pakkumisel”
+    case "sent": case "pakkumisel": return "info";
+    case "client_proposal": return "warning";
+    case "accepted": case "converted": return "success";
+    case "rejected": return "error";
+    case "cancelled": return "neutral";
     default: return "neutral";
   }
 }

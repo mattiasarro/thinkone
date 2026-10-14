@@ -57,6 +57,16 @@ class Contract(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")  # optimistic lock
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_document_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Phase 3 — platform-born drafts
+    quote_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # the deal (tehing) the main terms are generated from: handover, months, prices per space, deposit months, purpose,
+    # parking spots per space, electrical per space, indexation, representatives {landlord: [...], tenant: [...]}
+    terms: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    contact: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")  # client contact {name, email, phone}
+    sent_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # last frozen document version (V1…Vn)
+    round: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)  # {"nr": n, "side": "client"|"operator"} while negotiating
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # client accepted every clause
 
 
 class ContractParty(Base, TenantMixin, TimestampMixin):
@@ -122,6 +132,49 @@ class Clause(Base, TenantMixin):
     source_template_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     overrides_clause_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("clause.id", ondelete="RESTRICT"), nullable=True)
     provenance: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # Phase 3 — platform drafts: the template wording (diff base), the fact a main clause renders, Lisa 3 clause state
+    original_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fact_key: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # special clauses: drafting | proposed | accepted
+    origin_note: Mapped[str | None] = mapped_column(String(200), nullable=True)  # "pakkumisest" | "läbirääkimisel" | …
+    overrides_label: Mapped[str | None] = mapped_column(String(200), nullable=True)  # when the override target is a main-term key, not a clause
+
+
+class ClauseThread(Base, TenantMixin, TimestampMixin):
+    """A discussion on one clause (demo ``arutelu``): opened by either side, resolved by the operator's choice.
+
+    ``proposal``: {"kind": fact|wording|special_term, "fact_key", "value", "text", "target_clause_id", "special_clause_id", "by"}
+    awaiting the other side's confirmation. Messages live in ``message`` with subject_type="clause_thread".
+    """
+
+    __tablename__ = tenant_table("clause_thread")
+    __table_args__ = (Index("ix_clause_thread_contract", "contract_id", "status"),)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    contract_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("contract.id"), index=True)
+    clause_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("clause.id"), index=True)
+    opened_by: Mapped[str] = mapped_column(String(20))  # operator | client
+    status: Mapped[str] = mapped_column(String(30), default="open", server_default="open")  # open | awaiting_confirmation | resolved
+    resolution: Mapped[str | None] = mapped_column(String(30), nullable=True)  # changed | special_term | explained | unchanged
+    proposal: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    wish: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)  # the client's structured wish {"fact_key", "value"} (demo „Soovin muuta”)
+    round_nr: Mapped[int | None] = mapped_column(Integer, nullable=True)  # the round whose letter published it (None = unsent)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ContractRound(Base, TenantMixin):
+    """One negotiation round = one letter (demo v707): the side that sent, the message, the document version it published."""
+
+    __tablename__ = tenant_table("contract_round")
+    __table_args__ = (UniqueConstraint("contract_id", "nr", name="uq_contract_round"),)
+    id: Mapped[uuid.UUID] = uuid_pk()
+    contract_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("contract.id"), index=True)
+    nr: Mapped[int] = mapped_column(Integer)
+    side: Mapped[str] = mapped_column(String(20))  # operator | client
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    version_no: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    thread_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")  # threads published by this letter
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class KeyDateKind(Base):

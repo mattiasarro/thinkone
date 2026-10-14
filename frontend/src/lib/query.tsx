@@ -7,7 +7,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 function redirectToLogin() {
   if (typeof window === "undefined") return;
   const p = window.location.pathname;
-  if (["/login", "/register", "/invite", "/forgot-password", "/reset-password"].some((pub) => p.startsWith(pub))) return;
+  if (["/login", "/register", "/invite", "/forgot-password", "/reset-password", "/portal"].some((pub) => p.startsWith(pub))) return;
   const next = encodeURIComponent(p + window.location.search);
   window.location.assign(`/login?next=${next}`);
 }

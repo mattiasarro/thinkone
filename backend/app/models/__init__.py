@@ -3,9 +3,11 @@
 from app.models.base import Base, SoftDeleteMixin, TenantMixin, TimestampMixin  # noqa: F401
 from app.models.contracts import (  # noqa: F401
     Clause,
+    ClauseThread,
     Contract,
     ContractFact,
     ContractParty,
+    ContractRound,
     ContractType,
     ImportJob,
     KeyDate,

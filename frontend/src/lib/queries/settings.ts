@@ -1,14 +1,14 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Account, AriregisterHit, Attachment, AttachmentRole, AttachmentSubject, Company, CompanyInput, EhrHit, NotifyDays, Template, TemplateDetail, TemplateKind } from "@/types/api";
+import type { Account, AriregisterHit, QuoteDefaults, Attachment, AttachmentRole, AttachmentSubject, Company, CompanyInput, EhrHit, NotifyDays, Template, TemplateDetail, TemplateKind } from "@/types/api";
 
 export function useAccount() {
   return useQuery({ queryKey: ["account"], queryFn: () => api.get<Account>("/account") });
 }
 export function useUpdateAccount() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (body: { name?: string; settings?: { notify_days?: Partial<NotifyDays> } }) => api.patch<Account>("/account", body), onSuccess: (a) => qc.setQueryData(["account"], a) });
+  return useMutation({ mutationFn: (body: { name?: string; settings?: { notify_days?: Partial<NotifyDays>; quote?: Partial<QuoteDefaults> } }) => api.patch<Account>("/account", body), onSuccess: (a) => qc.setQueryData(["account"], a) });
 }
 
 export function useCompanies() {

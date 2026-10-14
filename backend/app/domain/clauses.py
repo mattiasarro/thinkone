@@ -30,6 +30,8 @@ class Node:
     category: str = "general"
     provenance: dict[str, Any] | None = None
     children: list[Node] = field(default_factory=list)
+    # Phase 3 draft fields: fact_key (main clause ↔ deal fact), status (special clauses), origin_note, overrides_label, template_clause_id
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -44,10 +46,21 @@ class RenderedClause:
     category: str
     parent_id: uuid.UUID | None
     provenance: dict[str, Any] | None = None
+    container: str = "body"
+    fact_key: str | None = None
+    status: str | None = None
+    origin_note: str | None = None
+    overrides_clause_id: uuid.UUID | None = None
+    overrides_label: str | None = None
+    original_text: str | None = None
 
     @property
     def display_number(self) -> str:
         return self.source_number or self.number
+
+    @property
+    def changed(self) -> bool:
+        return self.original_text is not None and self.original_text != self.text
 
 
 def _label(style: str, ordinal: int) -> str:
@@ -90,6 +103,8 @@ async def write_tree(
                 number_style=n.number_style, category=n.category, heading=n.heading,
                 text={"plain": n.text}, locked=locked, source=source, source_number=n.source_number,
                 source_template_id=source_template_id, provenance=n.provenance,
+                original_text=n.text if contract_id else None, fact_key=n.extra.get("fact_key"), status=n.extra.get("status"),
+                origin_note=n.extra.get("origin_note"), overrides_label=n.extra.get("overrides_label"),
             )
             session.add(c)
             await session.flush()
@@ -118,8 +133,9 @@ def render(rows: list[Clause]) -> list[RenderedClause]:
     by_parent: dict[uuid.UUID | None, list[Clause]] = {}
     for r in rows:
         by_parent.setdefault(r.parent_id, []).append(r)
-    for lst in by_parent.values():
-        lst.sort(key=lambda c: c.ordinal)
+    # roots are numbered per container (main · general · annex:N), in document order; children by ordinal
+    for key, lst in by_parent.items():
+        lst.sort(key=(lambda c: (container_order(c.container), c.ordinal)) if key is None else (lambda c: c.ordinal))
     out: list[RenderedClause] = []
 
     def walk(parent_id: uuid.UUID | None, prefix: str, level: int) -> None:
@@ -129,12 +145,22 @@ def render(rows: list[Clause]) -> list[RenderedClause]:
             out.append(RenderedClause(
                 id=c.id, number=number, source_number=c.source_number, heading=c.heading,
                 text=(c.text or {}).get("plain", ""), level=level, locked=c.locked, category=c.category,
-                parent_id=c.parent_id, provenance=c.provenance,
+                parent_id=c.parent_id, provenance=c.provenance, container=c.container, fact_key=c.fact_key, status=c.status,
+                origin_note=c.origin_note, overrides_clause_id=c.overrides_clause_id, overrides_label=c.overrides_label, original_text=c.original_text,
             ))
             walk(c.id, number if label else prefix, level + 1)
 
     walk(None, "", 0)
     return out
+
+
+CONTAINER_ORDER = {"main": 0, "body": 1, "general": 2}
+
+
+def container_order(container: str) -> tuple[int, int]:
+    if container.startswith("annex:"):
+        return (3, int(container.split(":", 1)[1] or 0))
+    return (CONTAINER_ORDER.get(container, 1), 0)
 
 
 def render_markdown(rendered: list[RenderedClause]) -> str:
@@ -151,7 +177,9 @@ def to_dicts(rendered: list[RenderedClause]) -> list[dict[str, Any]]:
     return [
         {"id": r.id, "number": r.display_number, "derived_number": r.number, "source_number": r.source_number,
          "heading": r.heading, "text": r.text, "level": r.level, "locked": r.locked, "category": r.category,
-         "parent_id": r.parent_id, "provenance": r.provenance}
+         "parent_id": r.parent_id, "provenance": r.provenance, "container": r.container, "fact_key": r.fact_key, "status": r.status,
+         "origin_note": r.origin_note, "overrides_clause_id": r.overrides_clause_id, "overrides_label": r.overrides_label,
+         "changed": r.changed}
         for r in rendered
     ]
 

@@ -11,7 +11,8 @@ export interface Member { id: UUID; user_id: UUID; email: string; name: string; 
 export interface Notification { id: UUID; kind: string; title: string; body: string | null; link: string | null; created_at: ISODate; read_at: ISODate | null; email_status: string | null }
 
 export interface NotifyDays { end: number; indexation: number; probation: number; salary_review: number; quote_expiry: number }
-export interface Account { id: UUID; name: string; settings: { notify_days: NotifyDays } & Record<string, unknown> }
+export interface QuoteDefaults { validity_days: number; period_months: number; deposit_months: number; silence_days: number; contract_link_days: number }
+export interface Account { id: UUID; name: string; settings: { notify_days: NotifyDays; quote: QuoteDefaults } & Record<string, unknown> }
 
 export interface Company { id: UUID; name: string; registry_code: string | null; vat_number: string | null; address: string | null; email: string | null; phone: string | null; accent_color: string | null; logo_attachment_id: UUID | null }
 export type CompanyInput = Omit<Company, "id" | "logo_attachment_id">;
@@ -27,7 +28,7 @@ export interface Party { id: UUID; kind: PartyKind; name: string; registry_code:
 export type PartyInput = Omit<Party, "id">;
 
 export type AssetType = "property" | "space" | "parking_spot" | "department" | "position";
-export type AssetStatus = "vaba" | "üüritud" | "täidetud" | "osaliselt" | "täitmata" | "jagatud" | "mitteaktiivne";
+export type AssetStatus = "vaba" | "pakkumisel" | "üüritud" | "täidetud" | "osaliselt" | "täitmata" | "jagatud" | "mitteaktiivne";
 export type SpacePartKey = "ladu" | "kontor" | "myygisaal" | "olmeala" | "yhisala";
 export const SPACE_PART_KEYS: SpacePartKey[] = ["ladu", "kontor", "myygisaal", "olmeala", "yhisala"];
 export interface PropertyAttributes { ehr_code?: string | null; address?: string | null; use_type?: string | null; footprint_m2?: number | null; net_area_m2?: number | null; floors?: number | null; build_year?: number | null; ehr_source?: string | null; ehr_payload?: Record<string, unknown> | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null; template_id?: string | null; has_parking?: boolean | null }
@@ -110,3 +111,44 @@ export interface AuditStats { actor_type: Record<string, number>; entity_type: R
 export interface HealthFinding { code: string; severity: "info" | "warning" | "error"; title: string; count: number; items: { contract_id: UUID; number: string | null; title: string; detail: string | null }[] }
 export interface PortfolioHealth { generated_at: ISODate; totals: { contracts: number; active: number; imported: number; platform: number }; findings: HealthFinding[] }
 export interface PortfolioSummary { contracts_by_status: Record<string, number>; assets: { properties: number; spaces: number; occupied: number; free: number }; key_dates_next_30: number; open_imports: number; companies: number }
+
+// ---- quotes (Phase 3) ----
+export type QuoteStatus = "draft" | "sent" | "client_proposal" | "accepted" | "converted" | "rejected" | "expired" | "cancelled";
+export type QuoteNextStepCode = "send" | "bounced" | "remind" | "waiting" | "answer" | "convert";
+export interface QuoteRef { id: UUID; name: string }
+export interface QuotePartyRef extends QuoteRef { registry_code: string | null; email: string | null }
+export interface QuoteContact { name: string; email: string; phone: string }
+export interface QuoteFeature { label: string; value: string }
+export interface QuoteSpot { id: UUID; number: string | null; zone: string | null; type: string | null; space_id: string | null; out_of_service: boolean; reserve: boolean }
+export interface QuoteParking { mode: "register" | "count" | string; spots: QuoteSpot[]; count: number | null }
+export interface QuoteLine { area_m2: number; price_per_m2: number; avg_price_per_m2: number; monthly_net: number; monthly_net_avg: number; stepped: boolean }
+export interface QuoteScheduleStep { until_month: number | null; price: number }
+export interface QuoteSpace {
+  id: UUID; space_id: UUID; name: string; type: string | null; area_m2: number; parts: string | null; list_price: number | null; price_per_m2: number; price_override: number | null;
+  schedule: QuoteScheduleStep[] | null; parking: QuoteParking; electrical_a: number | null; electrical_override: number | null; electrical_space: number | null;
+  floor_plan: { id: UUID; filename: string } | null; line: QuoteLine;
+}
+export interface QuoteTerm { id: UUID; text: string; overrides: string | null; overrides_label: string | null; auto_kind: string | null; space_id: UUID | null }
+export interface QuoteAttachmentItem { number: number; title: string; attachment_id: UUID; kind: "floor_plan" | "parking_plan" | "site_plan" | "overview_plan" | "upload" | string; space_id: UUID | null; url: string | null }
+export interface QuoteChange { key: string; label: string; before: unknown; after: unknown }
+export interface QuoteVersion { id: UUID; number: number; created_at: ISODate; note: string | null; pdf_url: string | null; changes: QuoteChange[] }
+export interface QuoteMessage { id: UUID; channel: "negotiation" | "chat" | string; author_type: "operator" | "client" | string; author_name: string | null; body: string; meta: { version?: number; kind?: string } & Record<string, unknown>; created_at: ISODate }
+export interface QuoteLetter { id: UUID; kind: string; title: string; to: string | null; status: string; error: string | null; created_at: ISODate }
+export interface QuoteNextStep { side: "operator" | "client" | string; code: QuoteNextStepCode | string; title: string; text: string; urgent: boolean }
+export interface QuoteLink { email: string; expires_at: ISODate; opened_at: ISODate | null; url: string }
+export interface QuoteTotals { area_m2: number; monthly_net: number; monthly_net_avg: number; avg_price_per_m2: number; vat_taxable: boolean; vat_rate: number; vat: number; monthly_gross: number; utility_winter: number | null; utility_summer: number | null; stepped: boolean }
+export interface QuoteSummary {
+  id: UUID; number: string; status: QuoteStatus | string; party: QuotePartyRef; property: QuoteRef; company_id: UUID | null; valid_until: ISODate; period_months: number;
+  totals: Partial<QuoteTotals>; version: number; sent_version: number; sent_at: ISODate | null; accepted_at: ISODate | null; created_at: ISODate; space_names: string[]; next_step: QuoteNextStep | null; unread: number;
+}
+export interface QuoteReminder { reason: "expiring" | "silence" | string; days_left: number; silence_days: number; text: string }
+export interface QuoteDelivery { notification_id: UUID; kind: string; status: string; error: string | null; to: string | null; at: ISODate }
+export interface QuotePropertyAttributes { address?: string | null; vat_taxable?: boolean | null; utility_cost_winter?: number | null; utility_cost_summer?: number | null; utility_source?: string | null; has_parking?: boolean | null }
+export interface QuoteDetail extends QuoteSummary {
+  contact: QuoteContact; commercial_text: string; features: QuoteFeature[]; spaces: QuoteSpace[]; special_terms: QuoteTerm[]; attachments: QuoteAttachmentItem[]; versions: QuoteVersion[];
+  messages: QuoteMessage[]; letters: QuoteLetter[]; link: QuoteLink | null; pending_changes: QuoteChange[]; reminder: QuoteReminder | null; delivery: QuoteDelivery | null; editable: boolean;
+  has_register: boolean; register_spots: QuoteSpot[]; conversion: Record<string, unknown> | null; close_reason: string | null; property_attributes: QuotePropertyAttributes; pdf_available: boolean;
+}
+export interface QuoteCreateInput { party_id: UUID; property_id: UUID; space_ids: UUID[]; company_id?: UUID | null; period_months?: number | null; validity_days?: number | null }
+export interface QuotePatchInput { expected_version?: number | null; period_months?: number | null; valid_until?: ISODate | null; contact?: QuoteContact | null; commercial_text?: string | null; features?: QuoteFeature[] | null; company_id?: UUID | null }
+export interface QuoteSpacePatchInput { expected_version?: number | null; price_per_m2?: number | null; clear_price?: boolean; schedule?: QuoteScheduleStep[] | null; clear_schedule?: boolean; parking_spot_ids?: UUID[] | null; parking_count?: number | null; clear_parking_count?: boolean; electrical_a?: number | null; clear_electrical?: boolean }
