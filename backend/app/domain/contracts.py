@@ -86,4 +86,8 @@ async def index_contract(session: AsyncSession, c: Contract) -> None:
     party_name = primary.name if primary else None
     subtitle = " · ".join(x for x in [c.number, party_name, c.status] if x)
     text = " ".join(x for x in [c.title, c.number, party_name, c.category, c.type_code, c.notes] if x)
+    if c.has_clause_tree:  # the omnibox finds clause wording of platform AND imported contracts (demo gap: only imported ones were searchable)
+        from app.domain.clauses import rendered_tree
+
+        text += "\n" + "\n".join(f"§{r.display_number} {r.heading or ''} {r.text}".strip() for r in await rendered_tree(session, contract_id=c.id))
     await index_entity(session, c.account_id, "contract", c.id, c.title, text, contract_link(c.id), subtitle=subtitle)

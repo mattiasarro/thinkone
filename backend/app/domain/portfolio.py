@@ -222,3 +222,63 @@ async def health_report(session: AsyncSession) -> dict[str, Any]:
                                                         "imported": sum(c.origin == "imported" for c in contracts), "platform": sum(c.origin == "platform" for c in contracts),
                                                         "ending_6m": next((f["count"] for f in findings if f["code"] == "ending_6m"), 0)},
             "findings": findings}
+
+
+# ---------------------------------------------------------------- attention queue (Avaleht „Fookus”) -----------------
+
+async def attention(session: AsyncSession, today: date | None = None) -> list[dict[str, Any]]:
+    """ONE next step per document, rule-based (architecture §6 smart dashboard: rules first; the LLM never selects).
+
+    Rows: open quotes and platform drafts whose next step is the operator's, imports in review, decision-type key dates
+    within 90 days, contract ends within 6 months. Sorted red → amber → green, then by date. Green (automatic) rows are counted, not listed.
+    """
+    from app.domain import negotiation
+    from app.domain import quotes as quotes_domain
+
+    today = today or date.today()
+    rows: list[dict[str, Any]] = []
+
+    def row(kind: str, tone: str, title: str, text: str, link: str, due: date | None = None, **extra: Any) -> None:
+        rows.append({"kind": kind, "tone": tone, "title": title, "text": text, "link": link, "due": due, **extra})
+
+    for q, party, _prop in await quotes_domain.list_quotes(session, view="open"):
+        b = await quotes_domain.quote_bundle(session, q)
+        ns = b["next_step"]
+        if ns and ns["side"] == "operator":
+            row("quote", "red" if ns["urgent"] else "amber", f"{q.number} · {party.name}", ns["title"], f"/app/portfell/pakkumine/{q.id}", q.valid_until, step=ns["code"])
+    stmt = select(Contract).where(Contract.deleted_at.is_(None), Contract.origin == "platform", Contract.status.in_(["draft", "sent", "negotiating", "ready_to_sign"]))
+    for c in (await session.execute(stmt)).scalars():
+        st = await negotiation.state(session, c, side="operator")
+        ns = negotiation.next_step(c, st)
+        if ns and ns["side"] == "operator":
+            party = (await contract_parties_primary(session, c.id))
+            row("contract", "red" if ns["urgent"] else "amber", f"{c.number} · {party}", ns["title"], f"/app/portfell/leping/{c.id}", None, step=ns["code"])
+    for j in (await session.execute(select(ImportJob).where(ImportJob.status == "review"))).scalars():
+        title = ((j.reviewed or j.proposal or {}).get("contract") or {}).get("title") or "Import"
+        row("import", "amber", title, "Import ootab ülevaatamist", f"/app/portfell/import/{j.id}", None, step="review")
+    kds = (await session.execute(select(KeyDate, Contract).join(Contract, Contract.id == KeyDate.subject_id)
+                                 .where(KeyDate.deleted_at.is_(None), KeyDate.due_date >= today - timedelta(days=1), KeyDate.due_date <= today + timedelta(days=183))
+                                 .order_by(KeyDate.due_date))).all()
+    green = 0
+    for kd, c in kds:
+        days = (kd.due_date - today).days
+        if kd.kind_code == "indexation":
+            if days <= 30:
+                green += 1  # applies by itself (Phase 4 automation) — counted, not listed
+            continue
+        if kd.kind_code == "end":
+            if days <= 183:
+                row("key_date", "amber" if days > 30 else "red", f"{c.number} · {c.title}", f"Leping lõpeb {kd.due_date.strftime('%d.%m.%Y')} — otsusta pikendamine", f"/app/portfell/leping/{c.id}", kd.due_date, step="end")
+            continue
+        if days <= 90 and kd.kind_code in ("notice", "probation", "salary_review", "payment", "other"):
+            row("key_date", "amber" if days > 7 else "red", f"{c.number} · {c.title}", f"{kd.title} · {kd.due_date.strftime('%d.%m.%Y')}", f"/app/portfell/leping/{c.id}", kd.due_date, step=kd.kind_code)
+    order = {"red": 0, "amber": 1, "green": 2}
+    rows.sort(key=lambda r: (order[r["tone"]], r["due"] or date.max))
+    return [{"_green": green}] + rows if green else rows
+
+
+async def contract_parties_primary(session: AsyncSession, contract_id: uuid.UUID) -> str:
+    from app.domain.contract_parties import primary_parties
+
+    p = (await primary_parties(session, [contract_id])).get(contract_id)
+    return p.name if p else ""

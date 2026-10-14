@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends
@@ -52,3 +52,28 @@ async def health(session: AsyncSession = Depends(db)) -> Any:
 @router.get("/summary", response_model=SummaryOut)
 async def summary(session: AsyncSession = Depends(db)) -> Any:
     return await portfolio.summary(session)
+
+
+class AttentionRow(BaseModel):
+    kind: str
+    tone: str
+    title: str
+    text: str
+    link: str
+    due: date | None = None
+    step: str | None = None
+
+
+class AttentionOut(BaseModel):
+    rows: list[AttentionRow]
+    automatic: int  # green rows that apply by themselves (indexation) — counted, not listed (demo „N rakendub ise”)
+
+
+@router.get("/attention", response_model=AttentionOut)
+async def attention_queue(session: AsyncSession = Depends(db)) -> AttentionOut:
+    rows = await portfolio.attention(session)
+    green = 0
+    if rows and "_green" in rows[0]:
+        green = rows[0]["_green"]
+        rows = rows[1:]
+    return AttentionOut(rows=[AttentionRow(**r) for r in rows], automatic=green)

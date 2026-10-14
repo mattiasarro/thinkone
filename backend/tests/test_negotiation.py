@@ -179,3 +179,23 @@ async def test_wording_and_special_term_proposals_and_guards(client: AsyncClient
     assert (await anon.get(f"/api/v1/portal/{token}")).status_code == 404
     assert (await client.get(f"/api/v1/assets/{ctx['spaces']['Pind 12']['id']}")).json()["status"] == "vaba"
     await anon.aclose()
+
+
+async def test_attention_queue_and_clause_search(client: AsyncClient, admin: dict):
+    ctx, d = await _draft(client)
+    att = (await client.get("/api/v1/portfolio/attention")).json()
+    assert any(r["kind"] == "contract" and r["step"] == "send" and r["link"] == f"/app/portfell/leping/{d['id']}" for r in att["rows"])
+    # the omnibox finds platform clause wording
+    hits = (await client.get("/api/v1/search", params={"q": "Üleandmispäev"})).json()
+    assert any(h["entity_type"] == "contract" and h["entity_id"] == d["id"] for h in hits)
+    neg = (await client.post(f"/api/v1/leases/{d['id']}/send", json={})).json()
+    att = (await client.get("/api/v1/portfolio/attention")).json()
+    assert not any(r["kind"] == "contract" for r in att["rows"])  # the client's turn → not the operator's step
+    token = _token(neg)
+    anon = AsyncClient(transport=client._transport, base_url="http://test")
+    p = (await anon.get(f"/api/v1/portal/{token}")).json()
+    await anon.post(f"/api/v1/portal/{token}/lease/threads", json={"clause_id": next(c for c in p["clauses"] if c["fact_key"] == "rent")["id"], "text": "Liiga kallis."})
+    await anon.post(f"/api/v1/portal/{token}/lease/send", json={})
+    att = (await client.get("/api/v1/portfolio/attention")).json()
+    assert any(r["kind"] == "contract" and r["step"] == "answer" and r["tone"] == "red" for r in att["rows"])
+    await anon.aclose()
