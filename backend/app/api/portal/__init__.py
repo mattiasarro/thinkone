@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter
 
-from app.api.portal import quotes
+from app.api.portal import leases, quotes
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 router.include_router(quotes.router)
+router.include_router(leases.router)

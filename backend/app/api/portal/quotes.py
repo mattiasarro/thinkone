@@ -139,9 +139,14 @@ async def _out(session, link, q: Quote, token: str) -> PortalQuoteOut:
     )
 
 
-@router.get("/{token}", response_model=PortalQuoteOut)
-async def portal_home(token: str, dep=PortalDep) -> PortalQuoteOut:
+@router.get("/{token}")
+async def portal_home(token: str, dep=PortalDep):
+    """One link → one document: a quote (PortalQuoteOut) or a lease draft (PortalLeaseOut, see portal/leases.py)."""
     session, pr = dep
+    if pr.link.subject_type == "contract":
+        from app.api.portal.leases import lease_home
+
+        return await lease_home(session, pr.link, token)
     q = await quotes_domain.get_quote(session, _quote_of(pr.link))
     return await _out(session, pr.link, q, token)
 

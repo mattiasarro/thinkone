@@ -60,4 +60,42 @@
 <div class="part" style="page-break-before: always"><h2>Lisad</h2>
 <ol class="terms">{% for a in annexes %}<li>Lisa {{ a.number }} — {{ a.title }}{% if a.missing %} <span class="chk">lisamata</span>{% endif %}</li>{% endfor %}</ol>
 </div>
+{% if interactive %}
+<style>
+  .cl[data-clause] { cursor: pointer; border-radius: 4pt; margin: 0 -6pt; padding-left: 6pt; padding-right: 6pt; }
+  .cl[data-clause]:hover { background: #e9efff; }
+  .cl.sel { background: #e9efff; outline: 2px solid #1f5eff; }
+  .cl.open::after { content: "●"; color: #8a5a12; margin-left: 6pt; font-size: 8pt; }
+  .cl.done::after { content: "✓"; color: #1f6f4a; margin-left: 6pt; font-size: 9pt; }
+</style>
+<script>
+  // the A4 sheet talks to its host page: clicks select a clause; the host marks threads (demo v526: clauses are clickable in the A4)
+  (function () {
+    var sel = null;
+    function post(type, id) { if (window.parent !== window) window.parent.postMessage({ source: "thinkone-doc", type: type, clauseId: id }, "*"); }
+    document.querySelectorAll(".cl[data-clause]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-clause");
+        if (sel) sel.classList.remove("sel");
+        sel = el; el.classList.add("sel");
+        post("clause", id);
+      });
+    });
+    window.addEventListener("message", function (ev) {
+      var d = ev.data || {};
+      if (d.source !== "thinkone-host") return;
+      if (d.type === "marks") {
+        document.querySelectorAll(".cl.open, .cl.done").forEach(function (el) { el.classList.remove("open", "done"); });
+        (d.open || []).forEach(function (id) { var el = document.getElementById("c-" + id); if (el) el.classList.add("open"); });
+        (d.done || []).forEach(function (id) { var el = document.getElementById("c-" + id); if (el) el.classList.add("done"); });
+      } else if (d.type === "select") {
+        var el = d.clauseId ? document.getElementById("c-" + d.clauseId) : null;
+        if (sel) sel.classList.remove("sel");
+        sel = el; if (el) { el.classList.add("sel"); el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+      }
+    });
+    post("ready", null);
+  })();
+</script>
+{% endif %}
 {% endblock %}

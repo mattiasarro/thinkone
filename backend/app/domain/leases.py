@@ -502,6 +502,8 @@ def _editable(c: Contract) -> None:
         raise DomainError("Imporditud lepingut ei koostata platvormil")
     if c.status not in EDITABLE_STATUSES:
         raise DomainError("Lepingu tingimusi saab muuta mustandina või läbirääkimistel", code="not_editable")
+    if c.status != "draft" and (c.round or {}).get("side") not in (None, "operator"):
+        raise DomainError("Praegu on üürniku kord — oota tema kirja", code="not_your_turn")
 
 
 async def update_terms(session: AsyncSession, actor: Actor, contract_id: uuid.UUID, patch: dict[str, Any], *, expected_version: int | None = None,
@@ -633,7 +635,7 @@ async def annexes(session: AsyncSession, c: Contract, d: dict[str, Any]) -> list
     return items
 
 
-async def document_html(session: AsyncSession, b: dict[str, Any], *, version: int | None = None, for_client: bool = False) -> str:
+async def document_html(session: AsyncSession, b: dict[str, Any], *, version: int | None = None, for_client: bool = False, interactive: bool = False) -> str:
     c: Contract = b["contract"]
     company: Company | None = b["company"]
     logo = None
@@ -656,6 +658,6 @@ async def document_html(session: AsyncSession, b: dict[str, Any], *, version: in
     return render.render_html(
         "lease.html", title=f"Üürileping {c.number}", footer=f"{company.name if company else ''} · {c.number}", accent=company.accent_color if company else None,
         c=c, deal=b["deal"], company=company, party=b["party"], main=b["main"], general=b["general"], special=b["special"], annexes=b["annexes"],
-        logo_data_uri=logo, version=version, overridden=overridden, by_id=by_id, for_client=for_client,
+        logo_data_uri=logo, version=version, overridden=overridden, by_id=by_id, for_client=for_client, interactive=interactive,
         sender_name=(await session.get(User, c.created_by)).name if getattr(c, "created_by", None) else None,
     )

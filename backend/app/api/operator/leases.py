@@ -12,7 +12,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal, db
+from app.domain import document_versions as dv
 from app.domain import leases as leases_domain
+from app.domain import negotiation, share_links
 from app.domain.clauses import to_dicts
 from app.domain.contracts import get_contract
 from app.domain.errors import DomainError
@@ -205,7 +207,7 @@ async def get_lease(contract_id: uuid.UUID, session: AsyncSession = Depends(db))
 @router.get("/{contract_id}/document.html", response_class=HTMLResponse)
 async def lease_html(contract_id: uuid.UUID, session: AsyncSession = Depends(db)) -> HTMLResponse:
     c = await _platform(session, contract_id)
-    return HTMLResponse(await leases_domain.document_html(session, await leases_domain.bundle(session, c), version=c.sent_version or None))
+    return HTMLResponse(await leases_domain.document_html(session, await leases_domain.bundle(session, c), version=c.sent_version or None, interactive=True))
 
 
 @router.patch("/{contract_id}/terms", response_model=LeaseDraftOut)
@@ -250,3 +252,252 @@ async def remove_special(contract_id: uuid.UUID, clause_id: uuid.UUID, p: Princi
     c = await _platform(session, contract_id)
     await leases_domain.remove_special_clause(session, p.actor, c.id, clause_id)
     return await _out(session, c)
+
+
+# ---------------------------------------------------------------- negotiation (3.2) --------------------------------
+
+
+
+class ThreadMessageOut(BaseModel):
+    id: uuid.UUID
+    author_type: str
+    author_name: str | None
+    body: str
+    meta: dict[str, Any]
+    created_at: datetime
+
+
+class ThreadOut(BaseModel):
+    id: uuid.UUID
+    clause_id: uuid.UUID
+    clause_number: str | None = None
+    clause_heading: str | None = None
+    opened_by: str
+    status: str
+    resolution: str | None
+    resolution_label: str | None
+    proposal: dict[str, Any] | None
+    wish: dict[str, Any] | None
+    round_nr: int | None
+    unsent: bool
+    whose_turn: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+    messages: list[ThreadMessageOut]
+
+
+class RoundOut(BaseModel):
+    nr: int
+    side: str
+    body: str | None
+    version_no: int | None
+    thread_ids: list[str]
+    created_at: datetime
+
+
+class LeaseVersionOut(BaseModel):
+    number: int
+    created_at: datetime
+    note: str | None
+    pdf_url: str | None
+    changes: list[dict[str, Any]] = []
+
+
+class NegotiationOut(BaseModel):
+    threads: list[ThreadOut]
+    rounds: list[RoundOut]
+    versions: list[LeaseVersionOut]
+    changes_since_v1: list[dict[str, Any]]
+    link: dict[str, Any] | None
+    letters: list[dict[str, Any]]
+    next_step: dict[str, Any] | None
+    turn: str | None
+    can_send: bool
+    pending_count: int
+    unsent_count: int
+
+
+class SendDraftIn(BaseModel):
+    message: str | None = None
+    expected_version: int | None = None
+
+
+class RoundIn(BaseModel):
+    body: str | None = None
+
+
+class ThreadOpenIn(BaseModel):
+    clause_id: uuid.UUID
+    text: str = ""
+
+
+class TextOnlyIn(BaseModel):
+    text: str = Field(min_length=1)
+
+
+class ProposeIn(BaseModel):
+    kind: str = Field(pattern="^(fact|wording|special_term)$")
+    text: str | None = None
+    fact_key: str | None = None
+    value: Any = None
+    wording: str | None = None
+    special_text: str | None = None
+    overrides_label: str | None = None
+
+
+class DecideIn(BaseModel):
+    accept: bool
+    text: str | None = None
+
+
+async def _thread_out(session: AsyncSession, view: dict[str, Any], numbers: dict[uuid.UUID, tuple[str, str | None]]) -> ThreadOut:
+    t = view["thread"]
+    num, head = numbers.get(t.clause_id, (None, None))
+    return ThreadOut(id=t.id, clause_id=t.clause_id, clause_number=num, clause_heading=head, opened_by=t.opened_by, status=t.status, resolution=t.resolution,
+                     resolution_label=negotiation.fmt_label(t.resolution), proposal=t.proposal, wish=t.wish, round_nr=t.round_nr, unsent=view["unsent"],
+                     whose_turn=view["whose_turn"], created_at=t.created_at, resolved_at=t.resolved_at,
+                     messages=[ThreadMessageOut.model_validate(m, from_attributes=True) for m in view["messages"]])
+
+
+async def _negotiation(session: AsyncSession, c: Contract) -> NegotiationOut:
+    st = await negotiation.state(session, c, side="operator")
+    b = await leases_domain.bundle(session, c)
+    numbers = {r.id: (r.display_number, r.heading) for r in b["clauses"]}
+    versions, prev = [], None
+    for v in st["versions"]:
+        versions.append(LeaseVersionOut(number=v.number, created_at=v.created_at, note=v.note, pdf_url=await dv.pdf_url(v),
+                                        changes=negotiation.diff_versions(prev.snapshot, v.snapshot) if prev else []))
+        prev = v
+    v1 = st["versions"][0] if st["versions"] else None
+    since = negotiation.diff_versions(v1.snapshot, negotiation._snapshot(b)) if v1 else []
+    link = st["link"]
+    turn = (c.round or {}).get("side") if c.status in ("sent", "negotiating") else ("operator" if c.status == "draft" else None)
+    pending = [v for v in st["open"] if v["whose_turn"] == "operator"]
+    return NegotiationOut(
+        threads=[await _thread_out(session, v, numbers) for v in st["threads"]],
+        rounds=[RoundOut(nr=r.nr, side=r.side, body=r.body, version_no=r.version_no, thread_ids=r.thread_ids, created_at=r.created_at) for r in st["rounds"]],
+        versions=versions, changes_since_v1=since,
+        link={"email": link.email, "expires_at": link.expires_at, "opened_at": link.opened_at, "url": share_links.portal_url(share_links.token_for(link))} if link and share_links.is_live(link) else None,
+        letters=[{"id": n.id, "kind": n.kind, "title": n.title, "to": n.recipient_email, "status": n.email_status, "error": n.email_error, "created_at": n.created_at} for n in st["letters"]],
+        next_step=negotiation.next_step(c, st), turn=turn, can_send=turn == "operator" and not pending and c.status != "draft", pending_count=len(pending), unsent_count=len(st["unsent"]),
+    )
+
+
+@router.get("/{contract_id}/negotiation", response_model=NegotiationOut)
+async def get_negotiation(contract_id: uuid.UUID, session: AsyncSession = Depends(db)) -> NegotiationOut:
+    return await _negotiation(session, await _platform(session, contract_id))
+
+
+@router.post("/{contract_id}/send", response_model=NegotiationOut)
+async def send_draft(contract_id: uuid.UUID, body: SendDraftIn | None = None, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    body = body or SendDraftIn()
+    r = await negotiation.send_draft(session, p.actor, contract_id, message=body.message, expected_version=body.expected_version)
+    return await _negotiation(session, r["contract"])
+
+
+@router.post("/{contract_id}/round", response_model=NegotiationOut)
+async def send_round(contract_id: uuid.UUID, body: RoundIn | None = None, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.send_round(session, p.actor, c, side="operator", body=(body or RoundIn()).body)
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/cancel", response_model=LeaseDraftOut)
+async def cancel_lease(contract_id: uuid.UUID, body: RoundIn | None = None, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> LeaseDraftOut:
+    return await _out(session, await negotiation.cancel(session, p.actor, contract_id, (body or RoundIn()).body))
+
+
+@router.post("/{contract_id}/threads", response_model=NegotiationOut, status_code=201)
+async def open_thread(contract_id: uuid.UUID, body: ThreadOpenIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.open_thread(session, p.actor, c, clause_id=body.clause_id, side="operator", text=body.text, author_name=await negotiation._sender_name(session, p.actor, c))
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/threads/{thread_id}/explain", response_model=NegotiationOut)
+async def explain(contract_id: uuid.UUID, thread_id: uuid.UUID, body: TextOnlyIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.explain(session, p.actor, c, await negotiation.get_thread(session, c.id, thread_id), body.text)
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/threads/{thread_id}/answer", response_model=NegotiationOut)
+async def answer(contract_id: uuid.UUID, thread_id: uuid.UUID, body: TextOnlyIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.answer_only(session, p.actor, c, await negotiation.get_thread(session, c.id, thread_id), body.text)
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/threads/{thread_id}/propose", response_model=NegotiationOut)
+async def propose(contract_id: uuid.UUID, thread_id: uuid.UUID, body: ProposeIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.propose(session, p.actor, c, await negotiation.get_thread(session, c.id, thread_id), kind=body.kind, text=body.text, fact_key=body.fact_key,
+                              value=body.value, wording=body.wording, special_text=body.special_text, overrides_label=body.overrides_label, side="operator")
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/threads/{thread_id}/decide", response_model=NegotiationOut)
+async def decide(contract_id: uuid.UUID, thread_id: uuid.UUID, body: DecideIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.decide(session, p.actor, c, await negotiation.get_thread(session, c.id, thread_id), side="operator", accept=body.accept, text=body.text,
+                             author_name=await negotiation._sender_name(session, p.actor, c))
+    return await _negotiation(session, c)
+
+
+@router.post("/{contract_id}/threads/{thread_id}/unchanged", response_model=NegotiationOut)
+async def unchanged(contract_id: uuid.UUID, thread_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> NegotiationOut:
+    c = await _platform(session, contract_id)
+    await negotiation.mark_ok(session, p.actor, c, await negotiation.get_thread(session, c.id, thread_id), side="operator", author_name=await negotiation._sender_name(session, p.actor, c))
+    return await _negotiation(session, c)
+
+
+@router.get("/{contract_id}/versions/{number}/document.html", response_class=HTMLResponse)
+async def version_html(contract_id: uuid.UUID, number: int, session: AsyncSession = Depends(db)) -> HTMLResponse:
+    c = await _platform(session, contract_id)
+    v = await dv.get_version(session, "contract", c.id, number)
+    if not v:
+        from app.domain.errors import NotFound
+
+        raise NotFound("Versiooni ei leitud")
+    from app.infra.blobstore import blobstore
+
+    if v.pdf_s3_key:
+        return HTMLResponse(f'<meta http-equiv="refresh" content="0;url={await blobstore().presigned_url(v.pdf_s3_key)}">')
+    return HTMLResponse(await leases_domain.document_html(session, await leases_domain.bundle(session, c), version=v.number))
+
+
+class ChatIn(BaseModel):
+    body: str = Field(min_length=1)
+
+
+@router.get("/{contract_id}/chat")
+async def chat_list(contract_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[dict[str, Any]]:
+    from app.domain import messages as messages_domain
+
+    c = await _platform(session, contract_id)
+    return [{"id": m.id, "author_type": m.author_type, "author_name": m.author_name, "body": m.body, "created_at": m.created_at, "channel": m.channel, "meta": m.meta}
+            for m in await messages_domain.list_for(session, "contract", c.id, channel="chat")]
+
+
+@router.post("/{contract_id}/chat", status_code=201)
+async def chat_post(contract_id: uuid.UUID, body: ChatIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[dict[str, Any]]:
+    from app.domain import messages as messages_domain
+    from app.domain.notify import notify
+
+    c = await _platform(session, contract_id)
+    sender = await negotiation._sender_name(session, p.actor, c)
+    await messages_domain.post(session, p.actor, subject_type="contract", subject_id=c.id, channel="chat", author_type="operator", author_name=sender, body=body.body)
+    link = await share_links.current_link(session, "contract", c.id)
+    email = (c.contact or {}).get("email")
+    if link and email and share_links.is_live(link):
+        await notify(session, p.actor, kind="contract.message", title=f"Uus sõnum lepingu {c.number} kohta", body=f"{sender}:\n\n{body.body}",
+                     link=share_links.portal_path(share_links.token_for(link)), recipient_email=email, subject_type="contract", subject_id=c.id)
+    return await chat_list(contract_id, session)
+
+
+@router.post("/{contract_id}/chat/read", status_code=204)
+async def chat_read(contract_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> None:
+    from app.domain import messages as messages_domain
+
+    await _platform(session, contract_id)
+    await messages_domain.mark_read(session, p.actor, "contract", contract_id)
