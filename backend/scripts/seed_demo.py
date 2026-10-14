@@ -28,7 +28,7 @@ SPACES = [
 
 
 def main() -> None:
-    c = httpx.Client(base_url=BASE, timeout=60)
+    c = httpx.Client(base_url=BASE, timeout=600)  # template ingestion and import structuring run the live model
     email = f"demo+{int(time.time())}@example.com"
     r = c.post("/api/v1/auth/register", json={"account_name": "Taevavärava OÜ", "email": email, "name": "Tarmo Sepp", "password": "demo-parool-123"})
     r.raise_for_status()
