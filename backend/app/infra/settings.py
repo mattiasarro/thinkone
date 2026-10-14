@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     ariregister_password: str | None = None
     ariregister_url: str = "https://ariregxmlv6.rik.ee/"
     ehr_mode: Literal["fake", "live"] | None = None
+    risk_mode: Literal["fake", "live"] | None = None  # open data (äriregister + EMTA CSVs); paid sources need credentials (later)
 
     # email
     email_provider: Literal["fake", "postmark", "smtp"] = "fake"

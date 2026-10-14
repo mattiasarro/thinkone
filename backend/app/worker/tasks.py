@@ -47,6 +47,10 @@ async def enqueue_parking_plan_derivation(session: AsyncSession, account_id: uui
                    queue="import", lock=f"parking_plan:{property_id}")
 
 
+async def enqueue_risk_report(session: AsyncSession, account_id: uuid.UUID, report_id: uuid.UUID) -> None:
+    await _enqueue(session, "app.worker.tasks.generate_risk_report", {"account_id": str(account_id), "report_id": str(report_id)}, queue="default", lock=f"risk:{report_id}")
+
+
 # ---- tasks -------------------------------------------------------------------------------------
 
 
@@ -137,3 +141,14 @@ async def expire_quotes(timestamp: int) -> None:
     from app.domain.quotes import expire_due_all
 
     await expire_due_all()
+
+
+@app.task(name="app.worker.tasks.generate_risk_report", queue="default", retry=2)
+async def generate_risk_report(account_id: str, report_id: str) -> None:
+    from app.domain import risk as risk_domain
+    from app.domain.events import Actor
+    from app.infra.db import tenant_session
+
+    aid = uuid.UUID(account_id)
+    async with tenant_session(aid) as session:
+        await risk_domain.generate(session, Actor.system(aid, correlation_id=f"risk:{report_id[:12]}"), uuid.UUID(report_id))

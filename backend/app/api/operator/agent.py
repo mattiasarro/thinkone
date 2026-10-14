@@ -175,6 +175,11 @@ async def confirm_card(thread_id: uuid.UUID, message_id: uuid.UUID, card_id: str
         party = await create_party(session, actor, kind=args["kind"], name=args["name"], roles=args.get("roles"), registry_code=args.get("registry_code"),
                                    address=args.get("address"), vat_number=args.get("vat_number"))
         link, title = f"/app/portfell/osapool/{party.id}", party.name
+    elif card["action"] == "order_risk_report":
+        from app.domain import risk as risk_domain
+
+        r = await risk_domain.order(session, actor, uuid.UUID(args["party_id"]))
+        link, title = f"/app/portfell/osapool/{r.party_id}?tab=risk", card.get("title", "Riskiraport")
     else:
         raise DomainError("Tundmatu toiming")
     cards = [dict(c) for c in m.cards]

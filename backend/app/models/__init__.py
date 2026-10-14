@@ -38,3 +38,4 @@ from app.models.quotes import (  # noqa: F401
     ShareLink,
 )
 from app.models.registry import Allocation, Asset, AssetType  # noqa: F401
+from app.models.risk import RiskReport  # noqa: F401

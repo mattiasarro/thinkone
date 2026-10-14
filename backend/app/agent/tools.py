@@ -506,6 +506,28 @@ async def create_party_from_registry(session: AsyncSession, actor: Actor, a: Par
     return ToolResult(content=f"Kinnituskaart: osapool {h.name} (reg {h.registry_code}).", summary=f"osapool äriregistrist · {h.name}", cards=[card])
 
 
+class RiskIn(BaseModel):
+    party: str = Field(description="Kliendi nimi või registrikood")
+
+
+async def order_risk_report(session: AsyncSession, actor: Actor, a: RiskIn) -> ToolResult:
+    """Risk report is advisory (spec 04 p 2). The latest report is read directly; a new one is a confirmation card."""
+    from app.domain import risk as risk_domain
+
+    rows = await _find_parties(session, a.party)
+    if len(rows) != 1:
+        return ToolResult(content="Osapoolt ei leitud või mitu vastet:\n" + "\n".join(f"- {p.name} · reg {p.registry_code or '—'}" for p in rows[:6]), summary="riskiraport · täpsustus", clarify=True)
+    p = rows[0]
+    last = await risk_domain.latest(session, p.id)
+    lines = []
+    if last and last.status == "ready":
+        lines.append(f"Viimane riskiraport {last.generated_at:%d.%m.%Y}: {last.score} ({last.points} p). " + " | ".join(f"{s['source']}: {s['text']} [{s['level']}]" for s in last.signals))
+    card = {"type": "confirm", "id": f"c-{uuid.uuid4().hex[:8]}", "action": "order_risk_report", "title": f"Riskiraport · {p.name}", "text": f"reg {p.registry_code or '—'} · avaandmed (äriregister, EMTA)",
+            "args": {"party_id": str(p.id)}, "requires_confirmation": True}
+    lines.append("Uue raporti tellimiseks on kinnituskaart.")
+    return ToolResult(content="\n".join(lines), summary=f"riskiraport · {p.name}", cards=[card])
+
+
 # ---------------------------------------------------------------- registry ---------------------------------------
 
 TOOLS: list[Tool] = [
@@ -526,5 +548,6 @@ TOOLS: list[Tool] = [
     Tool("draft_commercial_text", "Sõnasta pakkumise kommertstekst pakkumise faktidest.", CommercialIn, draft_commercial_text, True),
     Tool("explain_clause", "Selgita lepingupunkti lihtsas keeles (tsiteerib punkti).", ExplainIn, explain_clause),
     Tool("create_party_from_registry", "Loo osapool äriregistri andmetest (kinnituskaart).", PartyFromRegistryIn, create_party_from_registry, True),
+    Tool("order_risk_report", "Kliendi riskiraport (avaandmed): viimane raport kohe, uue tellimine kinnituskaardiga.", RiskIn, order_risk_report, True),
 ]
 TOOL_BY_NAME = {t.name: t for t in TOOLS}

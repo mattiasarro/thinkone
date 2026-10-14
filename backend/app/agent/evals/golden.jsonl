@@ -1,0 +1,10 @@
+{"id": "g01", "question": "Millised pinnad on hoones Hoone T6B vabad?", "expect_any": ["Pind", "vaba"], "tools_any": ["list_spaces", "get_property", "search_portfolio"], "citations": false}
+{"id": "g02", "question": "Mis seisus on avatud pakkumised?", "expect_any": ["PAK-", "pakkumis"], "tools_any": ["get_quote", "search_portfolio"], "citations": false}
+{"id": "g03", "question": "Kelle leping lõpeb järgmise 12 kuu jooksul?", "expect_any": ["lõpe", "LEP-", "ei ole"], "tools_any": ["list_key_dates"], "citations": false}
+{"id": "g04", "question": "Mis indekseerub 2027?", "expect_any": ["indekseeri", "2027", "ei ole"], "tools_any": ["list_key_dates"], "citations": false}
+{"id": "g05", "question": "Kui suur on AS Maru Ehitus üür kuus ja millisest punktist see tuleb?", "expect_any": ["€", "EUR"], "tools_any": ["load_contract", "get_contract", "search_portfolio"], "citations": true}
+{"id": "g06", "question": "Millal võib üürnik lepingu LEP-2023-029 üles öelda?", "expect_any": ["ütle", "etteteata", "punkt"], "tools_any": ["load_contract", "search_portfolio"], "citations": true}
+{"id": "g07", "question": "Loo pakkumine ettevõttele Future Invest OÜ, Hoone T6B pind 12", "expect_any": ["kinnita", "mustand"], "tools_any": ["create_quote_draft"], "citations": false, "card": "confirm"}
+{"id": "g08", "question": "Kes on hoone hooldaja ja millal hooldusleping lõpeb?", "expect_any": ["Caverion", "hooldus", "ei ole"], "tools_any": ["search_portfolio", "get_contract"], "citations": false}
+{"id": "g09", "question": "Mis on Pind 12 hind ruutmeetri kohta?", "expect_any": ["€/m²", "€", "9,5"], "tools_any": ["get_property", "list_spaces", "search_portfolio"], "citations": false}
+{"id": "g10", "question": "Kas meil on lepinguid, millel pole indekseerimist kokku lepitud?", "expect_any": ["indeks", "ei ole", "puudu"], "tools_any": ["list_key_dates", "search_portfolio", "get_contract"], "citations": false}

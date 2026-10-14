@@ -111,3 +111,48 @@ async def party_contracts(party_id: uuid.UUID, session: AsyncSession = Depends(d
         out.append(PartyContractOut(id=c.id, number=c.number, title=c.title, status=c.status, type_code=c.type_code, category=c.category,
                                     start_date=c.start_date, end_date=c.end_date, role=role))
     return out
+
+
+# ---------------------------------------------------------------- risk report (Phase 3) -----------------------------
+
+from app.domain import risk as risk_domain  # noqa: E402
+
+
+class RiskReportOut(BaseModel):
+    id: uuid.UUID
+    party_id: uuid.UUID
+    status: str
+    score: str | None
+    points: int
+    signals: list[dict]
+    sources: dict
+    summary: str | None
+    error: str | None
+    created_at: datetime
+    generated_at: datetime | None
+
+
+def _risk_out(r) -> RiskReportOut:
+    return RiskReportOut(id=r.id, party_id=r.party_id, status=r.status, score=r.score, points=r.points, signals=r.signals or [], sources=r.sources or {},
+                         summary=r.summary, error=r.error, created_at=r.created_at, generated_at=r.generated_at)
+
+
+@router.get("/{party_id}/risk", response_model=list[RiskReportOut])
+async def risk_history(party_id: uuid.UUID, session: AsyncSession = Depends(db)) -> list[RiskReportOut]:
+    await parties_domain.get_party(session, party_id)
+    return [_risk_out(r) for r in await risk_domain.history(session, party_id)]
+
+
+@router.post("/{party_id}/risk", response_model=RiskReportOut, status_code=201)
+async def order_risk(party_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> RiskReportOut:
+    return _risk_out(await risk_domain.order(session, p.actor, party_id))
+
+
+@router.get("/{party_id}/risk/{report_id}", response_model=RiskReportOut)
+async def risk_report(party_id: uuid.UUID, report_id: uuid.UUID, session: AsyncSession = Depends(db)) -> RiskReportOut:
+    r = await risk_domain.get_report(session, report_id)
+    if r.party_id != party_id:
+        from app.domain.errors import NotFound
+
+        raise NotFound("Riskiraportit ei leitud")
+    return _risk_out(r)
