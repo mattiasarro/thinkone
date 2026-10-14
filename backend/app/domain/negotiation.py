@@ -107,7 +107,8 @@ async def state(session: AsyncSession, c: Contract, *, side: str = "operator") -
 
 
 async def letters_of(session: AsyncSession, contract_id: uuid.UUID) -> list[Notification]:
-    stmt = (select(Notification).where(Notification.subject_type == "contract", Notification.subject_id == contract_id, Notification.recipient_email.is_not(None))
+    stmt = (select(Notification).where(Notification.subject_type == "contract", Notification.subject_id == contract_id, Notification.recipient_email.is_not(None),
+                                        Notification.kind.in_(["contract.sent", "contract.round", "contract.message", "contract.reminder"]))
             .order_by(Notification.created_at))
     return list((await session.execute(stmt)).scalars())
 
@@ -174,10 +175,11 @@ async def send_draft(session: AsyncSession, actor: Actor, contract_id: uuid.UUID
     b = await leases.bundle(session, c)
     name = (c.contact or {}).get("name") or (b["party"].name if b["party"] else "")
     sender = await _sender_name(session, actor, c)
-    body = (f"Tere, {name}!\n\nSaatsime Teile üürilepingu {c.number} mustandi (V{version_no}) — {b['deal']['property'].name if b['deal']['property'] else ''}, "
-            f"{', '.join(s['name'] for s in b['deal']['spaces'])}. Vaadake lepingut lingi kaudu: iga punkt on klõpsatav ja kommenteeritav; "
+    what = (f"töölepingu {c.number} mustandi (V{version_no}) — {b['deal']['position'].name}" if b["deal"]["vertical"] == "employment"
+            else f"üürilepingu {c.number} mustandi (V{version_no}) — {b['deal']['property'].name if b['deal']['property'] else ''}, {', '.join(s['name'] for s in b['deal']['spaces'])}")
+    body = (f"Tere, {name}!\n\nSaatsime Teile {what}. Vaadake lepingut lingi kaudu: iga punkt on klõpsatav ja kommenteeritav; "
             f"kui kõik sobib, aktsepteerige punktid.{chr(10) * 2 + message if message else ''}\n\nLugupidamisega\n{sender}")
-    await notify(session, actor, kind="contract.sent", title=f"Üürilepingu {c.number} mustand", body=body, link=share_links.portal_path(share_links.token_for(link)),
+    await notify(session, actor, kind="contract.sent", title=f"{'Töölepingu' if c.type_code == 'employment' else 'Üürilepingu'} {c.number} mustand", body=body, link=share_links.portal_path(share_links.token_for(link)),
                  recipient_email=email, subject_type="contract", subject_id=c.id)
     published = []
     for t in await threads_of(session, c.id):  # the operator's own remarks made while drafting go out with V1
@@ -394,6 +396,18 @@ async def _apply(session: AsyncSession, actor: Actor, c: Contract, t: ClauseThre
 
 async def _apply_fact(session: AsyncSession, actor: Actor, c: Contract, fact_key: str, value: Any) -> None:
     patch: dict[str, Any]
+    if c.type_code == "employment":
+        from app.domain import employment
+
+        if fact_key not in ("salary", "months", "probation_months", "start", "working_time", "place", "salary_review", "vacation_days", "term_notes"):
+            raise DomainError(f"Fakti {fact_key} ei saa läbirääkimisel muuta")
+        saved = c.round
+        c.round = None
+        try:
+            await employment.update_terms(session, actor, c.id, {fact_key: value}, reason="läbirääkimine")
+        finally:
+            c.round = saved
+        return
     if fact_key == "rent":
         patch = {"spaces": [{"space_id": s["space_id"], "price_per_m2": float(value)} for s in (c.terms or {}).get("spaces") or []]}
     elif fact_key == "parking":

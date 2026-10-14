@@ -28,15 +28,15 @@
   .annex { margin-top: 26pt; page-break-before: always; }
 </style>
 <div class="head">
-  <div><div class="brand">{{ company.name if company else '' }}</div><div class="meta">Äriruumide üürileping</div></div>
+  <div><div class="brand">{{ company.name if company else '' }}</div><div class="meta">{{ 'Tööleping' if kind == 'employment' else 'Äriruumide üürileping' }}</div></div>
   {% if logo_data_uri %}<div class="logo"><img src="{{ logo_data_uri }}" alt=""></div>{% endif %}
 </div>
-<h1>Üürileping nr {{ c.number }}</h1>
-<div class="meta">{% if c.signed_at %}Allkirjastatud {{ c.signed_at|date_et }}{% else %}Mustand{% if version %} · V{{ version }}{% endif %}{% endif %} · {{ deal.handover|date_et }} – {{ deal.end|date_et }}</div>
+<h1>{{ 'Tööleping' if kind == 'employment' else 'Üürileping' }} nr {{ c.number }}</h1>
+<div class="meta">{% if c.signed_at %}Allkirjastatud {{ c.signed_at|date_et }}{% else %}Mustand{% if version %} · V{{ version }}{% endif %}{% endif %} · alates {{ deal.start|date_et }}{% if deal.end %} kuni {{ deal.end|date_et }}{% else %} · tähtajatu{% endif %}</div>
 
 <div class="grid" style="margin-top:12pt">
-  <div class="box accent"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">Üürileandja</div><div><strong>{{ company.name if company else '—' }}</strong></div>{% if company and company.registry_code %}<div class="muted">reg {{ company.registry_code }}</div>{% endif %}</div>
-  <div class="box"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">Üürnik</div><div><strong>{{ party.name if party else '—' }}</strong></div>{% if party and party.registry_code %}<div class="muted">reg {{ party.registry_code }}</div>{% endif %}</div>
+  <div class="box accent"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">{{ 'Tööandja' if kind == 'employment' else 'Üürileandja' }}</div><div><strong>{{ company.name if company else '—' }}</strong></div>{% if company and company.registry_code %}<div class="muted">reg {{ company.registry_code }}</div>{% endif %}</div>
+  <div class="box"><div class="muted" style="font-size:8.5pt;text-transform:uppercase">{{ 'Töötaja' if kind == 'employment' else 'Üürnik' }}</div><div><strong>{{ party.name if party else '—' }}</strong></div>{% if party and party.registry_code %}<div class="muted">reg {{ party.registry_code }}</div>{% endif %}</div>
 </div>
 
 <div class="part"><h2>Põhitingimused</h2>{{ clause_rows(main) }}</div>

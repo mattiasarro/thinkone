@@ -29,8 +29,10 @@ class PortalLeaseOut(BaseModel):
     property_name: str | None
     space_names: list[str]
     handover: date
-    end: date
-    months: int
+    end: date | None
+    months: int | None
+    kind: str = "lease"
+    employment: dict[str, Any] | None = None
     totals: dict[str, Any]
     deposit: float
     sent_version: int
@@ -74,7 +76,8 @@ class RoundIn(BaseModel):
     body: str | None = None
 
 
-FACT_LABELS = {"rent": "Üür €/m²", "parking": "Parkimiskohad", "handover": "Üleandmispäev", "deposit_months": "Tagatis (kuud)", "months": "Lepingu tähtaeg", "purpose": "Kasutusotstarve"}
+FACT_LABELS = {"rent": "Üür €/m²", "parking": "Parkimiskohad", "handover": "Üleandmispäev", "deposit_months": "Tagatis (kuud)", "months": "Lepingu tähtaeg", "purpose": "Kasutusotstarve",
+               "salary": "Brutotöötasu", "probation_months": "Katseaeg (kuud)", "start": "Tööle asumine", "working_time": "Tööaeg", "place": "Töö tegemise koht", "vacation_days": "Põhipuhkus"}
 
 
 def _contract_of(link) -> uuid.UUID:
@@ -110,7 +113,9 @@ async def _out(session, link, c: Contract, token: str) -> PortalLeaseOut:
     return PortalLeaseOut(
         id=c.id, number=c.number, status=c.status, client_name=(c.contact or {}).get("name") or (b["party"].name if b["party"] else ""), party_name=b["party"].name if b["party"] else "",
         landlord_name=company.name if company else None, property_name=d["property"].name if d["property"] else None, space_names=[s["name"] for s in d["spaces"]],
-        handover=d["handover"], end=d["end"], months=d["months"], totals=d["totals"], deposit=d["deposit"], sent_version=c.sent_version,
+        handover=d["handover"], end=d["end"], months=d["months"], totals=d["totals"], deposit=d["deposit"], sent_version=c.sent_version, kind=c.type_code,
+        employment={"position": d["position"].name, "salary": d["salary"], "probation_end": d["probation_end"], "salary_review": d["salary_review"], "working_time": d["working_time"],
+                    "vacation_days": d["vacation_days"]} if d["vertical"] == "employment" else None,
         document_url=f"/api/v1/portal/{token}/document.html", pdf_url=await document_versions.pdf_url(last),
         clauses=[{k: v for k, v in x.items() if k in ("id", "number", "heading", "text", "container", "level", "locked", "status", "overrides_clause_id", "overrides_label", "fact_key")} for x in clauses],
         threads=[{"id": v["thread"].id, "clause_id": v["thread"].clause_id, "clause_number": numbers.get(v["thread"].clause_id, (None, None))[0],

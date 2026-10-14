@@ -242,7 +242,8 @@ def _attachments(spaces: list[dict[str, Any]], prop_plans: dict[str, Attachment]
 
 
 async def letters_of(session: AsyncSession, quote_id: uuid.UUID) -> list[Notification]:
-    stmt = (select(Notification).where(Notification.subject_type == "quote", Notification.subject_id == quote_id, Notification.recipient_email.is_not(None))
+    stmt = (select(Notification).where(Notification.subject_type == "quote", Notification.subject_id == quote_id, Notification.recipient_email.is_not(None),
+                                        Notification.kind.in_(LETTER_KINDS | {"quote.message"}))
             .order_by(Notification.created_at))
     return list((await session.execute(stmt)).scalars())
 

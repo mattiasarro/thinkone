@@ -122,9 +122,10 @@ class DealSpaceOut(BaseModel):
 
 
 class DealOut(BaseModel):
+    vertical: str = "lease"
     handover: date
-    end: date
-    months: int
+    end: date | None
+    months: int | None
     deposit: float
     deposit_months: int
     purpose: str
@@ -134,6 +135,7 @@ class DealOut(BaseModel):
     totals: dict[str, Any]
     spaces: list[DealSpaceOut]
     property: dict[str, Any] | None
+    employment: dict[str, Any] | None = None  # position, department, salary, probation_end, salary_review, working_time, vacation_days, place, pay_day
 
 
 class LeaseDraftOut(BaseModel):
@@ -167,10 +169,13 @@ async def _out(session: AsyncSession, c: Contract) -> LeaseDraftOut:
         id=c.id, number=c.number, title=c.title, status=c.status, version=c.version, sent_version=c.sent_version, quote_id=c.quote_id,
         party={"id": party.id, "name": party.name, "registry_code": party.registry_code} if party else None, company_id=c.company_id,
         contact=ContactIn(**{k: (c.contact or {}).get(k, "") or "" for k in ("name", "email", "phone")}), terms=c.terms or {},
-        deal=DealOut(handover=d["handover"], end=d["end"], months=d["months"], deposit=d["deposit"], deposit_months=d["deposit_months"], purpose=d["purpose"],
+        deal=DealOut(vertical=d["vertical"], handover=d["handover"], end=d["end"], months=d["months"], deposit=d["deposit"], deposit_months=d["deposit_months"], purpose=d["purpose"],
                      term_notes=d["term_notes"], indexation=d["indexation"], representatives=d["representatives"], totals=d["totals"],
                      spaces=[DealSpaceOut(**s) for s in d["spaces"]],
-                     property={"id": prop.id, "name": prop.name, "attributes": {k: v for k, v in (prop.attributes or {}).items() if k in ("address", "vat_taxable", "has_parking")}} if prop else None),
+                     property={"id": prop.id, "name": prop.name, "attributes": {k: v for k, v in (prop.attributes or {}).items() if k in ("address", "vat_taxable", "has_parking")}} if prop else None,
+                     employment={"position": {"id": d["position"].id, "name": d["position"].name}, "department": {"id": d["department"].id, "name": d["department"].name} if d["department"] else None,
+                                 "salary": d["salary"], "probation_months": d["probation_months"], "probation_end": d["probation_end"], "salary_review": d["salary_review"],
+                                 "working_time": d["working_time"], "vacation_days": d["vacation_days"], "place": d["place"], "pay_day": d["pay_day"]} if d["vertical"] == "employment" else None),
         clauses=[ClauseOut(**{k: v for k, v in x.items() if k in ClauseOut.model_fields}) for x in to_dicts(b["clauses"])],
         annexes=[AnnexOut(**a) for a in b["annexes"]], editable=c.status in leases_domain.EDITABLE_STATUSES, round=c.round, sent_at=c.sent_at, accepted_at=c.accepted_at,
         link=f"/app/portfell/leping/{c.id}",
@@ -179,8 +184,8 @@ async def _out(session: AsyncSession, c: Contract) -> LeaseDraftOut:
 
 async def _platform(session: AsyncSession, contract_id: uuid.UUID) -> Contract:
     c = await get_contract(session, contract_id)
-    if c.origin != "platform" or c.type_code != "lease":
-        raise DomainError("See ei ole platvormil koostatud üürileping", code="not_platform")
+    if c.origin != "platform" or c.type_code not in ("lease", "employment"):
+        raise DomainError("See ei ole platvormil koostatud leping", code="not_platform")
     return c
 
 
@@ -468,6 +473,62 @@ async def version_html(contract_id: uuid.UUID, number: int, session: AsyncSessio
 
 class ChatIn(BaseModel):
     body: str = Field(min_length=1)
+
+
+class EmploymentCreateIn(BaseModel):
+    party_id: uuid.UUID
+    position_id: uuid.UUID
+    salary: float = Field(gt=0)
+    start: date
+    months: int | None = Field(default=None, ge=1, le=600)
+    probation_months: int = Field(default=4, ge=0, le=4)
+    working_time: str | None = None
+    place: str | None = None
+    salary_review: date | None = None
+    vacation_days: int = Field(default=28, ge=0, le=60)
+    pay_day: int = Field(default=10, ge=1, le=28)
+    company_id: uuid.UUID | None = None
+
+
+class EmploymentTermsPatchIn(BaseModel):
+    expected_version: int | None = None
+    start: date | None = None
+    months: int | None = Field(default=None, ge=1, le=600)
+    salary: float | None = Field(default=None, gt=0)
+    probation_months: int | None = Field(default=None, ge=0, le=4)
+    working_time: str | None = None
+    place: str | None = None
+    salary_review: date | None = None
+    vacation_days: int | None = Field(default=None, ge=0, le=60)
+    pay_day: int | None = Field(default=None, ge=1, le=28)
+    term_notes: str | None = None
+    reason: str | None = None
+
+
+@router.post("/employment", response_model=LeaseDraftOut, status_code=201)
+async def create_employment(body: EmploymentCreateIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> LeaseDraftOut:
+    """Tööleping draft on a position — the second contract type on the same engine (spec: vertical = config + thin module)."""
+    from app.domain import employment
+
+    c = await employment.create_draft(session, p.actor, party_id=body.party_id, position_id=body.position_id, salary=body.salary, start=body.start, months=body.months,
+                                      probation_months=body.probation_months, working_time=body.working_time, place=body.place, salary_review=body.salary_review,
+                                      vacation_days=body.vacation_days, pay_day=body.pay_day, company_id=body.company_id)
+    return await _out(session, c)
+
+
+@router.patch("/{contract_id}/employment-terms", response_model=LeaseDraftOut)
+async def patch_employment_terms(contract_id: uuid.UUID, body: EmploymentTermsPatchIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> LeaseDraftOut:
+    from app.domain import employment
+
+    c = await _platform(session, contract_id)
+    if c.type_code != "employment":
+        raise DomainError("See ei ole tööleping")
+    patch = body.model_dump(exclude={"expected_version", "reason"}, exclude_none=True)
+    for k in ("start", "salary_review"):
+        if k in patch:
+            patch[k] = patch[k].isoformat()
+    c = await employment.update_terms(session, p.actor, contract_id, patch, expected_version=body.expected_version, reason=body.reason)
+    return await _out(session, c)
 
 
 @router.get("/{contract_id}/chat")

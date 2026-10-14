@@ -115,7 +115,16 @@ async def _space_rows(session: AsyncSession, terms: dict[str, Any]) -> list[tupl
 
 
 async def deal(session: AsyncSession, c: Contract) -> dict[str, Any]:
-    """The computed deal: per-space lines, totals, dates, parking numbers — what the main terms and facts render."""
+    """The computed deal — what the main terms, facts, key dates and allocations render. Verticals plug in here."""
+    if c.type_code == "employment":
+        from app.domain import employment
+
+        return await employment.deal(session, c)
+    return await lease_deal(session, c)
+
+
+async def lease_deal(session: AsyncSession, c: Contract) -> dict[str, Any]:
+    """Real-estate lease: per-space lines, totals, dates, parking numbers."""
     terms = c.terms or {}
     settings = effective_settings(await get_account(session, c.account_id))
     handover = date.fromisoformat(terms["handover"])
@@ -139,10 +148,25 @@ async def deal(session: AsyncSession, c: Contract) -> dict[str, Any]:
     totals = pricing.quote_totals(lines, vat_taxable=vat_taxable, rate=pricing.vat_rate(settings, handover), utility_winter=_attr(prop, "utility_cost_winter") if prop else None,
                                   utility_summer=_attr(prop, "utility_cost_summer") if prop else None)
     deposit_months = int(terms.get("deposit_months") or 0)
-    return {"terms": terms, "handover": handover, "months": months, "end": end_of_term(handover, months), "spaces": spaces, "totals": totals,
-            "deposit": pricing.deposit(totals["monthly_net"], deposit_months), "deposit_months": deposit_months, "property": prop, "settings": settings,
-            "purpose": terms.get("purpose") or PURPOSE_DEFAULT, "term_notes": terms.get("term_notes") or "Puuduvad.", "indexation": terms.get("indexation") or {},
-            "representatives": terms.get("representatives") or {"landlord": [], "tenant": []}, "uniform_price": len({s["line"]["price_per_m2"] for s in spaces}) <= 1}
+    end = end_of_term(handover, months)
+    d = {"vertical": "lease", "terms": terms, "handover": handover, "start": handover, "months": months, "end": end, "spaces": spaces, "totals": totals,
+         "deposit": pricing.deposit(totals["monthly_net"], deposit_months), "deposit_months": deposit_months, "property": prop, "settings": settings,
+         "purpose": terms.get("purpose") or PURPOSE_DEFAULT, "term_notes": terms.get("term_notes") or "Puuduvad.", "indexation": terms.get("indexation") or {},
+         "representatives": terms.get("representatives") or {"landlord": [], "tenant": []}, "uniform_price": len({s["line"]["price_per_m2"] for s in spaces}) <= 1}
+    d["facts"] = facts_of(d)
+    d["key_dates"] = {"start": handover, "end": end}
+    if d["indexation"].get("method") and d["indexation"].get("next_date"):
+        d["key_dates"]["indexation"] = date.fromisoformat(d["indexation"]["next_date"])
+    allocs: list[tuple[uuid.UUID, str, int, date, date]] = [(sp["space_id"], "exclusive", 1, handover, end) for sp in spaces]
+    if prop:
+        reg = {str(x.id): x for x in spots.values()}
+        for st in terms.get("spaces") or []:
+            for sid in st.get("parking_spot_ids") or []:
+                if sid in reg:
+                    allocs.append((reg[sid].id, "exclusive", 1, handover, end))
+    d["allocations"] = allocs
+    d["title"] = f"Üürileping — {', '.join(sp['name'] for sp in spaces)}"
+    return d
 
 
 # ---------------------------------------------------------------- main terms (põhitingimused) ----------------------
@@ -251,20 +275,19 @@ async def _write_facts(session: AsyncSession, actor: Actor, c: Contract, d: dict
     for f in old:
         await session.delete(f)
     values: dict[str, Any] = {}
-    for key, v in facts_of(d).items():
-        session.add(ContractFact(account_id=actor.account_id, contract_id=c.id, key=key, reason="initial", valid_from=d["handover"],
-                                 value={"label": FACT_LABELS.get(key, key), **v}))
-        values[key] = {"label": FACT_LABELS.get(key, key), **v}
+    labels = {**FACT_LABELS, **d.get("fact_labels", {})}
+    for key, v in d["facts"].items():
+        session.add(ContractFact(account_id=actor.account_id, contract_id=c.id, key=key, reason="initial", valid_from=d["start"],
+                                 value={"label": labels.get(key, key), **v}))
+        values[key] = {"label": labels.get(key, key), **v}
     c.current_values = values
-    c.start_date, c.end_date = d["handover"], d["end"]
+    c.start_date, c.end_date = d["start"], d["end"]
     await session.flush()
 
 
 async def _sync_key_dates(session: AsyncSession, actor: Actor, c: Contract, d: dict[str, Any]) -> None:
     rows = list((await session.execute(select(KeyDate).where(KeyDate.subject_id == c.id, KeyDate.deleted_at.is_(None)))).scalars())
-    wanted = {"start": d["handover"], "end": d["end"]}
-    if d["indexation"].get("method") and d["indexation"].get("next_date"):
-        wanted["indexation"] = date.fromisoformat(d["indexation"]["next_date"])
+    wanted = {k: v for k, v in d["key_dates"].items() if v}
     by_kind = {k.kind_code: k for k in rows if (k.provenance or {}).get("generated")}
     for kind, due in wanted.items():
         kd = by_kind.get(kind)
@@ -282,24 +305,16 @@ async def _sync_allocations(session: AsyncSession, actor: Actor, c: Contract, d:
     from app.domain.assets import delete_allocation
 
     existing = await list_allocations(session, contract_id=c.id)
-    wanted: dict[uuid.UUID, tuple[date, date]] = {}
-    for s in d["spaces"]:
-        wanted[s["space_id"]] = (d["handover"], d["end"])
-    prop = d["property"]
-    if prop:
-        spots = {str(x.id): x for x in await children_of(session, prop.id, "parking_spot")}
-        for s in (d["terms"].get("spaces") or []):
-            for sid in s.get("parking_spot_ids") or []:
-                if sid in spots:
-                    wanted[spots[sid].id] = (d["handover"], d["end"])
+    wanted: dict[uuid.UUID, tuple[str, int, date | None, date | None]] = {aid: (kind, qty, start, end) for aid, kind, qty, start, end in d["allocations"]}
     for al, _ in existing:
-        if al.asset_id not in wanted or (al.period_start, al.period_end) != wanted[al.asset_id]:
+        w = wanted.get(al.asset_id)
+        if not w or (al.kind, al.period_start, al.period_end) != (w[0], w[2], w[3]):
             await delete_allocation(session, actor, al.id)
         else:
             wanted.pop(al.asset_id)
-    for asset_id, (start, end) in wanted.items():
+    for asset_id, (kind, qty, start, end) in wanted.items():
         try:
-            await allocate(session, actor, contract_id=c.id, asset_id=asset_id, kind="exclusive", period_start=start, period_end=end)
+            await allocate(session, actor, contract_id=c.id, asset_id=asset_id, kind=kind, quantity=qty, period_start=start, period_end=end)
         except Conflict:
             # a draft may target a space/spot that another draft also targets — the register shows the discrepancy; signing resolves it (Phase 4)
             emit(session, actor, "contract", c.id, "contract.allocation_conflict", {"asset_id": asset_id})
@@ -390,8 +405,13 @@ async def rebuild_main_terms(session: AsyncSession, actor: Actor, c: Contract) -
     company = await session.get(Company, c.company_id) if c.company_id else None
     party = (await contract_parties.primary_parties(session, [c.id])).get(c.id)
     if not party:
-        raise DomainError("Lepingul puudub üürnik")
-    nodes = main_terms(d, company, party, c.contact or {})
+        raise DomainError("Lepingul puudub vastaspool")
+    if d["vertical"] == "employment":
+        from app.domain import employment
+
+        nodes = employment.main_terms(d, company, party, c.contact or {})
+    else:
+        nodes = main_terms(d, company, party, c.contact or {})
     rows = await load_rows(session, contract_id=c.id, container="main")
     if not rows:
         await write_tree(session, actor, nodes, contract_id=c.id, container="main", source="generated", locked=False)
@@ -417,7 +437,7 @@ async def rebuild_main_terms(session: AsyncSession, actor: Actor, c: Contract) -
     await _write_facts(session, actor, c, d)
     await _sync_key_dates(session, actor, c, d)
     await _sync_allocations(session, actor, c, d)
-    c.title = f"Üürileping — {', '.join(s['name'] for s in d['spaces'])}"
+    c.title = d["title"]
     await index_contract(session, c)
     return d
 
@@ -498,7 +518,7 @@ async def convert_quote(session: AsyncSession, actor: Actor, quote_id: uuid.UUID
 
 
 def _editable(c: Contract) -> None:
-    if c.origin != "platform":
+    if c.origin != "platform" or c.type_code not in ("lease", "employment"):
         raise DomainError("Imporditud lepingut ei koostata platvormil")
     if c.status not in EDITABLE_STATUSES:
         raise DomainError("Lepingu tingimusi saab muuta mustandina või läbirääkimistel", code="not_editable")
@@ -615,6 +635,10 @@ async def bundle(session: AsyncSession, c: Contract) -> dict[str, Any]:
 
 async def annexes(session: AsyncSession, c: Contract, d: dict[str, Any]) -> list[dict[str, Any]]:
     """Lisa 1 floor plans (per space), Lisa 2 parking/site plan, Lisa 3 special terms, 4+ uploads — assembled from the registry (spec 02)."""
+    if d["vertical"] == "employment":
+        from app.domain import employment
+
+        return await employment.annexes(session, c, d)
     items: list[dict[str, Any]] = []
     prop = d["property"]
     plans = await list_attachments(session, subject_type="asset", subject_ids=[s["space_id"] for s in d["spaces"]] + ([prop.id] if prop else []))
@@ -656,7 +680,8 @@ async def document_html(session: AsyncSession, b: dict[str, Any], *, version: in
         if r.overrides_clause_id and r.status == "accepted":
             overridden[r.overrides_clause_id] = r
     return render.render_html(
-        "lease.html", title=f"Üürileping {c.number}", footer=f"{company.name if company else ''} · {c.number}", accent=company.accent_color if company else None,
+        "lease.html", title=f"{'Tööleping' if c.type_code == 'employment' else 'Üürileping'} {c.number}", footer=f"{company.name if company else ''} · {c.number}",
+        accent=company.accent_color if company else None, kind=c.type_code,
         c=c, deal=b["deal"], company=company, party=b["party"], main=b["main"], general=b["general"], special=b["special"], annexes=b["annexes"],
         logo_data_uri=logo, version=version, overridden=overridden, by_id=by_id, for_client=for_client, interactive=interactive,
         sender_name=(await session.get(User, c.created_by)).name if getattr(c, "created_by", None) else None,

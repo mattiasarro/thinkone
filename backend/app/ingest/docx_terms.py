@@ -145,16 +145,16 @@ def _count(nodes: list[Node]) -> int:
 
 
 async def ingest_general_terms_docx(
-    session: AsyncSession, actor: Actor, *, company_id: uuid.UUID | None, name: str, filename: str, data: bytes
+    session: AsyncSession, actor: Actor, *, company_id: uuid.UUID | None, name: str, filename: str, data: bytes, contract_type_code: str = "lease"
 ) -> Template:
     """Store the DOCX, parse it, write the clause tree, and version the template (old version archived)."""
     from sqlalchemy import select
 
     parsed = await parse_general_terms(data)
     prev = (await session.execute(select(Template).where(
-        Template.kind == "general_terms", Template.is_current.is_(True), Template.deleted_at.is_(None),
+        Template.kind == "general_terms", Template.is_current.is_(True), Template.deleted_at.is_(None), Template.contract_type_code == contract_type_code,
         Template.company_id == company_id if company_id else Template.company_id.is_(None)))).scalars().first()
-    tpl = Template(account_id=actor.account_id, company_id=company_id, kind="general_terms", name=name or filename,
+    tpl = Template(account_id=actor.account_id, company_id=company_id, kind="general_terms", name=name or filename, contract_type_code=contract_type_code,
                    version=(prev.version + 1) if prev else 1, supersedes_id=prev.id if prev else None, is_current=True,
                    body={"format": "clause_tree"}, node_count=parsed.section_count + parsed.point_count)
     session.add(tpl)

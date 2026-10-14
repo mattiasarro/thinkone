@@ -64,15 +64,17 @@ async def create_template(body: TemplateIn, p: Principal = Depends(current_princ
 async def import_general_terms(
     name: str = Form(..., min_length=1, max_length=200),
     company_id: uuid.UUID | None = Form(default=None),
+    contract_type_code: str = Form(default="lease", pattern="^(lease|employment)$"),
     file: UploadFile = File(...),
     p: Principal = Depends(current_principal),
     session: AsyncSession = Depends(db),
 ) -> TemplateDetailOut:
-    """Ingest a general-terms DOCX into a clause-tree template (node per marked item)."""
+    """Ingest a general-terms DOCX into a clause-tree template (node per marked item). ``contract_type_code``: lease | employment."""
     from app.ingest.docx_terms import ingest_general_terms_docx
 
     data = await file.read()
-    t = await ingest_general_terms_docx(session, p.actor, company_id=company_id, name=name, filename=file.filename or "uldtingimused.docx", data=data)
+    t = await ingest_general_terms_docx(session, p.actor, company_id=company_id, name=name, filename=file.filename or "uldtingimused.docx", data=data,
+                                        contract_type_code=contract_type_code)
     return TemplateDetailOut.model_validate(t)
 
 
