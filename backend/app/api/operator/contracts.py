@@ -46,6 +46,9 @@ class ContractOut(BaseModel):
     version: int
     created_at: datetime
     key_dates_next: KeyDateRef | None = None
+    round: dict[str, Any] | None = None  # platform drafts: {"nr", "side": client|operator} while negotiating
+    sent_version: int = 0
+    quote_id: uuid.UUID | None = None
 
 
 class FactOut(BaseModel):
@@ -163,7 +166,8 @@ def _out(c, p, kd=None) -> ContractOut:
                        party=PartyRef(id=p.id, name=p.name, registry_code=p.registry_code) if p else None, company_id=c.company_id,
                        start_date=c.start_date, end_date=c.end_date, signed_at=c.signed_at, current_values=c.current_values or {},
                        has_clause_tree=c.has_clause_tree, version=c.version, created_at=c.created_at,
-                       key_dates_next=KeyDateRef(kind_code=kd.kind_code, due_date=kd.due_date) if kd else None)
+                       key_dates_next=KeyDateRef(kind_code=kd.kind_code, due_date=kd.due_date) if kd else None,
+                       round=c.round, sent_version=c.sent_version, quote_id=c.quote_id)
 
 
 def _cp_out(cp, p) -> ContractPartyOut:
