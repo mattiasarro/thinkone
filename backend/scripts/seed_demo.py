@@ -39,7 +39,7 @@ def main() -> None:
     attrs.update({"vat_taxable": True, "utility_cost_winter": 2.1, "utility_cost_summer": 1.4, "utility_source": "manual"})
     prop = c.post("/api/v1/assets", json={"type_code": "property", "name": "Hoone T6B", "company_id": co["id"], "attributes": attrs}).json()
     csv = "nimi;tüüp;üüripind;ladu;kontor;olmeala;hind;elekter;parkimiskohad\n" + "\n".join(
-        f"{n};{t};{a};{l or ''};{k or ''};{o or ''};{p};{e};{pk}" for n, t, a, (l, k, o), p, e, pk in SPACES)
+        f"{n};{t};{a};{ld or ''};{k or ''};{o or ''};{p};{e};{pk}" for n, t, a, (ld, k, o), p, e, pk in SPACES)
     imp = c.post(f"/api/v1/assets/{prop['id']}/spaces/import", params={"dry_run": "false"}, json={"text": csv}).json()
     print("spaces:", imp.get("created"), "created;", imp.get("parking_created"), "parking spots")
     c.post(f"/api/v1/assets/{prop['id']}/parking/import", params={"dry_run": "false"}, json={"text": "23-26;Hoov;elektriauto;\n27-30;Hoov;reserv;\n"})
