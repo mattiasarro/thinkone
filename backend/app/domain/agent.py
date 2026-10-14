@@ -66,7 +66,7 @@ async def add_message(session: AsyncSession, actor: Actor, thread: AgentThread, 
                       cards: list[dict[str, Any]] | None = None, citations: list[dict[str, Any]] | None = None, prompt_version: str | None = None,
                       model: str | None = None, usage: dict[str, Any] | None = None, status: str = "done", error: str | None = None) -> AgentMessage:
     m = AgentMessage(account_id=actor.account_id, thread_id=thread.id, role=role, text=text, steps=steps or [], cards=cards or [], citations=citations or [],
-                     prompt_version=prompt_version, model=model, usage=usage or {}, status=status, error=error)
+                     prompt_version=prompt_version, model=model, usage=usage or {}, status=status, error=error, created_at=datetime.now(UTC))
     session.add(m)
     await session.flush()
     thread.last_message_at = datetime.now(UTC)
