@@ -118,16 +118,17 @@ def next_step(c: Contract, st: dict[str, Any]) -> dict[str, Any] | None:
     if c.origin != "platform":
         return None
     open_n = len(st["open"])
+    who, whom, whose = ("töötaja", "töötajale", "töötaja") if c.type_code == "employment" else ("üürnik", "üürnikule", "üürniku")
     if c.status == "draft":
-        return {"side": "operator", "code": "send", "title": "Saada üürnikule", "text": "Mustand V1 on valmis — vaata üle ja saada kliendile kommenteerimiseks.", "urgent": False}
+        return {"side": "operator", "code": "send", "title": f"Saada {whom}", "text": f"Mustand V1 on valmis — vaata üle ja saada {whom} kommenteerimiseks.", "urgent": False}
     if c.status in ("sent", "negotiating"):
         if _turn(c) == "operator":
             n = len(st["needs_me"])
-            return {"side": "operator", "code": "answer", "title": f"Vasta üürniku märkustele · {n}" if n else "Saada vastused",
-                    "text": "Lahenda iga lahtine punkt (selgitan · muudan · Lisa 3) ja saada vastused ühe kirjaga." if n else "Kõik punktid on vastatud — saada vastused üürnikule.", "urgent": n > 0}
-        return {"side": "client", "code": "waiting", "title": "Ootab üürniku vastust", "text": f"{open_n} lahtist punkti · üürnik vaatab lepingut." if open_n else "Üürnik vaatab lepingu mustandit.", "urgent": False}
+            return {"side": "operator", "code": "answer", "title": f"Vasta {whose} märkustele · {n}" if n else "Saada vastused",
+                    "text": "Lahenda iga lahtine punkt (selgitan · muudan · Lisa 3) ja saada vastused ühe kirjaga." if n else f"Kõik punktid on vastatud — saada vastused {whom}.", "urgent": n > 0}
+        return {"side": "client", "code": "waiting", "title": f"Ootab {whose} vastust", "text": f"{open_n} lahtist punkti · {who} vaatab lepingut." if open_n else f"{who.capitalize()} vaatab lepingu mustandit.", "urgent": False}
     if c.status == "ready_to_sign":
-        return {"side": "operator", "code": "sign", "title": "Kõik punktid aktsepteeritud", "text": "Üürnik aktsepteeris lepingu — allkirjastamine tuleb etapis 4.", "urgent": False}
+        return {"side": "operator", "code": "sign", "title": "Kõik punktid aktsepteeritud", "text": f"{who.capitalize()} aktsepteeris lepingu — allkirjastamine tuleb etapis 4.", "urgent": False}
     return None
 
 
