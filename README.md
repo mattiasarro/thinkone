@@ -25,6 +25,14 @@ calendar + daily scan, notifications with email delivery state, global event log
 export plus the per-contract court folder, omnibox search, portfolio health report. Every write is event-logged; RLS is enforced
 by a non-superuser application role.
 
+## Phase 3 status
+
+Milestone 3.1 (quote loop): quotes with the demo's wizard and draft page (per-space prices, stepped rent and over-cap electricity
+as automatic special terms, parking from the register, VAT as a dated setting, features, attachments), branded quote PDF frozen
+as an immutable version on every send, accountless client portal through an expiring share link (accept / propose / decline,
+chat, versions with diffs), negotiation and chat threads on the Suhtlus page, letters with delivery state, reminders and
+bounce handling, nightly expiry, quote defaults in settings. See `data/TESTPLAN-phase3.md`.
+
 ## Run locally
 
 See the "Local development" section of [deploy/RAILWAY.md](deploy/RAILWAY.md). Demo data: `cd backend && uv run python scripts/seed_demo.py`.
