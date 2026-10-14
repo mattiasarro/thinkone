@@ -46,7 +46,7 @@ async def test_full_negotiation_loop(client: AsyncClient, admin: dict):
     assert p["number"] == d["number"] and p["turn"] == "client" and p["can_comment"] and p["can_accept"] is False and [t["opened_by"] for t in p["threads"]] == ["operator"]
     r = await anon.post(f"/api/v1/portal/{token}/lease/threads/{p['threads'][0]['id']}/ok")  # „Sobib” closes it
     assert r.status_code == 200 and r.json()["threads"][0]["resolution_label"] == "Selgitatud" and r.json()["can_accept"] is True
-    assert any(c["fact_key"] == "rent" for c in p["clauses"]) and "Põhitingimused" in (await anon.get(f"/api/v1/portal/{token}/lease/document.html")).text
+    assert any(c["fact_key"] == "rent" for c in p["clauses"]) and "Põhitingimused" in (await anon.get(p["document_url"])).text  # the advertised URL must resolve
     purpose = next(c for c in p["clauses"] if c["fact_key"] == "purpose")
     deposit = next(c for c in p["clauses"] if c["fact_key"] == "deposit_months")
     r = await anon.post(f"/api/v1/portal/{token}/lease/threads", json={"clause_id": purpose["id"], "text": "Kas võime kasutada ka müügisaalina?"})

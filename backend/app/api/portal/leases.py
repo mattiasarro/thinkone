@@ -116,7 +116,7 @@ async def _out(session, link, c: Contract, token: str) -> PortalLeaseOut:
         handover=d["handover"], end=d["end"], months=d["months"], totals=d["totals"], deposit=d["deposit"], sent_version=c.sent_version, kind=c.type_code,
         employment={"position": d["position"].name, "salary": d["salary"], "probation_end": d["probation_end"], "salary_review": d["salary_review"], "working_time": d["working_time"],
                     "vacation_days": d["vacation_days"]} if d["vertical"] == "employment" else None,
-        document_url=f"/api/v1/portal/{token}/document.html", pdf_url=await document_versions.pdf_url(last),
+        document_url=f"/api/v1/portal/{token}/lease/document.html", pdf_url=await document_versions.pdf_url(last),
         clauses=[{k: v for k, v in x.items() if k in ("id", "number", "heading", "text", "container", "level", "locked", "status", "overrides_clause_id", "overrides_label", "fact_key")} for x in clauses],
         threads=[{"id": v["thread"].id, "clause_id": v["thread"].clause_id, "clause_number": numbers.get(v["thread"].clause_id, (None, None))[0],
                   "clause_heading": numbers.get(v["thread"].clause_id, (None, None))[1], "opened_by": v["thread"].opened_by, "status": v["thread"].status,

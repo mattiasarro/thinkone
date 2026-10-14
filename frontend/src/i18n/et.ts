@@ -460,7 +460,7 @@ const et = {
   },
   // Kliendiportaal — the tenant opens an e-mailed link without an account; always the formal „Teie” form, never internal statuses.
   portal: {
-    title: "Pakkumine", brand: "kliendiportaal", landlord: "Üürileandja",
+    title: "Kliendiportaal", brand: "kliendiportaal", landlord: "Üürileandja",
     hello: "Tere, {name}.", docsLine: "{landlord} · 1 dokument", awaitingYou: "1 ootab Teid", goToDecision: "Vastake pakkumisele",
     yourDocs: "Teie dokumendid", docCount: "1 dokument", docKind: "Pakkumine", perMonth: "€ kuus", withVat: "koos KM {gross} €", periodMonths: "{n} kuud", area: "{a} m²",
     validUntil: "Kehtib kuni {date}", daysLeft: "{n} päeva", dayLeft: "1 päev", lastDay: "viimane päev", expired: "aegunud",
