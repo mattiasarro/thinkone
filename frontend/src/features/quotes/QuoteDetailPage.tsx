@@ -11,8 +11,9 @@ import { Pill, statusTone, type Tone } from "@/components/ui/Pill";
 import { ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconChevronLeft, IconExternal, IconLink, IconTrash } from "@/components/ui/Icons";
-import { cx, daysUntil, fmtDate, fmtDateTime, fmtEur, fmtNum, valueToString } from "@/lib/format";
+import { IconArrowRight, IconChevronLeft, IconExternal, IconLink, IconTrash } from "@/components/ui/Icons";
+import { useConvertQuote, useLease } from "@/lib/queries/leases";
+import { cx, daysUntil, firstOfNextMonth, fmtDate, fmtDateTime, fmtEur, fmtNum, valueToString } from "@/lib/format";
 import { useRun, type Run } from "./quoteRun";
 import { AttachmentsCard, SpacesCard, TermsCard } from "./QuoteEditCards";
 import type { QuoteChange, QuoteDetail, QuoteMessage } from "@/types/api";
@@ -154,6 +155,7 @@ function Tile({ label, value, sub }: { label: string; value: string; sub?: strin
 /** ONE guide card (demo `juhtKaart`): whose-turn mark · text · meta · ONE primary button; other options as text links. */
 function GuideCard({ q, run, onCancel }: { q: QuoteDetail; run: Run; onCancel: () => void }) {
   const ns = q.next_step;
+  const toast = useToast();
   const send = useSendQuote(q.id);
   const remind = useRemindQuote(q.id);
   const snooze = useSnoozeQuote(q.id);
@@ -167,11 +169,20 @@ function GuideCard({ q, run, onCancel }: { q: QuoteDetail; run: Run; onCancel: (
   const n = daysUntil(q.valid_until);
 
   const whose: { tone: Tone; label: string } = !ns ? { tone: "success", label: t("quotes.guide.done") } : ns.side === "client" ? { tone: "neutral", label: t("quotes.guide.clientTurn") } : { tone: ns.urgent ? "warning" : "primary", label: t("quotes.guide.yourTurn") };
-  const title = ns ? ns.title : t("quotes.guide.closed");
-  const text = ns ? ns.text : `${tEnum("quotes.status", q.status)}${q.close_reason ? ` · ${t("quotes.guide.reason")}: ${q.close_reason}` : ""}`;
+  const title = ns ? ns.title : q.status === "converted" ? t("quotes.guide.convertedTitle") : t("quotes.guide.closed");
+  const text = ns ? ns.text : q.status === "converted" ? t("quotes.guide.convertedText") : `${tEnum("quotes.status", q.status)}${q.close_reason ? ` · ${t("quotes.guide.reason")}: ${q.close_reason}` : ""}`;
 
   const doSend = async () => { const r = await run(send.mutateAsync({ message: msg.trim() || null, expected_version: q.version }), t("quotes.guide.sent")); if (r) { setSendOpen(false); setMsg(""); } };
   const doRemind = async () => { const r = await run(remind.mutateAsync({ text: reminder.trim() || null }), t("quotes.guide.reminded")); if (r) setReminderOpen(false); };
+  const convert = useConvertQuote(q.id);
+  const router = useRouter();
+  const [mode, setMode] = useState<"separate" | "shared">("separate");
+  const [handover, setHandover] = useState(firstOfNextMonth());
+  const contractIds = ((q.conversion?.contract_ids as string[] | undefined) ?? []);
+  const doConvert = async () => {
+    const drafts = await run(convert.mutateAsync({ mode: q.spaces.length > 1 ? mode : "separate", handover: handover || null }), undefined);
+    if (drafts && drafts.length) { toast.success(drafts.length > 1 ? t("quotes.guide.convertedMany", { n: drafts.length }) : t("quotes.guide.converted")); router.push(`/app/portfell/leping/${drafts[0].id}`); }
+  };
 
   let body: ReactNode = null;
   let primary: ReactNode = null;
@@ -213,10 +224,12 @@ function GuideCard({ q, run, onCancel }: { q: QuoteDetail; run: Run; onCancel: (
       </>;
       break;
     case "convert":
-      primary = <Button variant="primary" disabled title={t("quotes.guide.convertSoon")}>{t("quotes.guide.convert")}</Button>;
+      body = <ConvertForm q={q} mode={mode} setMode={setMode} handover={handover} setHandover={setHandover} />;
+      primary = <Button variant="primary" busy={convert.isPending} disabled={!handover} onClick={doConvert}>{t("quotes.guide.convert")}</Button>;
       secondary = <Button variant="text" size="sm" onClick={onCancel}>{t("quotes.guide.cancel")}</Button>;
       break;
     default:
+      if (q.status === "converted" && contractIds.length > 0) body = <ConvertedList ids={contractIds} />;
       break;
   }
 
@@ -239,6 +252,35 @@ function GuideCard({ q, run, onCancel }: { q: QuoteDetail; run: Run; onCancel: (
         <textarea className="fld" rows={5} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder={t("quotes.guide.sendMessage")} aria-label={t("quotes.guide.sendMessage")} />
       </Modal>
     </Card>
+  );
+}
+
+/** Demo „lepingu kuju” (v649): by default one space = one lease; a shared lease is the exception and only for one building's spaces. */
+function ConvertForm({ q, mode, setMode, handover, setHandover }: { q: QuoteDetail; mode: "separate" | "shared"; setMode: (m: "separate" | "shared") => void; handover: string; setHandover: (v: string) => void }) {
+  const n = q.spaces.length;
+  return (
+    <div className="grid gap-3">
+      <div>
+        <div className="overline mb-1">{t("quotes.guide.shapeTitle", { n })}</div>
+        <div className="flex gap-1 flex-wrap" role="group" aria-label={t("quotes.guide.shapeTitle", { n })}>
+          <button type="button" className={cx("pill cursor-pointer", mode === "separate" && "primary")} aria-pressed={mode === "separate"} onClick={() => setMode("separate")}>{n > 1 ? t("quotes.guide.shapeSeparate", { n }) : t("quotes.guide.shapeOne")}</button>
+          {n > 1 && <button type="button" className={cx("pill cursor-pointer", mode === "shared" && "primary")} aria-pressed={mode === "shared"} onClick={() => setMode("shared")}>{t("quotes.guide.shapeShared")}</button>}
+        </div>
+      </div>
+      <Input label={t("quotes.guide.handover")} type="date" value={handover} onChange={(e) => setHandover(e.target.value)} className="!mb-0" />
+    </div>
+  );
+}
+
+function ConvertedList({ ids }: { ids: string[] }) {
+  return <ul className="grid gap-1">{ids.map((id) => <li key={id}><LeaseLink id={id} /></li>)}</ul>;
+}
+function LeaseLink({ id }: { id: string }) {
+  const l = useLease(id);
+  return (
+    <Link href={`/app/portfell/leping/${id}`} className="flex items-center gap-2 text-sm text-primary font-semibold">
+      <span className="font-mono text-xs text-muted">{l.data?.number ?? t("quotes.guide.openLease")}</span>{l.data?.title ?? ""}{l.data && <Pill tone={statusTone(l.data.status)}>{tEnum("contract.status", l.data.status)}</Pill>}<IconArrowRight width={14} height={14} />
+    </Link>
   );
 }
 

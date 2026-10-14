@@ -6,16 +6,29 @@ import { ErrorState } from "@/components/ui/State";
 import { useToast } from "@/components/ui/Toast";
 import { t } from "@/i18n";
 import { errorMessage } from "@/lib/api";
-import { isLinkGone, usePortalAccept, usePortalMessage, usePortalPropose, usePortalQuote, usePortalReject } from "@/lib/queries/portal";
+import { isLinkGone, usePortalAccept, usePortalDocument, usePortalMessage, usePortalPropose, usePortalReject } from "@/lib/queries/portal";
+import { isPortalLease, type PortalQuote } from "@/types/portal";
 import { BottomCards } from "./BottomCards";
 import { ChatCard } from "./ChatCard";
 import { DecisionCard } from "./DecisionCard";
 import { DocumentCards } from "./DocumentCards";
 import { DocumentSheet } from "./DocumentSheet";
+import { PortalLeasePage } from "./PortalLeasePage";
 import { StatusBox } from "./StatusBox";
 
+const QUOTE_CLOSED = new Set(["accepted", "converted", "rejected", "cancelled", "expired"]);
+
+/** The share link opens either a quote or a lease draft — one fetch, dispatched on the response shape. */
 export function PortalQuotePage({ token }: { token: string }) {
-  const { data: q, isLoading, error, refetch } = usePortalQuote(token);
+  const { data, isLoading, error, refetch } = usePortalDocument(token);
+  if (isLoading) return <PortalSkeleton />;
+  if (error && isLinkGone(error)) return <LinkGone />;
+  if (error || !data) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (isPortalLease(data)) return <PortalLeasePage token={token} lease={data} />;
+  return <QuoteView token={token} q={data} />;
+}
+
+function QuoteView({ token, q }: { token: string; q: PortalQuote }) {
   const toast = useToast();
   const accept = usePortalAccept(token);
   const propose = usePortalPropose(token);
@@ -43,18 +56,18 @@ export function PortalQuotePage({ token }: { token: string }) {
     try { await p; toast.success(ok); } catch (e) { toast.error(errorMessage(e)); throw e; }
   }, [toast]);
 
-  if (isLoading) return <PortalSkeleton />;
-  if (error && isLinkGone(error)) return <LinkGone />;
-  if (error || !q) return <ErrorState error={error} onRetry={() => refetch()} />;
+  const mine = q.whose_turn === "client";
+  const cta = mine && q.can_respond;
 
   return (
     <div className="grid gap-10">
       <header>
         <h1 className="portal-h1">{t("portal.hello", { name: q.client_name })}</h1>
-        <p className="text-muted mt-2">{t("portal.docsLine", { landlord: q.contact.company ?? q.party_name })}{q.whose_turn === "client" && q.can_respond ? ` · ${t("portal.awaitingYou")}` : ""}</p>
+        <p className="text-muted mt-2">{t("portal.docsLine", { landlord: q.contact.company ?? q.party_name })}{cta ? ` · ${t("portal.awaitingYou")}` : ""}</p>
       </header>
 
-      <StatusBox q={q} onGoToDecision={goToDecision} />
+      <StatusBox tone={mine ? "client" : QUOTE_CLOSED.has(q.status) ? "done" : "wait"} title={q.step_title} text={q.step_text}
+        cta={cta ? <button type="button" className="btn btn-primary" onClick={goToDecision}>{t("portal.goToDecision")}</button> : undefined} />
 
       <section aria-label={t("portal.yourDocs")}>
         <div className="portal-sek"><h2>{t("portal.yourDocs")}</h2><span>{t("portal.docCount")}</span></div>
@@ -72,7 +85,8 @@ export function PortalQuotePage({ token }: { token: string }) {
         onReject={(reason) => run(reject.mutateAsync(reason), t("portal.toast.rejected"))}
       />
 
-      <ChatCard ref={chatInput} q={q} draft={draft} setDraft={setDraft} busy={message.isPending} onSend={(text) => run(message.mutateAsync(text), t("portal.toast.sent"))} />
+      <ChatCard ref={chatInput} messages={q.messages.filter((m) => m.channel === "chat")} landlord={q.contact.company} draft={draft} setDraft={setDraft} busy={message.isPending}
+        onSend={(text) => run(message.mutateAsync(text), t("portal.toast.sent"))} />
 
       <BottomCards q={q} />
     </div>

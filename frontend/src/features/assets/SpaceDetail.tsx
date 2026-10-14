@@ -110,6 +110,7 @@ export function SpaceDetail({ id }: { id: string }) {
               <ul className="grid gap-2">
                 {current.map((al) => al.contract && <li key={al.id}><LinkButton href={`/app/portfell/leping/${al.contract.id}`} className="w-full justify-between">{t("assets.space.openContract")} · {al.contract.number}<IconArrowRight width={16} height={16} /></LinkButton></li>)}
                 {(p.status === "vaba" || p.status === "pakkumisel") && <li><LinkButton href={`/app/portfell/pakkumine/uus?space_id=${p.id}`} variant="primary" className="w-full">{t("quotes.create")}</LinkButton></li>}
+                {(p.status === "vaba" || p.status === "pakkumisel") && <li><LinkButton href={`/app/portfell/leping/uus?space_id=${p.id}`} className="w-full">{t("lease.create")}</LinkButton></li>}
                 {inactive ? null : p.status === "jagatud" ? <li><Button className="w-full" onClick={() => setMergeDlg(true)}>{t("assets.space.merge")}</Button></li>
                   : <li><Button className="w-full" onClick={() => setSplit(true)} disabled={!!p.split_block_reason} title={p.split_block_reason ?? undefined}>{t("assets.space.split")}</Button></li>}
                 <li><Button variant="text" className="btn-destructive w-full" onClick={() => setDel(true)} disabled={!!p.delete_block_reason} title={p.delete_block_reason ?? undefined}><IconTrash width={16} height={16} />{t("assets.space.delete")}</Button></li>

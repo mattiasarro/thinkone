@@ -36,9 +36,14 @@ class QuoteDefaultsPatch(BaseModel):
     contract_link_days: int | None = Field(default=None, ge=1, le=365)
 
 
+class AiSettings(BaseModel):
+    monthly_token_budget: int = Field(default=5_000_000, ge=0, le=1_000_000_000)
+
+
 class AccountSettings(BaseModel):
     notify_days: NotifyDays
     quote: QuoteDefaults
+    ai: AiSettings = AiSettings()
     locale: str = "et"
 
 
@@ -59,6 +64,7 @@ class NotifyDaysPatch(BaseModel):
 class AccountSettingsPatch(BaseModel):
     notify_days: NotifyDaysPatch | None = None
     quote: QuoteDefaultsPatch | None = None
+    ai: AiSettings | None = None
     locale: str | None = None
 
 

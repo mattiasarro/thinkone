@@ -2,27 +2,26 @@
 import { forwardRef, useEffect, useRef, type KeyboardEvent } from "react";
 import { IconArrowRight, IconChat } from "@/components/ui/Icons";
 import { t } from "@/i18n";
-import type { PortalQuote } from "@/types/portal";
+import type { PortalChatMessage } from "@/types/portal";
 import { MessageBubble } from "./MessageBubble";
 
-interface Props { q: PortalQuote; draft: string; setDraft: (v: string) => void; busy: boolean; onSend: (text: string) => Promise<unknown> }
+interface Props { messages: PortalChatMessage[]; landlord: string | null; draft: string; setDraft: (v: string) => void; busy: boolean; onSend: (text: string) => Promise<unknown>; className?: string }
 
 /** Human↔human chat with the landlord (demo v786: alone, full width). The ref points at the textarea so the wish chips can pre-fill it. */
-export const ChatCard = forwardRef<HTMLTextAreaElement, Props>(function ChatCard({ q, draft, setDraft, busy, onSend }, ref) {
+export const ChatCard = forwardRef<HTMLTextAreaElement, Props>(function ChatCard({ messages, landlord, draft, setDraft, busy, onSend, className }, ref) {
   const list = useRef<HTMLDivElement>(null);
-  const msgs = q.messages.filter((m) => m.channel === "chat");
-  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [msgs.length]);
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length]);
 
   const send = async () => { const text = draft.trim(); if (!text || busy) return; await onSend(text); setDraft(""); };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } };
 
   return (
-    <section className="card" aria-label={t("portal.chat.title")}>
+    <section className={className ? `card ${className}` : "card"} aria-label={t("portal.chat.title")}>
       <header className="card-h">
         <div className="min-w-0"><h3>{t("portal.chat.title")}</h3><p className="text-muted text-sm mt-0.5">{t("portal.chat.sub")}</p></div>
       </header>
       <div ref={list} className="portal-chat-list" aria-live="polite">
-        {msgs.length ? msgs.map((m) => <MessageBubble key={m.id} m={m} landlord={q.contact.company} />) : (
+        {messages.length ? messages.map((m) => <MessageBubble key={m.id} m={m} landlord={landlord} />) : (
           <div className="empty py-8"><div className="mx-auto mb-2 w-6 h-6 text-muted"><IconChat /></div><p className="text-sm">{t("portal.chat.empty")}</p></div>
         )}
       </div>

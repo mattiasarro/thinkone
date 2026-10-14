@@ -179,7 +179,7 @@ def to_dicts(rendered: list[RenderedClause]) -> list[dict[str, Any]]:
          "heading": r.heading, "text": r.text, "level": r.level, "locked": r.locked, "category": r.category,
          "parent_id": r.parent_id, "provenance": r.provenance, "container": r.container, "fact_key": r.fact_key, "status": r.status,
          "origin_note": r.origin_note, "overrides_clause_id": r.overrides_clause_id, "overrides_label": r.overrides_label,
-         "changed": r.changed}
+         "changed": r.changed, "original_text": r.original_text}
         for r in rendered
     ]
 

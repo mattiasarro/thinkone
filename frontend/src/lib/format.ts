@@ -59,3 +59,7 @@ export function valueToString(v: unknown): string {
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
+/** yyyy-mm-01 of next month — the default handover of a lease (backend `first_of_next_month`). */
+export function firstOfNextMonth(today = new Date()): string {
+  return isoDay(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+}

@@ -1,5 +1,6 @@
 """SQLAlchemy models. Every tenant table carries ``account_id`` and is RLS-protected."""
 
+from app.models.agent import AgentCitation, AgentMessage, AgentThread, AiDraftFeedback, LlmUsage  # noqa: F401
 from app.models.base import Base, SoftDeleteMixin, TenantMixin, TimestampMixin  # noqa: F401
 from app.models.contracts import (  # noqa: F401
     Clause,

@@ -19,12 +19,14 @@ import { SourceViewer } from "./SourceViewer";
 import { AmendmentDialog } from "./AmendmentDialog";
 import { AttachmentsList } from "./AttachmentsList";
 import { PartiesCard } from "./PartiesCard";
+import { LeaseDraftPage } from "@/features/leases/LeaseDraftPage";
 import type { ContractDetail, ContractFact, KeyDate, SourceDocument } from "@/types/api";
 
 export function ContractDetailPage({ id }: { id: string }) {
   const q = useContract(id);
   if (q.isLoading) return <Loading rows={6} />;
   if (q.error || !q.data) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
+  if (q.data.origin === "platform" && q.data.type_code === "lease") return <LeaseDraftPage id={id} />;
   return <Detail c={q.data} />;
 }
 

@@ -4,6 +4,7 @@ import { t, tEnum } from "@/i18n";
 import { errorMessage } from "@/lib/api";
 import { cx, fmtDate, fmtDateTime, isoDay } from "@/lib/format";
 import { useMarkThreadRead, useSendThreadMessage, useThreadQuote } from "@/lib/queries/suhtlus";
+import { useLeaseChat, useMarkLeaseChatRead, usePostLeaseChat } from "@/lib/queries/leases";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
 import { ErrorState, Loading } from "@/components/ui/State";
@@ -15,7 +16,7 @@ import { Avatar } from "./ThreadList";
 const timeFmt = new Intl.DateTimeFormat("et-EE", { hour: "2-digit", minute: "2-digit" });
 
 export function Conversation({ id, thread, onBack }: { id: string; thread: Thread | undefined; onBack: () => void }) {
-  if (thread?.subject_type === "contract") return <ContractStub thread={thread} onBack={onBack} />;
+  if (thread?.subject_type === "contract") return <ContractConversation thread={thread} onBack={onBack} />;
   return <QuoteConversation id={id} thread={thread} onBack={onBack} />;
 }
 
@@ -23,17 +24,67 @@ function BackButton({ onBack }: { onBack: () => void }) {
   return <Button variant="text" size="sm" className="lg:hidden -ml-2" onClick={onBack}><IconChevronLeft />{t("suhtlus.back")}</Button>;
 }
 
-function ContractStub({ thread, onBack }: { thread: Thread; onBack: () => void }) {
+/** A platform lease's free-form chat (GET/POST /leases/{id}/chat); clause threads and answers live on the lease page. */
+function ContractConversation({ thread, onBack }: { thread: Thread; onBack: () => void }) {
+  const id = thread.subject_id;
+  const chat = useLeaseChat(id);
+  const post = usePostLeaseChat(id);
+  const markRead = useMarkLeaseChatRead(id);
+  const toast = useToast();
+  const [text, setText] = useState("");
+  const marked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!chat.data || thread.unread === 0 || marked.current === id) return;
+    marked.current = id;
+    markRead.mutate();
+  }, [id, thread.unread, chat.data, markRead]);
+  const messages = useMemo<ThreadMessage[]>(() => [...(chat.data ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((m) => ({ ...m, meta: m.meta as ThreadMessage["meta"] })), [chat.data]);
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => { const el = scroller.current; if (el) el.scrollTop = el.scrollHeight; }, [messages.length, id]);
+  const href = `/app/portfell/leping/${id}`;
+  const step = thread.next_step;
+  const mine = step?.side === "operator";
+  const submit = async () => {
+    const body = text.trim();
+    if (!body || post.isPending) return;
+    try { await post.mutateAsync(body); setText(""); toast.success(t("suhtlus.sent")); } catch (e) { toast.error(errorMessage(e)); }
+  };
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void submit(); } };
+  if (chat.isLoading && !chat.data) return <section className="card p-6"><Loading rows={6} /></section>;
+  if (chat.error) return <section className="card p-6"><BackButton onBack={onBack} /><ErrorState error={chat.error} onRetry={() => chat.refetch()} /></section>;
   return (
-    <section className="card flex flex-col">
+    <section className="card flex flex-col min-h-0 lg:h-[calc(100vh-200px)] lg:min-h-[480px]">
       <header className="card-h">
         <div className="min-w-0 grid gap-1">
           <BackButton onBack={onBack} />
-          <h3 className="truncate">{thread.title}</h3>
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar name={thread.party_name ?? thread.title} large />
+            <div className="min-w-0">
+              <h3 className="truncate flex items-center gap-2 flex-wrap"><span>{[thread.number, thread.party_name].filter(Boolean).join(" · ") || thread.title}</span>{thread.status && <Pill tone={statusTone(thread.status)}>{tEnum("contract.status", thread.status)}</Pill>}</h3>
+              <div className="text-sm text-muted truncate">{thread.title}</div>
+            </div>
+          </div>
         </div>
-        <LinkButton href={thread.link} size="sm">{t("suhtlus.openContract")}<IconExternal /></LinkButton>
+        <LinkButton href={href} size="sm">{t("suhtlus.openContract")}<IconExternal /></LinkButton>
       </header>
-      <div className="card-b"><div className="note info">{t("suhtlus.contractSoon")}</div></div>
+      {step && (
+        <div className={cx("note mx-4 mt-4 items-start", mine ? "warning" : "")} role="status">
+          <Pill tone={mine ? "warning" : "neutral"} className="flex-none">{mine ? t("suhtlus.yourTurn") : t("suhtlus.clientTurn")}</Pill>
+          <div className="min-w-0"><b>{step.title}</b>{step.text && <span className="block text-sm mt-0.5" style={{ color: "var(--color-text)" }}>{step.text}</span>}</div>
+        </div>
+      )}
+      <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto p-4 grid gap-3 content-start max-h-[60vh] lg:max-h-none">
+        {messages.length === 0 && <div className="empty py-8 text-sm">{t("suhtlus.noMessages")}</div>}
+        <Timeline messages={messages} />
+      </div>
+      <footer className="p-4 border-t grid gap-2" style={{ borderColor: "var(--line)" }}>
+        <p className="text-xs text-muted m-0">{t("suhtlus.contractChatNote")}</p>
+        <form className="flex gap-2 items-end" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+          <textarea className="fld flex-1 min-h-[44px]" rows={2} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} placeholder={t("suhtlus.write")} aria-label={t("suhtlus.write")} />
+          <Button type="submit" variant="primary" busy={post.isPending} disabled={!text.trim()}>{t("suhtlus.send")}</Button>
+        </form>
+        <p className="text-xs text-muted m-0 hidden sm:block">{t("suhtlus.hint")}</p>
+      </footer>
     </section>
   );
 }

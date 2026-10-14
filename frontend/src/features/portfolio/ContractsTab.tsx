@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { ContractsTable } from "./ContractsTable";
 import { IconSearch } from "@/components/ui/Icons";
 
-const STATUSES = ["draft", "active", "signed", "ended", "terminated", "expired", "archived"];
+const STATUSES = ["draft", "sent", "negotiating", "ready_to_sign", "active", "signed", "ended", "terminated", "expired", "archived", "cancelled"];
 const CATEGORIES = ["lease", "maintenance", "management", "insurance", "security", "employment", "other"];
 const TYPES = ["lease", "employment", "imported", "supporting"];
 

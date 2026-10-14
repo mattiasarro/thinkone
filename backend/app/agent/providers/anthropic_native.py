@@ -80,3 +80,38 @@ class AnthropicChatModel:
         }
         log.info("llm_structured", model=msg.model, request_id=request_id, grammar=grammar, **usage)
         return StructuredResult(data=json.loads(text), model=msg.model, usage=usage, raw_text=text)
+
+    async def stream(self, *, system: str, messages: list[dict[str, Any]], tools: list[Any], max_tokens: int = 8000,
+                     cache_prefix: str | None = None):
+        """Agent turn with tool use. The stable prefix (system + tools + loaded contract) is cached; the conversation follows."""
+        from app.agent.providers.base import StreamEvent
+
+        sys_blocks: list[dict[str, Any]] = [{"type": "text", "text": system}]
+        if cache_prefix:
+            sys_blocks.append({"type": "text", "text": cache_prefix})
+        sys_blocks[-1]["cache_control"] = {"type": "ephemeral"}
+        tool_defs = [{"name": t.name, "description": t.description, "input_schema": t.input_schema} for t in tools]
+        kwargs: dict[str, Any] = dict(model=self.model, max_tokens=max_tokens, system=sys_blocks, messages=messages, thinking={"type": "adaptive"},
+                                      betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+        if tool_defs:
+            kwargs["tools"] = tool_defs
+        try:
+            async with self.client.beta.messages.stream(**kwargs) as stream:
+                async for event in stream:
+                    if event.type == "text":
+                        yield StreamEvent(type="text_delta", text=event.text)
+                msg = await stream.get_final_message()
+        except anthropic.APIError as e:
+            log.error("llm_stream_failed", error=str(e)[:300])
+            yield StreamEvent(type="error", text=str(e)[:300])
+            return
+        for b in msg.content:
+            if b.type == "tool_use":
+                yield StreamEvent(type="tool_call", id=b.id, name=b.name, input=dict(b.input or {}))
+        usage = {
+            "input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens,
+            "cache_read_input_tokens": getattr(msg.usage, "cache_read_input_tokens", 0) or 0,
+            "cache_creation_input_tokens": getattr(msg.usage, "cache_creation_input_tokens", 0) or 0,
+        }
+        log.info("llm_turn", model=msg.model, stop=msg.stop_reason, **usage)
+        yield StreamEvent(type="done", stop_reason=msg.stop_reason, usage=usage, model=msg.model)

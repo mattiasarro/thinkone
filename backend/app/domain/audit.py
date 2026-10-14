@@ -26,7 +26,7 @@ from app.models.registry import Asset
 ENTITY_WORDS = {"contract": "Leping", "asset": "Ese", "party": "Osapool", "import_job": "Import", "source_document": "Dokument", "key_date": "Tähtaeg",
                 "allocation": "Hõive", "attachment": "Fail", "template": "Mall", "company": "Ettevõte", "account": "Konto", "membership": "Kasutaja",
                 "notification": "Teavitus", "user": "Kasutaja", "contract_party": "Lepingu osapool", "quote": "Pakkumine", "share_link": "Jagamislink",
-                "message": "Sõnum", "document_version": "Dokumendi versioon"}
+                "message": "Sõnum", "document_version": "Dokumendi versioon", "agent_thread": "AI vestlus", "clause_thread": "Arutelu", "contract_round": "Voor"}
 
 
 @dataclass

@@ -69,3 +69,52 @@ def fake_general_terms(user: str) -> dict[str, Any]:
 
     sections = tree_from_levels(json.loads(user)["paragraphs"])
     return {"sections": [{"heading": s.heading or "", "points": items(s.children, 0)} for s in sections]}
+
+
+# ---------------------------------------------------------------- agent turns offline -----------------------------
+
+class _Scripted:
+    """A queue of scripted turns for tests: each turn is a list of StreamEvents (or a plain string = one text turn)."""
+
+    def __init__(self) -> None:
+        self.turns: list[Any] = []
+
+
+SCRIPT = _Scripted()
+
+
+def script_turns(*turns: Any) -> None:
+    SCRIPT.turns = list(turns)
+
+
+async def _fake_stream(self, *, system: str, messages: list[dict[str, Any]], tools: list[Any], max_tokens: int = 8000, cache_prefix: str | None = None):
+    """Scripted when a test queued turns; otherwise a small rule-based operator: search → answer with the hits."""
+    from app.agent.providers.base import StreamEvent
+
+    self.calls.append({"system": system[:80], "messages": len(messages), "tools": [t.name for t in tools]})
+    if SCRIPT.turns:
+        turn = SCRIPT.turns.pop(0)
+        if isinstance(turn, str):
+            yield StreamEvent(type="text_delta", text=turn)
+            yield StreamEvent(type="done", stop_reason="end_turn", usage={"input_tokens": 10, "output_tokens": 5}, model="fake-scripted")
+            return
+        for ev in turn:
+            yield ev
+        return
+    last = messages[-1]
+    content = last.get("content")
+    if isinstance(content, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+        texts = " ".join(str(b.get("content", "")) for b in content if isinstance(b, dict) and b.get("type") == "tool_result")
+        yield StreamEvent(type="text_delta", text=f"Leidsin: {texts[:600]}")
+        yield StreamEvent(type="done", stop_reason="end_turn", usage={"input_tokens": 20, "output_tokens": 10}, model="fake-rules")
+        return
+    q = content if isinstance(content, str) else " ".join(b.get("text", "") for b in content if isinstance(b, dict))
+    if any(t.name == "search_portfolio" for t in tools):
+        yield StreamEvent(type="tool_call", id="call_1", name="search_portfolio", input={"query": q[:80]})
+        yield StreamEvent(type="done", stop_reason="tool_use", usage={"input_tokens": 20, "output_tokens": 10}, model="fake-rules")
+        return
+    yield StreamEvent(type="text_delta", text="Sellele ei leia andmetest vastust.")
+    yield StreamEvent(type="done", stop_reason="end_turn", usage={"input_tokens": 5, "output_tokens": 5}, model="fake-rules")
+
+
+FakeChatModel.stream = _fake_stream  # type: ignore[attr-defined]

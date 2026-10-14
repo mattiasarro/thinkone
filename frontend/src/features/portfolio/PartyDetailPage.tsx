@@ -35,7 +35,7 @@ export function PartyDetailPage({ id }: { id: string }) {
     <div className="grid gap-5">
       <LinkButton href="/app/portfell?tab=osapooled" variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{t("portfolio.tabs.parties")}</LinkButton>
       <PageHead title={p.name} sub={<span className="flex flex-wrap gap-1 mt-1"><span className="pill">{tEnum("portfolio.parties.kinds", p.kind)}</span>{p.roles.map((r) => <span key={r} className="pill primary">{tEnum("portfolio.parties.roleNames", r)}</span>)}</span>}
-        actions={<><LinkButton href={`/app/portfell/pakkumine/uus?party_id=${p.id}`} variant="primary"><IconPlus width={16} height={16} />{t("quotes.create")}</LinkButton><Button onClick={() => setEdit(true)}><IconEdit width={16} height={16} />{t("common.edit")}</Button><Button variant="text" className="btn-destructive" onClick={() => setDel(true)}><IconTrash width={16} height={16} />{t("common.delete")}</Button></>} />
+        actions={<><LinkButton href={`/app/portfell/pakkumine/uus?party_id=${p.id}`} variant="primary"><IconPlus width={16} height={16} />{t("quotes.create")}</LinkButton><LinkButton href={`/app/portfell/leping/uus?party_id=${p.id}`}><IconPlus width={16} height={16} />{t("lease.create")}</LinkButton><Button onClick={() => setEdit(true)}><IconEdit width={16} height={16} />{t("common.edit")}</Button><Button variant="text" className="btn-destructive" onClick={() => setDel(true)}><IconTrash width={16} height={16} />{t("common.delete")}</Button></>} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] items-start">
         <Card>
           <CardHeader title={t("assets.detailsTab")} />

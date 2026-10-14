@@ -152,3 +152,59 @@ export interface QuoteDetail extends QuoteSummary {
 export interface QuoteCreateInput { party_id: UUID; property_id: UUID; space_ids: UUID[]; company_id?: UUID | null; period_months?: number | null; validity_days?: number | null }
 export interface QuotePatchInput { expected_version?: number | null; period_months?: number | null; valid_until?: ISODate | null; contact?: QuoteContact | null; commercial_text?: string | null; features?: QuoteFeature[] | null; company_id?: UUID | null }
 export interface QuoteSpacePatchInput { expected_version?: number | null; price_per_m2?: number | null; clear_price?: boolean; schedule?: QuoteScheduleStep[] | null; clear_schedule?: boolean; parking_spot_ids?: UUID[] | null; parking_count?: number | null; clear_parking_count?: boolean; electrical_a?: number | null; clear_electrical?: boolean }
+
+// ---- leases (Phase 3.2) ----
+export type LeaseStatus = "draft" | "sent" | "negotiating" | "ready_to_sign" | "cancelled" | string;
+export type LeaseSide = "operator" | "client" | string;
+export type LeaseClauseContainer = "main" | "general" | "annex:3" | string;
+export type LeaseFactKey = "rent" | "parking" | "handover" | "purpose" | "deposit_months" | "months" | "term_notes" | "indexation" | "representatives.landlord" | "representatives.tenant" | string;
+export interface LeaseClause {
+  id: UUID; number: string; heading: string | null; text: string; level: number; locked: boolean; category: string; container: LeaseClauseContainer; parent_id: UUID | null;
+  fact_key: LeaseFactKey | null; status: "drafting" | "proposed" | "accepted" | string | null; origin_note: string | null; overrides_clause_id: UUID | null; overrides_label: string | null;
+  changed: boolean; provenance: ({ check?: boolean; unlocked?: boolean } & Record<string, unknown>) | null; original_text?: string | null;
+}
+export interface LeaseAnnex { number: number; title: string; attachment_id: UUID | null; kind: "floor_plan" | "parking_plan" | "special_terms" | "upload" | string; space_id: UUID | null; missing: boolean }
+export interface LeaseScheduleStep { until_month: number | null; price: number }
+export interface LeaseDealSpace { space_id: UUID; name: string; type: string | null; area_m2: number; price_per_m2: number; schedule: LeaseScheduleStep[] | null; parking_numbers: string[]; parking_count: number; electrical_a: number | null; line: QuoteLine }
+export interface LeaseIndexation { method?: "fixed_pct" | "stat_cpi" | string | null; rate?: number | null; frequency_months?: number | null; next_date?: ISODate | null }
+export interface LeaseRepresentative { role: string; name: string; phone: string; email: string }
+export interface LeaseRepresentatives { landlord: LeaseRepresentative[]; tenant: LeaseRepresentative[] }
+export interface LeaseDeal {
+  handover: ISODate; end: ISODate; months: number; deposit: number; deposit_months: number; purpose: string; term_notes: string; indexation: LeaseIndexation; representatives: LeaseRepresentatives;
+  totals: QuoteTotals; spaces: LeaseDealSpace[]; property: { id: UUID; name: string; attributes: { address?: string | null; vat_taxable?: boolean | null; has_parking?: boolean | null } } | null;
+}
+export interface LeaseSpaceTerms { space_id: UUID; price_per_m2?: number | null; schedule?: LeaseScheduleStep[] | null; parking_spot_ids?: UUID[] | null; parking_count?: number | null; electrical_a?: number | null }
+export interface LeaseTerms { handover?: ISODate; months?: number; spaces?: LeaseSpaceTerms[]; deposit_months?: number | null; purpose?: string | null; term_notes?: string | null; indexation?: LeaseIndexation | null; representatives?: LeaseRepresentatives | null }
+export interface LeaseRound { nr: number; side: LeaseSide }
+export interface LeaseDraft {
+  id: UUID; number: string; title: string; status: LeaseStatus; version: number; sent_version: number; quote_id: UUID | null; party: { id: UUID; name: string; registry_code: string | null } | null;
+  company_id: UUID | null; contact: QuoteContact; terms: LeaseTerms; deal: LeaseDeal; clauses: LeaseClause[]; annexes: LeaseAnnex[]; editable: boolean; round: LeaseRound | null;
+  sent_at: ISODate | null; accepted_at: ISODate | null; link: string;
+}
+export interface LeaseCreateInput { party_id: UUID; property_id: UUID; spaces: LeaseSpaceTerms[]; company_id?: UUID | null; months?: number; handover?: ISODate | null; deposit_months?: number | null; purpose?: string | null }
+export interface LeaseConvertInput { mode: "separate" | "shared"; handover?: ISODate | null }
+export interface LeaseTermsPatch { expected_version?: number | null; handover?: ISODate | null; months?: number | null; deposit_months?: number | null; purpose?: string | null; term_notes?: string | null; indexation?: LeaseIndexation | null; representatives?: LeaseRepresentatives | null; spaces?: LeaseSpaceTerms[] | null; reason?: string | null }
+export interface LeaseClausePatch { text: string; reason?: string | null; allow_locked?: boolean }
+export interface LeaseSpecialInput { text: string; overrides?: string | null; overrides_label?: string | null; status?: "drafting" | "accepted" }
+export type LeaseThreadStatus = "open" | "awaiting_confirmation" | "resolved" | string;
+export type LeaseResolution = "changed" | "special_term" | "explained" | "unchanged" | string;
+export interface LeaseProposal { kind: "fact" | "wording" | "special_term" | string; by: LeaseSide; fact_key?: string; value?: unknown; text?: string; before?: string; special_clause_id?: UUID }
+export interface LeaseThreadMessage { id: UUID; author_type: LeaseSide | "system" | string; author_name: string | null; body: string; meta: { round_nr?: number | null; kind?: "proposal" | "accept" | "decline" | "explain" | "ok" | string; proposal?: LeaseProposal } & Record<string, unknown>; created_at: ISODate }
+export interface LeaseThread {
+  id: UUID; clause_id: UUID; clause_number: string | null; clause_heading: string | null; opened_by: LeaseSide; status: LeaseThreadStatus; resolution: LeaseResolution | null; resolution_label: string | null;
+  proposal: LeaseProposal | null; wish: ({ fact_key?: string; label?: string; value?: unknown } & Record<string, unknown>) | null; round_nr: number | null; unsent: boolean; whose_turn: LeaseSide | null;
+  created_at: ISODate; resolved_at: ISODate | null; messages: LeaseThreadMessage[];
+}
+export interface LeaseRoundOut { nr: number; side: LeaseSide; body: string | null; version_no: number | null; thread_ids: string[]; created_at: ISODate }
+export interface LeaseChange { key: string; label: string; kind: "added" | "wording" | "removed" | "fact" | string; before: unknown; after: unknown; clause_id?: UUID }
+export interface LeaseVersion { number: number; created_at: ISODate; note: string | null; pdf_url: string | null; changes: LeaseChange[] }
+export type LeaseNextStepCode = "send" | "answer" | "waiting" | "sign";
+export interface LeaseNextStep { side: LeaseSide; code: LeaseNextStepCode | string; title: string; text: string; urgent: boolean }
+export interface LeaseNegotiation {
+  threads: LeaseThread[]; rounds: LeaseRoundOut[]; versions: LeaseVersion[]; changes_since_v1: LeaseChange[]; link: QuoteLink | null; letters: QuoteLetter[];
+  next_step: LeaseNextStep | null; turn: LeaseSide | null; can_send: boolean; pending_count: number; unsent_count: number;
+}
+export type LeaseThreadAction = "explain" | "answer" | "propose" | "decide" | "unchanged";
+export interface LeaseProposeInput { kind: "fact" | "wording" | "special_term"; text?: string | null; fact_key?: string | null; value?: unknown; wording?: string | null; special_text?: string | null; overrides_label?: string | null }
+export interface LeaseDecideInput { accept: boolean; text?: string | null }
+export interface LeaseChatMessage { id: UUID; author_type: LeaseSide | "system" | string; author_name: string | null; body: string; created_at: ISODate; channel: string; meta: Record<string, unknown> }

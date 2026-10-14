@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.operator import (
     account,
+    agent,
     assets,
     attachments,
     audit,
@@ -40,3 +41,4 @@ router.include_router(portfolio.router)
 router.include_router(quotes.router)
 router.include_router(messages.router)
 router.include_router(leases.router)
+router.include_router(agent.router)

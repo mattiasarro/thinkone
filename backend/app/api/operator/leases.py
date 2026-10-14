@@ -96,6 +96,7 @@ class ClauseOut(BaseModel):
     overrides_clause_id: uuid.UUID | None = None
     overrides_label: str | None = None
     changed: bool = False
+    original_text: str | None = None
     provenance: dict[str, Any] | None = None
 
 
