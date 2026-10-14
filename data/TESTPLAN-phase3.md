@@ -60,3 +60,48 @@ building with spaces. Paths are relative to the repo root.
 - Expiry: a sent quote whose validity passed is moved to Aegunud by the nightly job (05:30 UTC); the portal shows „Pakkumine
   aegus” and refuses accept; the operators get a notification.
 - Sündmuslogi → olem „Pakkumine”: created, updated, sent, version_frozen, client_proposal, accepted/rejected/expired, reminded.
+
+## 3.2 Contract preparation (lepingu mustand)
+
+### From an accepted quote
+- Accepted quote → guide card „Koosta leping”: „Eraldi lepingud · N” / „Üks ühine leping” (only with several spaces), handover
+  date (default the 1st of next month) → the draft page opens: number `LEP-<year>-NNN`, status Mustand, key-data tiles,
+  the A4 document with Põhitingimused (6 sections generated from the deal), Üldtingimused (locked, from the building's
+  template), Lisa 3 (the quote's special terms, „kirjutab üle: p X”), Lisad list; the quote reads „Lepinguks teisendatud”
+  and links to the draft; the space reads „üüritud” only after signing (Phase 4) — until then the draft holds the allocation.
+- Tehing card: change the handover, months, deposit months, €/m² → the main terms regenerate; edit a clause's wording by hand
+  (✎), then change a fact → the edited clause keeps your text and shows „Kontrolli sõnastust”. Esindajad: fill the landlord
+  rows → P 6.1 updates. Lisa 3: add a manual special term overriding a general clause → the general clause shows „muudetud:
+  Lisa 3 p N” in the document.
+- „Loo leping 0-st” (ülariba „+ Uus” → Leping, or the party/space page): Klient → Riskiraport → Pinnad → Tingimused → draft.
+- Tööleping: Portfell → Esemed → add a department and a position; „+ Uus → Leping” → liik Tööleping → candidate (person) →
+  position → salary/start/probation → draft `TL-…` with TLS main terms, probation and salary-review key dates, the position
+  allocated (quota).
+
+### Negotiation (one round = one letter)
+- „Saada üürnikule” → V1 frozen (PDF), the client gets a link with its own validity, turn = client; the operator cannot edit.
+- Client (portal): the A4 with clickable clauses; click 2.4 → „Lisa märkus”; click 4.1 → „Soovin muuta: Tagatis (kuud) → 2”;
+  „Saada märkused · 2”. Operator: Avaleht shows „Vasta üürniku märkustele · 2”; the draft page pane lists the threads; the
+  document marks them; „Kuidas lahendame?”: Selgitan (resolves as Selgitatud) · Muudan: tagatis → 2 (proposal) · „Saada
+  vastused · 2” (blocked while a thread is unanswered). Client: „Kinnitan” on the proposal → the fact and the clause change,
+  „Sobib” on the explanation → when nothing is open: „Aktsepteerin kõik punktid” → Allkirjastamiseks valmis; the operator is
+  notified; „Muudatused · N” shows the wording diff against V1; Versioonid shows V2 when the document changed.
+- A locked general clause: „Muuda sõnastust” is refused → „Saadan Lisa 3-sse” creates a proposed special clause the client
+  confirms or declines („Ei sobi — vastan arutellu” removes it); „Jääb samaks” closes a thread neutrally (never „tagasi
+  lükatud”); „Tühista leping” frees the space and kills the link.
+
+## 3.3 AI foundation and risk
+
+- Sidebar „AI” → `/app/ai`: example chips; „Millised pinnad on vabad?” → „Töö käik” shows `Loen pindu` → a table card;
+  „Loo pakkumine ettevõttele X, Hoone T6B pind 12” → a confirmation card → „Kinnita” → the draft is created under your
+  name and linked; „Muuda” puts a sentence in the composer; ambiguous „pind” → the assistant asks (clarify card).
+- On a lease page „Küsi selle lepingu kohta” → the thread opens with the context chip „Kontekst · LEP-…”; „Kui suur on üür ja
+  millisest punktist?” → the answer cites „§3.1” chips that open the clause; a made-up § never appears (the step list says
+  „Kontrollin viiteid”).
+- Thread list grouped by day; delete → 10 s „Võta tagasi”; usage line under the composer; Seaded → Teavitused → AI: lower
+  the monthly budget to 1 → the next answer says the budget is exhausted; restore it.
+- Riskiraport: party page → „Telli riskiraport” → score gauge, signals (Äriregister status/age, EMTA tax debt, turnover
+  trend, rent vs turnover), „Liidestamata: Krediidiinfo, Inforegister, Kohtutäitur, majandusaasta aruanded”; the quote
+  wizard step 2 shows the same; the quote's client block shows the pill.
+- Evals: `cd backend && uv run python -m app.agent.evals.runner --base https://api.dev.thinkone.ai --email … --password …`
+  over the seeded portfolio; target ≥ 95 % (format and questions to be agreed with Future Invest).
