@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { t, tEnum } from "@/i18n";
 import { useDebounced, useClickOutside } from "@/lib/hooks";
 import { useSearch } from "@/lib/queries/portfolio";
-import { IconSearch } from "@/components/ui/Icons";
+import { IconAi, IconSearch } from "@/components/ui/Icons";
 import { Spinner } from "@/components/ui/State";
 import { cx } from "@/lib/format";
 import type { SearchHit } from "@/types/api";
@@ -73,7 +74,13 @@ export function SearchBox() {
           {res.isLoading ? (
             <div className="flex items-center gap-2 p-3 text-sm text-muted"><Spinner /> {t("topbar.searching")}</div>
           ) : hits.length === 0 ? (
-            <div className="p-3 text-sm text-muted">{t("topbar.noSearchResults")}</div>
+            <>
+              <div className="p-3 text-sm text-muted">{t("topbar.noSearchResults")}</div>
+              <Link href={`/app/ai?q=${encodeURIComponent(dq.trim())}`} className="drop-item" role="option" aria-selected={false} onClick={() => { setOpen(false); setQ(""); }}>
+                <IconAi width={16} height={16} className="text-muted flex-none" />
+                <span className="min-w-0 truncate font-medium">{t("topbar.askAi", { q: dq.trim() })}</span>
+              </Link>
+            </>
           ) : (
             hits.map((h, i) => (
               <button key={`${h.entity_type}-${h.entity_id}`} type="button" role="option" aria-selected={i === idx} className={cx("drop-item", i === idx && "bg-canvas")} onMouseEnter={() => setIdx(i)} onClick={() => go(h)}>

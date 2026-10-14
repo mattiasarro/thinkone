@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
-import { useAddSpecial, useLeaseChat, useMarkLeaseChatRead, usePostLeaseChat, useRemoveSpecial, useUpdateLeaseContact, useUpdateLeaseTerms } from "@/lib/queries/leases";
+import { useAddSpecial, useLeaseChat, useMarkLeaseChatRead, usePostLeaseChat, useRemoveSpecial, useUpdateEmploymentTerms, useUpdateLeaseContact, useUpdateLeaseTerms } from "@/lib/queries/leases";
 import { useParking } from "@/lib/queries/portfolio";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,19 +13,25 @@ import { useToast } from "@/components/ui/Toast";
 import { IconExternal, IconLink, IconTrash, IconX } from "@/components/ui/Icons";
 import { cx, fmtDate, fmtDateTime, fmtEur, fmtNum } from "@/lib/format";
 import type { Run } from "@/features/quotes/quoteRun";
-import type { LeaseChatMessage, LeaseDealSpace, LeaseDraft, LeaseIndexation, LeaseNegotiation, LeaseRepresentative, LeaseRepresentatives, LeaseScheduleStep, LeaseSpaceTerms, LeaseTermsPatch } from "@/types/api";
+import type { EmploymentTermsPatch, LeaseChatMessage, LeaseDealSpace, LeaseDraft, LeaseIndexation, LeaseNegotiation, LeaseRepresentative, LeaseRepresentatives, LeaseScheduleStep, LeaseSpaceTerms, LeaseTermsPatch } from "@/types/api";
 
 const PERIODS = [12, 24, 36, 60, 120];
+/** The employment vertical (Tööleping) reuses the lease draft page; a few labels flip: Üürnik → Töötaja, Üürileandja → Tööandja. */
+export const isEmployment = (lease: LeaseDraft) => lease.deal.vertical === "employment";
 const num = (v: string): number | null => { const s = v.trim().replace(",", "."); if (s === "") return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 const DELIVERY_TONE: Record<string, Tone> = { queued: "neutral", sent: "info", delivered: "success", bounced: "error", failed: "error" };
 
 // ---------------------------------------------------------------- Tehing --------------------------------------------
 
-export function DealCard({ lease, run, editable }: { lease: LeaseDraft; run: Run; editable: boolean }) {
+export function DealCard(props: { lease: LeaseDraft; run: Run; editable: boolean }) {
+  return isEmployment(props.lease) ? <EmploymentDealCard {...props} /> : <LeaseDealCard {...props} />;
+}
+
+function LeaseDealCard({ lease, run, editable }: { lease: LeaseDraft; run: Run; editable: boolean }) {
   const update = useUpdateLeaseTerms(lease.id);
   const d = lease.deal;
   const ix = d.indexation ?? {};
-  const [custom, setCustom] = useState(!PERIODS.includes(d.months));
+  const [custom, setCustom] = useState(d.months !== null && !PERIODS.includes(d.months));
   const patch = (body: LeaseTermsPatch) => run(update.mutateAsync({ ...body, expected_version: lease.version }), t("lease.deal.saved"));
   const setIx = (p: Partial<LeaseIndexation>) => patch({ indexation: { ...ix, ...p } });
   const property = d.property;
@@ -45,7 +51,7 @@ export function DealCard({ lease, run, editable }: { lease: LeaseDraft; run: Run
                 {PERIODS.map((m) => <option key={m} value={m}>{t("lease.deal.monthsN", { n: m })}</option>)}
                 <option value="custom">{t("lease.deal.custom")}</option>
               </select>
-              {custom && <input className="fld w-28" type="number" min={1} max={600} disabled={!editable} defaultValue={d.months} aria-label={t("lease.deal.monthsInput")} onBlur={(e) => { const n = num(e.target.value); if (n && Math.round(n) !== d.months) void patch({ months: Math.round(n) }); }} />}
+              {custom && <input className="fld w-28" type="number" min={1} max={600} disabled={!editable} defaultValue={d.months ?? ""} aria-label={t("lease.deal.monthsInput")} onBlur={(e) => { const n = num(e.target.value); if (n && Math.round(n) !== d.months) void patch({ months: Math.round(n) }); }} />}
             </div>
           </div>
         </div>
@@ -73,6 +79,59 @@ export function DealCard({ lease, run, editable }: { lease: LeaseDraft; run: Run
       <ul className="divide-y" style={{ borderColor: "var(--line)" }}>
         {d.spaces.map((s) => <SpaceRow key={s.space_id} lease={lease} s={s} terms={(lease.terms.spaces ?? []).find((x) => x.space_id === s.space_id)} spots={spots} hasRegister={spots.length > 0} editable={editable} patch={patch} busy={update.isPending} />)}
       </ul>
+    </Card>
+  );
+}
+
+/** „Tehing” for a Tööleping (deal.vertical === "employment"): the TLS main terms, saved through PATCH /employment-terms; no spaces, parking, deposit or indexation. */
+function EmploymentDealCard({ lease, run, editable }: { lease: LeaseDraft; run: Run; editable: boolean }) {
+  const update = useUpdateEmploymentTerms(lease.id);
+  const d = lease.deal;
+  const e = d.employment;
+  const patch = (body: EmploymentTermsPatch) => run(update.mutateAsync({ ...body, expected_version: lease.version }), t("lease.deal.employment.saved"));
+  const [fixed, setFixed] = useState(d.months !== null);
+  if (!e) return null;
+  return (
+    <Card>
+      <CardHeader title={t("lease.deal.title")}>
+        <p className="text-sm text-muted m-0">{t("lease.deal.employment.position")}: <span className="font-medium text-ink">{e.position.name}</span>{e.department && <span> · {e.department.name}</span>}</p>
+      </CardHeader>
+      {!editable && <p className="text-xs text-muted px-[var(--card-padding)] pt-3 m-0">{t("lease.deal.readOnly")}</p>}
+      <CardBody className="grid gap-2">
+        <div className="grid gap-x-3 sm:grid-cols-2">
+          <Input label={t("lease.deal.employment.salary")} type="number" min={0} step="0.01" inputMode="decimal" disabled={!editable} key={`s${e.salary}`} defaultValue={e.salary} onBlur={(ev) => { const n = num(ev.target.value); if (n !== null && n > 0 && n !== e.salary) void patch({ salary: n }); }} />
+          <Input label={t("lease.deal.employment.start")} type="date" disabled={!editable} key={`h${d.handover}`} defaultValue={d.handover} hint={d.end ? t("lease.deal.employment.end", { date: fmtDate(d.end) }) : t("lease.deal.employment.openEnded")} onBlur={(ev) => { if (ev.target.value && ev.target.value !== d.handover) void patch({ start: ev.target.value }); }} />
+        </div>
+        <div className="grid gap-x-3 sm:grid-cols-2">
+          <div className="field">
+            <label className="field-label">{t("lease.deal.employment.months")}</label>
+            <div className="flex gap-2">
+              <select className="fld" disabled={!editable} value={fixed ? "fixed" : "open"} onChange={(ev) => { const f = ev.target.value === "fixed"; setFixed(f); if (!f && d.months !== null) void patch({ months: null }); }} aria-label={t("lease.deal.employment.months")}>
+                <option value="open">{t("lease.deal.employment.openEnded")}</option>
+                <option value="fixed">{t("lease.deal.employment.fixed")}</option>
+              </select>
+              {fixed && <input className="fld w-28" type="number" min={1} max={600} disabled={!editable} key={`m${d.months ?? ""}`} defaultValue={d.months ?? ""} aria-label={t("lease.deal.employment.monthsInput")} onBlur={(ev) => { const n = num(ev.target.value); if (n && Math.round(n) !== d.months) void patch({ months: Math.round(n) }); }} />}
+            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">{t("lease.deal.employment.probation")}</label>
+            <select className="fld" disabled={!editable} value={String(e.probation_months)} onChange={(ev) => void patch({ probation_months: Number(ev.target.value) })} aria-label={t("lease.deal.employment.probation")}>
+              {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{n === 0 ? t("lease.deal.employment.probationNone") : t("lease.deal.monthsN", { n })}</option>)}
+            </select>
+            {e.probation_end && <span className="field-hint">{t("lease.deal.employment.probationEnd", { date: fmtDate(e.probation_end) })}</span>}
+          </div>
+        </div>
+        <div className="grid gap-x-3 sm:grid-cols-2">
+          <Input label={t("lease.deal.employment.workingTime")} disabled={!editable} key={`w${e.working_time}`} defaultValue={e.working_time} onBlur={(ev) => { const v = ev.target.value.trim(); if (v && v !== e.working_time) void patch({ working_time: v }); }} />
+          <Input label={t("lease.deal.employment.place")} disabled={!editable} key={`p${e.place ?? ""}`} defaultValue={e.place ?? ""} onBlur={(ev) => { const v = ev.target.value.trim(); if (v !== (e.place ?? "")) void patch({ place: v || null }); }} />
+        </div>
+        <div className="grid gap-x-3 grid-cols-2 sm:grid-cols-3">
+          <Input label={t("lease.deal.employment.salaryReview")} type="date" disabled={!editable} key={`r${e.salary_review ?? ""}`} defaultValue={e.salary_review ?? ""} onBlur={(ev) => { if (ev.target.value && ev.target.value !== e.salary_review) void patch({ salary_review: ev.target.value }); }} />
+          <Input label={t("lease.deal.employment.vacationDays")} type="number" min={0} max={60} step="1" inputMode="numeric" disabled={!editable} key={`v${e.vacation_days}`} defaultValue={e.vacation_days} onBlur={(ev) => { const n = num(ev.target.value); if (n !== null && Math.round(n) !== e.vacation_days) void patch({ vacation_days: Math.round(n) }); }} />
+          <Input label={t("lease.deal.employment.payDay")} type="number" min={1} max={28} step="1" inputMode="numeric" disabled={!editable} key={`d${e.pay_day}`} defaultValue={e.pay_day} onBlur={(ev) => { const n = num(ev.target.value); if (n !== null && Math.round(n) !== e.pay_day) void patch({ pay_day: Math.min(28, Math.max(1, Math.round(n))) }); }} />
+        </div>
+        <TextField label={t("lease.deal.employment.termNotes")} value={lease.terms.term_notes ?? ""} placeholder={d.term_notes} editable={editable} onSave={(v) => patch({ term_notes: v })} />
+      </CardBody>
     </Card>
   );
 }
@@ -171,12 +230,14 @@ export function RepsCard({ lease, run, editable }: { lease: LeaseDraft; run: Run
   const [rows, setRows] = useState<LeaseRepresentative[]>([]);
   const start = (side: "landlord" | "tenant") => { setEdit(side); setRows(reps[side].map((r) => ({ ...r }))); };
   const save = async () => { if (!edit) return; const body: LeaseRepresentatives = { ...reps, [edit]: rows }; const r = await run(update.mutateAsync({ representatives: body, expected_version: lease.version }), t("lease.reps.saved")); if (r) setEdit(null); };
+  const employment = isEmployment(lease);
   const table = (side: "landlord" | "tenant") => {
     const can = editable && (side === "landlord" || lease.status === "draft");
     const list = edit === side ? rows : reps[side];
+    const label = employment ? (side === "landlord" ? t("lease.employment.employer") : t("lease.employment.employee")) : t(`lease.reps.${side}`);
     return (
       <div>
-        <div className="flex items-center gap-2 mb-1"><span className="text-xs font-semibold text-muted">{t(`lease.reps.${side}`)}</span>{can && edit !== side && <Button size="sm" variant="text" className="!min-h-0 h-6 px-2 text-xs" onClick={() => start(side)}>{t("lease.reps.edit")}</Button>}</div>
+        <div className="flex items-center gap-2 mb-1"><span className="text-xs font-semibold text-muted">{label}</span>{can && edit !== side && <Button size="sm" variant="text" className="!min-h-0 h-6 px-2 text-xs" onClick={() => start(side)}>{t("lease.reps.edit")}</Button>}</div>
         <table className="w-full text-xs">
           <thead><tr className="text-muted text-left"><th className="font-medium pr-2 py-1">{t("lease.reps.role")}</th><th className="font-medium pr-2 py-1">{t("lease.reps.name")}</th><th className="font-medium pr-2 py-1">{t("lease.reps.phone")}</th><th className="font-medium py-1">{t("lease.reps.email")}</th></tr></thead>
           <tbody>
@@ -218,9 +279,10 @@ export function ClientCard({ lease, neg, run }: { lease: LeaseDraft; neg: LeaseN
   const dirty = c.name !== lease.contact.name || c.email !== lease.contact.email || c.phone !== lease.contact.phone;
   const editable = lease.status === "draft";
   const copy = async () => { if (!neg.link) return; try { await navigator.clipboard.writeText(neg.link.url); toast.success(t("lease.client.linkCopied")); } catch { toast.error(t("common.error")); } };
+  const employment = isEmployment(lease);
   return (
     <Card>
-      <CardHeader title={t("lease.client.title")} />
+      <CardHeader title={employment ? t("lease.employment.employee") : t("lease.client.title")} />
       <CardBody className="grid gap-3">
         <div className="text-sm">
           {lease.party ? <Link href={`/app/portfell/osapool/${lease.party.id}`} className="text-primary font-semibold">{lease.party.name}</Link> : "—"}
@@ -249,7 +311,7 @@ export function ClientCard({ lease, neg, run }: { lease: LeaseDraft; neg: LeaseN
             <div className="text-xs text-muted">{neg.link.opened_at ? t("lease.client.opened", { at: fmtDateTime(neg.link.opened_at) }) : t("lease.client.notOpened")}</div>
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" onClick={copy}>{t("lease.client.copyLink")}</Button>
-              <a href={neg.link.url} target="_blank" rel="noopener" className="btn btn-ghost btn-sm"><IconExternal width={14} height={14} />{t("lease.client.viewAsTenant")}</a>
+              <a href={neg.link.url} target="_blank" rel="noopener" className="btn btn-ghost btn-sm"><IconExternal width={14} height={14} />{employment ? t("lease.employment.viewAsEmployee") : t("lease.client.viewAsTenant")}</a>
             </div>
           </div>
         )}
@@ -351,7 +413,7 @@ export function ChatCard({ lease, run }: { lease: LeaseDraft; run: Run }) {
         {items.length === 0 ? <p className="text-sm text-muted">{t("lease.chat.none")}</p> : <ChatThread items={items} />}
         {lease.status !== "cancelled" && (
           <div>
-            <textarea className="fld" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("lease.chat.placeholder")} aria-label={t("lease.chat.title")} />
+            <textarea className="fld" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder={isEmployment(lease) ? t("lease.employment.chatPlaceholder") : t("lease.chat.placeholder")} aria-label={t("lease.chat.title")} />
             <div className="flex justify-end mt-2"><Button size="sm" variant="primary" busy={post.isPending} disabled={!text.trim()} onClick={send}>{t("lease.chat.send")}</Button></div>
           </div>
         )}

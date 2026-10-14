@@ -15,6 +15,9 @@ import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconPlus, IconSearch, IconCheck } from "@/components/ui/Icons";
 import { cx, fmtEur, fmtNum } from "@/lib/format";
 import { PartyModal } from "@/features/portfolio/PartyModal";
+import { RiskReportCard } from "@/features/risk/RiskReportCard";
+import { partyHasRisk } from "@/features/risk/RiskPill";
+import { useRiskHistory } from "@/lib/queries/risk";
 import type { Asset, Party, SpaceAttributes } from "@/types/api";
 
 const STEPS = ["client", "risk", "spaces"] as const;
@@ -62,20 +65,38 @@ export function QuoteWizard() {
         ))}
       </div>
       {step === "client" && <StepClient party={party} onPick={(p) => { setParty(p); setStep("risk"); }} />}
-      {step === "risk" && (
-        <Card>
-          <CardHeader title={t("quotes.wizard.riskTitle")} />
-          <CardBody>
-            <p className="text-sm text-muted">{t("quotes.wizard.riskText")}</p>
-            {party && <p className="text-sm mt-2"><span className="text-muted">{t("quotes.wizard.clientSelected")}:</span> <span className="font-semibold">{party.name}</span>{party.registry_code && <span className="text-muted"> · {party.registry_code}</span>}</p>}
-            <div className="flex justify-end gap-2 mt-4"><Button onClick={() => setStep("client")}>{t("common.back")}</Button><Button variant="primary" onClick={() => setStep("spaces")}>{t("quotes.wizard.riskSkip")}</Button></div>
-          </CardBody>
-        </Card>
-      )}
+      {step === "risk" && <StepRisk party={party} onBack={() => setStep("client")} onNext={() => setStep("spaces")} />}
       {step === "spaces" && (
         <StepSpaces propertyId={propertyId} onProperty={(id) => { setPropertyId(id); setSpaceIds([]); }} spaceIds={spaceIds} onSpaces={setSpaceIds}
           footer={<div className="flex items-center justify-between gap-2 mt-4 flex-wrap"><span className="text-sm text-muted">{t("quotes.wizard.selected", { n: spaceIds.length })}</span><div className="flex gap-2"><Button onClick={() => setStep("risk")}>{t("common.back")}</Button><Button variant="primary" busy={create.isPending} disabled={!party || !propertyId || spaceIds.length === 0} onClick={submit}>{t("quotes.wizard.create")}</Button></div></div>} />
       )}
+    </div>
+  );
+}
+
+/** Step 2 — advisory risk report (Phase 3.3): shows the latest report compact, orders one on demand, never blocks („Jätka ilma”). */
+function StepRisk({ party, onBack, onNext }: { party: Party | null; onBack: () => void; onNext: () => void }) {
+  const hasRisk = partyHasRisk(party);
+  const history = useRiskHistory(party?.id, hasRisk);
+  const hasReport = (history.data ?? []).some((r) => r.status === "ready");
+  const nav = (
+    <div className="flex items-center justify-between gap-2 flex-wrap">
+      {party ? <p className="text-sm"><span className="text-muted">{t("quotes.wizard.clientSelected")}:</span> <span className="font-semibold">{party.name}</span>{party.registry_code && <span className="text-muted"> · {party.registry_code}</span>}</p> : <span />}
+      <div className="flex gap-2"><Button onClick={onBack}>{t("common.back")}</Button><Button variant="primary" onClick={onNext}>{hasReport ? t("risk.wizard.continue") : t("risk.wizard.skip")}</Button></div>
+    </div>
+  );
+  if (!party || !hasRisk) {
+    return (
+      <Card>
+        <CardHeader title={t("risk.wizard.title")} overline={t("risk.advisory")} />
+        <CardBody className="grid gap-4"><p className="text-sm text-muted">{party && party.kind === "person" ? t("risk.wizard.notCompany") : t("risk.notCompany")}</p>{nav}</CardBody>
+      </Card>
+    );
+  }
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm text-muted">{t("risk.wizard.text")}</p>
+      <RiskReportCard partyId={party.id} compact title={t("risk.wizard.title")} footer={nav} />
     </div>
   );
 }

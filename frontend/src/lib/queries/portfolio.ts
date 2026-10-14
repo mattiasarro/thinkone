@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SourceView, SpaceImportResult, SplitUnitInput } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AttentionOut, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SourceView, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -207,6 +207,10 @@ export function usePortfolioSummary() {
 }
 export function usePortfolioHealth() {
   return useQuery({ queryKey: ["portfolio", "health"], queryFn: () => api.get<PortfolioHealth>("/portfolio/health") });
+}
+/** Avaleht „Fookus”: the rule-based ONE-next-step queue (red → amber by date); refreshed every minute while the page is open. */
+export function useAttention() {
+  return useQuery({ queryKey: ["portfolio", "attention"], queryFn: () => api.get<AttentionOut>("/portfolio/attention"), refetchInterval: 60_000 });
 }
 export function useSearch(q: string) {
   return useQuery({ queryKey: ["search", q], queryFn: ({ signal }) => api.get<SearchHit[]>("/search", { q }, signal), enabled: q.trim().length >= 2, staleTime: 30_000 });

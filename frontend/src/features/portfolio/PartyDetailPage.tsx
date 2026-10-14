@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { useDeleteParty, useParty, usePartyContracts } from "@/lib/queries/portfolio";
 import { Card, CardHeader, CardBody, PageHead } from "@/components/ui/Card";
@@ -15,9 +15,12 @@ import { PartyContractsTable } from "./PartyContractsTable";
 import { useQuotes } from "@/lib/queries/quotes";
 import { QuotesTable } from "@/features/quotes/QuotesTab";
 import { IconPlus } from "@/components/ui/Icons";
+import { RiskReportCard } from "@/features/risk/RiskReportCard";
+import { partyHasRisk } from "@/features/risk/RiskPill";
 
 export function PartyDetailPage({ id }: { id: string }) {
   const party = useParty(id);
+  const focusRisk = useSearchParams().get("tab") === "risk";
   const contracts = usePartyContracts(id);
   const quotes = useQuotes({ party_id: id, view: "all" });
   const [edit, setEdit] = useState(false);
@@ -49,7 +52,8 @@ export function PartyDetailPage({ id }: { id: string }) {
             </dl>
           </CardBody>
         </Card>
-        <Card>
+        {partyHasRisk(p) && <div className="xl:col-start-1 xl:row-start-2"><RiskReportCard partyId={p.id} focus={focusRisk} /></div>}
+        <Card className={partyHasRisk(p) ? "xl:col-start-2 xl:row-start-1 xl:row-span-2" : undefined}>
           <CardHeader title={t("portfolio.parties.contracts")} />
           {contracts.isLoading ? <div className="p-6"><Loading /></div> : contracts.error ? <div className="p-6"><ErrorState error={contracts.error} onRetry={() => contracts.refetch()} /></div> : (contracts.data ?? []).length === 0 ? <EmptyState title={t("portfolio.parties.noContracts")} /> : <PartyContractsTable rows={contracts.data ?? []} />}
         </Card>

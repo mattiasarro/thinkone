@@ -1,14 +1,21 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Account, AriregisterHit, QuoteDefaults, Attachment, AttachmentRole, AttachmentSubject, Company, CompanyInput, EhrHit, NotifyDays, Template, TemplateDetail, TemplateKind } from "@/types/api";
+import type { Account, AgentUsage, AiSettings, AriregisterHit, QuoteDefaults, Attachment, AttachmentRole, AttachmentSubject, Company, CompanyInput, EhrHit, NotifyDays, Template, TemplateDetail, TemplateKind } from "@/types/api";
 
 export function useAccount() {
   return useQuery({ queryKey: ["account"], queryFn: () => api.get<Account>("/account") });
 }
 export function useUpdateAccount() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (body: { name?: string; settings?: { notify_days?: Partial<NotifyDays>; quote?: Partial<QuoteDefaults> } }) => api.patch<Account>("/account", body), onSuccess: (a) => qc.setQueryData(["account"], a) });
+  return useMutation({
+    mutationFn: (body: { name?: string; settings?: { notify_days?: Partial<NotifyDays>; quote?: Partial<QuoteDefaults>; ai?: AiSettings } }) => api.patch<Account>("/account", body),
+    onSuccess: (a) => { qc.setQueryData(["account"], a); qc.invalidateQueries({ queryKey: ["ai", "usage"] }); },
+  });
+}
+/** This month's AI token spend against the budget (Seaded → Teavitused → AI card); same cache entry as the AI page's usage hook. */
+export function useAgentUsage() {
+  return useQuery({ queryKey: ["ai", "usage"], queryFn: () => api.get<AgentUsage>("/agent/usage"), staleTime: 30_000 });
 }
 
 export function useCompanies() {

@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { LeaseChatMessage, LeaseClausePatch, LeaseConvertInput, LeaseCreateInput, LeaseDecideInput, LeaseDraft, LeaseNegotiation, LeaseProposeInput, LeaseSpecialInput, LeaseTermsPatch } from "@/types/api";
+import type { EmploymentCreateInput, EmploymentTermsPatch, LeaseChatMessage, LeaseClausePatch, LeaseConvertInput, LeaseCreateInput, LeaseDecideInput, LeaseDraft, LeaseNegotiation, LeaseProposeInput, LeaseSpecialInput, LeaseTermsPatch } from "@/types/api";
 
 type QC = ReturnType<typeof useQueryClient>;
 
@@ -44,6 +44,14 @@ function useNegotiationMutation<B>(id: string, fn: (body: B) => Promise<LeaseNeg
 }
 export function useUpdateLeaseTerms(id: string) {
   return useLeaseMutation(id, (body: LeaseTermsPatch) => api.patch<LeaseDraft>(`/leases/${id}/terms`, body));
+}
+/** Tööleping (employment vertical) on the same draft engine: POST /leases/employment and PATCH /leases/{id}/employment-terms. */
+export function useCreateEmployment() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (body: EmploymentCreateInput) => api.post<LeaseDraft>("/leases/employment", body), onSuccess: (d) => { qc.setQueryData(["lease", d.id], d); invalidateLease(qc); } });
+}
+export function useUpdateEmploymentTerms(id: string) {
+  return useLeaseMutation(id, (body: EmploymentTermsPatch) => api.patch<LeaseDraft>(`/leases/${id}/employment-terms`, body));
 }
 export function useUpdateLeaseContact(id: string) {
   return useLeaseMutation(id, (body: { name: string; email: string; phone: string }) => api.patch<LeaseDraft>(`/leases/${id}/contact`, body));

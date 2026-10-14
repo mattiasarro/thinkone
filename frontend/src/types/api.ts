@@ -12,7 +12,10 @@ export interface Notification { id: UUID; kind: string; title: string; body: str
 
 export interface NotifyDays { end: number; indexation: number; probation: number; salary_review: number; quote_expiry: number }
 export interface QuoteDefaults { validity_days: number; period_months: number; deposit_months: number; silence_days: number; contract_link_days: number }
-export interface Account { id: UUID; name: string; settings: { notify_days: NotifyDays; quote: QuoteDefaults } & Record<string, unknown> }
+export interface AiSettings { monthly_token_budget: number }
+export interface Account { id: UUID; name: string; settings: { notify_days: NotifyDays; quote: QuoteDefaults; ai?: AiSettings } & Record<string, unknown> }
+/** GET /agent/usage — this month's token spend against the account budget (the settings card). */
+export interface AgentUsage { month: string; input_tokens?: number; output_tokens?: number; runs: number; total_tokens: number; budget: number; remaining: number; exhausted: boolean }
 
 export interface Company { id: UUID; name: string; registry_code: string | null; vat_number: string | null; address: string | null; email: string | null; phone: string | null; accent_color: string | null; logo_attachment_id: UUID | null }
 export type CompanyInput = Omit<Company, "id" | "logo_attachment_id">;
@@ -111,6 +114,11 @@ export interface AuditStats { actor_type: Record<string, number>; entity_type: R
 export interface HealthFinding { code: string; severity: "info" | "warning" | "error"; title: string; count: number; items: { contract_id: UUID; number: string | null; title: string; detail: string | null }[] }
 export interface PortfolioHealth { generated_at: ISODate; totals: { contracts: number; active: number; imported: number; platform: number }; findings: HealthFinding[] }
 export interface PortfolioSummary { contracts_by_status: Record<string, number>; assets: { properties: number; spaces: number; occupied: number; free: number }; key_dates_next_30: number; open_imports: number; companies: number }
+/** GET /portfolio/attention — the rule-based ONE-next-step queue (Avaleht „Fookus”); green/automatic rows are counted, not listed. */
+export type AttentionKind = "quote" | "contract" | "import" | "key_date" | string;
+export type AttentionTone = "red" | "amber" | "green" | string;
+export interface AttentionRow { kind: AttentionKind; tone: AttentionTone; title: string; text: string; link: string; due: ISODate | null; step: string | null }
+export interface AttentionOut { rows: AttentionRow[]; automatic: number }
 
 // ---- quotes (Phase 3) ----
 export type QuoteStatus = "draft" | "sent" | "client_proposal" | "accepted" | "converted" | "rejected" | "expired" | "cancelled";
@@ -169,10 +177,19 @@ export interface LeaseDealSpace { space_id: UUID; name: string; type: string | n
 export interface LeaseIndexation { method?: "fixed_pct" | "stat_cpi" | string | null; rate?: number | null; frequency_months?: number | null; next_date?: ISODate | null }
 export interface LeaseRepresentative { role: string; name: string; phone: string; email: string }
 export interface LeaseRepresentatives { landlord: LeaseRepresentative[]; tenant: LeaseRepresentative[] }
-export interface LeaseDeal {
-  handover: ISODate; end: ISODate; months: number; deposit: number; deposit_months: number; purpose: string; term_notes: string; indexation: LeaseIndexation; representatives: LeaseRepresentatives;
-  totals: QuoteTotals; spaces: LeaseDealSpace[]; property: { id: UUID; name: string; attributes: { address?: string | null; vat_taxable?: boolean | null; has_parking?: boolean | null } } | null;
+export type LeaseVertical = "lease" | "employment" | string;
+/** deal.employment of a Tööleping draft (vertical "employment"): the position quota + TLS main terms; `end`/`months` are null = tähtajatu. */
+export interface LeaseEmployment {
+  position: { id: UUID; name: string }; department: { id: UUID; name: string } | null; salary: number; probation_months: number; probation_end: ISODate | null; salary_review: ISODate | null;
+  working_time: string; vacation_days: number; place: string | null; pay_day: number;
 }
+export interface LeaseDeal {
+  vertical?: LeaseVertical; handover: ISODate; end: ISODate | null; months: number | null; deposit: number; deposit_months: number; purpose: string; term_notes: string; indexation: LeaseIndexation; representatives: LeaseRepresentatives;
+  totals: QuoteTotals; spaces: LeaseDealSpace[]; property: { id: UUID; name: string; attributes: { address?: string | null; vat_taxable?: boolean | null; has_parking?: boolean | null } } | null;
+  employment?: LeaseEmployment | null;
+}
+export interface EmploymentCreateInput { party_id: UUID; position_id: UUID; salary: number; start: ISODate; months?: number | null; probation_months?: number; working_time?: string | null; place?: string | null; salary_review?: ISODate | null; vacation_days?: number; pay_day?: number; company_id?: UUID | null }
+export interface EmploymentTermsPatch { expected_version?: number | null; start?: ISODate | null; months?: number | null; salary?: number | null; probation_months?: number | null; working_time?: string | null; place?: string | null; salary_review?: ISODate | null; vacation_days?: number | null; pay_day?: number | null; term_notes?: string | null; reason?: string | null }
 export interface LeaseSpaceTerms { space_id: UUID; price_per_m2?: number | null; schedule?: LeaseScheduleStep[] | null; parking_spot_ids?: UUID[] | null; parking_count?: number | null; electrical_a?: number | null }
 export interface LeaseTerms { handover?: ISODate; months?: number; spaces?: LeaseSpaceTerms[]; deposit_months?: number | null; purpose?: string | null; term_notes?: string | null; indexation?: LeaseIndexation | null; representatives?: LeaseRepresentatives | null }
 export interface LeaseRound { nr: number; side: LeaseSide }
@@ -208,3 +225,19 @@ export type LeaseThreadAction = "explain" | "answer" | "propose" | "decide" | "u
 export interface LeaseProposeInput { kind: "fact" | "wording" | "special_term"; text?: string | null; fact_key?: string | null; value?: unknown; wording?: string | null; special_text?: string | null; overrides_label?: string | null }
 export interface LeaseDecideInput { accept: boolean; text?: string | null }
 export interface LeaseChatMessage { id: UUID; author_type: LeaseSide | "system" | string; author_name: string | null; body: string; created_at: ISODate; channel: string; meta: Record<string, unknown> }
+
+// ---- risk (Phase 3.3) ----
+/** Riskiraport — advisory only, never blocking. Paid sources we have no access to are listed under `sources.unavailable` („liidestamata”). */
+export type RiskLevel = "KÕRGE" | "KESKMINE" | "MADAL";
+export type RiskStatus = "queued" | "ready" | "failed" | string;
+export interface RiskSignal { source: string; level: RiskLevel | string; text: string }
+export interface RiskDebt { amount?: number | null; disputed?: number | null; scheduled?: number | null; schedule_end?: string | null; oldest?: string | null }
+export interface RiskQuarter { year: number; q: number; turnover: number | null; taxes?: number | null; labour?: number | null; employees?: number | null }
+export interface RiskSources {
+  registry_code?: string | null; name?: string | null; status?: string | null; registered_on?: string | null; legal_form?: string | null; debt?: RiskDebt | null;
+  quarters?: RiskQuarter[]; activity?: string | null; unavailable?: string[]; as_of?: { debt?: string | null; quarters?: string | null };
+}
+export interface RiskReport {
+  id: UUID; party_id: UUID; status: RiskStatus; score: RiskLevel | null; points: number; signals: RiskSignal[]; sources: RiskSources;
+  summary: string | null; error: string | null; created_at: ISODate; generated_at: ISODate | null;
+}

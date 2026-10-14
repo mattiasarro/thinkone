@@ -26,7 +26,8 @@ export function ContractDetailPage({ id }: { id: string }) {
   const q = useContract(id);
   if (q.isLoading) return <Loading rows={6} />;
   if (q.error || !q.data) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
-  if (q.data.origin === "platform" && q.data.type_code === "lease") return <LeaseDraftPage id={id} />;
+  // platform drafts on the lease engine: üürileping and tööleping (backend GET /leases/{id} accepts both type codes)
+  if (q.data.origin === "platform" && (q.data.type_code === "lease" || q.data.type_code === "employment")) return <LeaseDraftPage id={id} />;
   return <Detail c={q.data} />;
 }
 

@@ -11,11 +11,12 @@ import { Pill, statusTone, type Tone } from "@/components/ui/Pill";
 import { ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconArrowRight, IconChevronLeft, IconExternal, IconLink, IconTrash } from "@/components/ui/Icons";
+import { IconAi, IconArrowRight, IconChevronLeft, IconExternal, IconLink, IconTrash } from "@/components/ui/Icons";
 import { useConvertQuote, useLease } from "@/lib/queries/leases";
 import { cx, daysUntil, firstOfNextMonth, fmtDate, fmtDateTime, fmtEur, fmtNum, valueToString } from "@/lib/format";
 import { useRun, type Run } from "./quoteRun";
 import { AttachmentsCard, SpacesCard, TermsCard } from "./QuoteEditCards";
+import { RiskPill } from "@/features/risk/RiskPill";
 import type { QuoteChange, QuoteDetail, QuoteMessage } from "@/types/api";
 
 const OPEN = new Set(["draft", "sent", "client_proposal", "accepted"]);
@@ -57,6 +58,7 @@ function Detail({ q, refetch }: { q: QuoteDetail; refetch: () => void }) {
         title={<span className="flex items-center gap-3 flex-wrap"><span className="font-mono text-base text-muted font-medium">{q.number}</span>{q.party.name}</span>}
         sub={<span className="flex flex-wrap items-center gap-2 mt-2"><Pill tone={statusTone(q.status)}>{tEnum("quotes.status", q.status)}</Pill><Link href={`/app/portfell/objekt/${q.property.id}`} className="text-primary font-semibold text-sm">{q.property.name}</Link>{q.space_names.length > 0 && <span className="text-muted text-sm">· {q.space_names.join(", ")}</span>}</span>}
         actions={<>
+          <LinkButton href={`/app/ai?context_type=quote&context_id=${q.id}&origin=${encodeURIComponent(`/app/portfell/pakkumine/${q.id}`)}`} variant="ghost" size="sm"><IconAi width={16} height={16} />{t("ai.askAbout", { what: t("ai.askQuote") })}</LinkButton>
           {q.link && <a href={q.link.url} target="_blank" rel="noopener" className="btn btn-ghost"><IconExternal width={16} height={16} />{t("quotes.client.viewAsClient")}</a>}
           {isOpen && q.status !== "draft" && <Button variant="text" onClick={() => setCancelDlg(true)}>{t("quotes.guide.cancel")}</Button>}
           {q.status === "draft" && <Button variant="text" className="btn-destructive" onClick={() => setDelDlg(true)}><IconTrash width={16} height={16} />{t("quotes.actions.delete")}</Button>}
@@ -304,6 +306,7 @@ function ClientCard({ q, run }: { q: QuoteDetail; run: Run }) {
         <div className="text-sm">
           <Link href={`/app/portfell/osapool/${q.party.id}`} className="text-primary font-semibold">{q.party.name}</Link>
           {q.party.registry_code && <span className="text-muted"> · {q.party.registry_code}</span>}
+          {q.party.registry_code && <div className="mt-1.5"><RiskPill partyId={q.party.id} /></div>}
         </div>
         {editable ? (
           <div>

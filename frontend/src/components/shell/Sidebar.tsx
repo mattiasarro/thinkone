@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { Me } from "@/types/api";
 import { t } from "@/i18n";
 import { cx, initials } from "@/lib/format";
-import { IconBuilding, IconCal, IconChat, IconClock, IconGrid, IconSettings, IconSpark, IconX, IconChevronLeft, IconChevronRight, LogoMark } from "@/components/ui/Icons";
+import { IconAi, IconBuilding, IconCal, IconChat, IconClock, IconGrid, IconSettings, IconSpark, IconX, IconChevronLeft, IconChevronRight, LogoMark } from "@/components/ui/Icons";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { UserMenu } from "./UserMenu";
 
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/app/portfell", label: "nav.portfell", q: "nav.portfellQ", Icon: IconBuilding },
   { href: "/app/kalender", label: "nav.kalender", q: "nav.kalenderQ", Icon: IconCal },
   { href: "/app/suhtlus", label: "nav.suhtlus", q: "nav.suhtlusQ", Icon: IconChat },
+  { href: "/app/ai", label: "nav.ai", q: "nav.aiQ", Icon: IconAi },
 ] as const;
 
 export function Sidebar({ me, mobileOpen, onCloseMobile, collapsed, onToggleCollapsed }: { me: Me; mobileOpen: boolean; onCloseMobile: () => void; collapsed: boolean; onToggleCollapsed: () => void }) {

@@ -9,7 +9,7 @@ import { Pill, statusTone, type Tone } from "@/components/ui/Pill";
 import { ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconChevronLeft, IconExternal, IconLink } from "@/components/ui/Icons";
+import { IconAi, IconChevronLeft, IconExternal, IconLink } from "@/components/ui/Icons";
 import { cx, fmtDate, fmtDateTime, fmtEur, fmtNum, valueToString } from "@/lib/format";
 import { useRun, type Run } from "@/features/quotes/quoteRun";
 import { openAttachment } from "@/lib/queries/settings";
@@ -97,7 +97,8 @@ function Detail({ lease, neg, refetch }: { lease: LeaseDraft; neg: LeaseNegotiat
           {lease.deal.property && <Link href={`/app/portfell/objekt/${lease.deal.property.id}`} className="text-muted text-sm">· {lease.deal.property.name}</Link>}
         </span>}
         actions={<>
-          {neg.link && <a href={neg.link.url} target="_blank" rel="noopener" className="btn btn-ghost"><IconExternal width={16} height={16} />{t("lease.viewAsTenant")}</a>}
+          <LinkButton href={`/app/ai?context_type=contract&context_id=${lease.id}&origin=${encodeURIComponent(`/app/portfell/leping/${lease.id}`)}`} variant="ghost" size="sm"><IconAi width={16} height={16} />{t("ai.askAbout", { what: t("ai.askLease") })}</LinkButton>
+          {neg.link && <a href={neg.link.url} target="_blank" rel="noopener" className="btn btn-ghost"><IconExternal width={16} height={16} />{lease.deal.vertical === "employment" ? t("lease.employment.viewAsEmployee") : t("lease.viewAsTenant")}</a>}
           {isOpen && <Button variant="text" onClick={() => setCancelDlg(true)}>{t("lease.cancel")}</Button>}
         </>}
       />
@@ -187,17 +188,25 @@ export function ChangeList({ changes, compact, onPick }: { changes: LeaseChange[
 function KeySheet({ lease, turn }: { lease: LeaseDraft; turn: { tone: Tone; label: string } | null }) {
   const d = lease.deal;
   const tot = d.totals;
+  const emp = d.vertical === "employment" ? d.employment : null;
   return (
     <Card className="pad">
       <div className="flex flex-wrap items-start gap-4 justify-between">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1 min-w-0">
-          <Tile label={t("lease.key.rent")} value={fmtEur(tot.monthly_net)} sub={tot.vat_taxable ? t("lease.key.gross", { amount: fmtEur(tot.monthly_gross) }) : undefined} />
-          <Tile label={t("lease.key.price")} value={fmtEur(tot.avg_price_per_m2)} sub={tot.stepped ? "ø" : undefined} />
-          <Tile label={t("lease.key.area")} value={`${fmtNum(tot.area_m2)} m²`} />
-          <Tile label={t("lease.key.deposit")} value={d.deposit_months ? fmtEur(d.deposit) : "—"} sub={d.deposit_months ? t("lease.key.depositMonths", { n: d.deposit_months }) : t("lease.key.noDeposit")} />
+          {emp ? (<>
+            <Tile label={t("lease.key.salary")} value={fmtEur(emp.salary)} sub={t("lease.key.salarySub")} />
+            <Tile label={t("lease.key.position")} value={emp.position?.name ?? "—"} sub={emp.department?.name ?? undefined} />
+            <Tile label={t("lease.key.probation")} value={emp.probation_end ? fmtDate(emp.probation_end) : "—"} sub={emp.probation_months ? t("lease.key.probationMonths", { n: emp.probation_months }) : t("lease.key.noProbation")} />
+            <Tile label={t("lease.key.salaryReview")} value={emp.salary_review ? fmtDate(emp.salary_review) : "—"} />
+          </>) : (<>
+            <Tile label={t("lease.key.rent")} value={fmtEur(tot.monthly_net)} sub={tot.vat_taxable ? t("lease.key.gross", { amount: fmtEur(tot.monthly_gross) }) : undefined} />
+            <Tile label={t("lease.key.price")} value={fmtEur(tot.avg_price_per_m2)} sub={tot.stepped ? "ø" : undefined} />
+            <Tile label={t("lease.key.area")} value={`${fmtNum(tot.area_m2)} m²`} />
+            <Tile label={t("lease.key.deposit")} value={d.deposit_months ? fmtEur(d.deposit) : "—"} sub={d.deposit_months ? t("lease.key.depositMonths", { n: d.deposit_months }) : t("lease.key.noDeposit")} />
+          </>)}
         </div>
         <div className="grid gap-2 justify-items-end self-center text-right">
-          <div className="text-sm font-medium text-muted">{t("lease.key.period", { from: fmtDate(d.handover), to: fmtDate(d.end), n: d.months })}</div>
+          <div className="text-sm font-medium text-muted">{d.end ? t("lease.key.period", { from: fmtDate(d.handover), to: fmtDate(d.end), n: d.months }) : t("lease.key.openEnded", { from: fmtDate(d.handover) })}</div>
           {turn && <Pill tone={turn.tone}>{turn.label}</Pill>}
         </div>
       </div>
@@ -234,7 +243,7 @@ function GuideCard({ lease, neg, run, onSelect }: { lease: LeaseDraft; neg: Leas
   switch (ns?.code) {
     case "send":
       content = !hasEmail ? <div className="note warning"><span>{t("lease.guide.noEmail")}</span></div> : null;
-      primary = <Button variant="primary" disabled={!hasEmail} onClick={() => setSendOpen(true)}>{t("lease.guide.send")}</Button>;
+      primary = <Button variant="primary" disabled={!hasEmail} onClick={() => setSendOpen(true)}>{ns?.title ?? t("lease.guide.send")}</Button>;
       break;
     case "answer":
       content = (

@@ -19,11 +19,12 @@ const et = {
     portfell: "Portfell", portfellQ: "Mis meil on ja kellega?",
     kalender: "Kalender", kalenderQ: "Mis millal juhtub?",
     suhtlus: "Suhtlus", suhtlusQ: "Mida osapooled ütlevad?",
+    ai: "AI", aiQ: "Küsi oma andmetelt",
     seaded: "Seaded", audit: "Sündmuslogi", openMenu: "Ava menüü", closeMenu: "Sulge menüü", collapse: "Tõmba menüü kokku", expand: "Ava menüü laiemaks", mainNav: "Põhinavigatsioon",
     company: "Ettevõte", switchAccount: "Vaheta kontot", newButton: "Uus", newQuote: "Pakkumine", newLease: "Leping",
   },
   topbar: {
-    searchPlaceholder: "Otsi… lepingud · osapooled · pinnad", searchLabel: "Otsi", searching: "Otsin…", noSearchResults: "Vasteid ei leitud",
+    searchPlaceholder: "Otsi… lepingud · osapooled · pinnad", searchLabel: "Otsi", searching: "Otsin…", noSearchResults: "Vasteid ei leitud", askAi: "Küsi AI-lt: „{q}”",
     notifications: "Teavitused", noNotifications: "Teavitusi pole", markRead: "Märgi loetuks", markAllRead: "Märgi kõik loetuks", unread: "{n} lugemata",
     userMenu: "Kasutajamenüü", logout: "Logi välja", settings: "Seaded", role: { admin: "Admin", operator: "Operaator", viewer: "Vaataja" },
   },
@@ -50,6 +51,15 @@ const et = {
       spaces: "Pinnad tabelist", spacesSub: "CSV või Excelist kopeeritud read — üks rida = üks pind.", contracts: "Olemasolevad lepingud", contractsSub: "Impordi allkirjastatud PDF-id ja konteinerid; struktuur tuvastatakse.",
       done: "Tehtud", todo: "Tee ära", progress: "{done}/{total} sammu tehtud", hide: "Peida",
     },
+    // „Fookus” (demo v672 → v770): one compact focus card, „Järgmisena” rows, two links, the composer at the bottom.
+    focus: {
+      hello: "Tere, {name}.", waiting: "{n} asja ootab sind. Alusta sellest.", waitingOne: "1 asi ootab sind. Alusta sellest.", empty: "Kõik on korras — täna pole midagi kiireloomulist.",
+      labelUrgent: "01 · järgmine samm · kiire", labelYours: "01 · järgmine samm · sinu kord", later: "Hiljem", next: "Järgmisena · {n}", showMore: "Näita veel", due: "tähtaeg {date}", overdue: "üle tähtaja", today: "täna",
+      threads: "1 vestlus ootab →", threadsMany: "{n} vestlust ootab →", automatic: "{n} rakendub ise · Kalender →", automaticOne: "1 rakendub ise · Kalender →",
+      composer: "Küsi või anna korraldus…", send: "Saada AI-le",
+      verb: { send: "Saada", answer: "Vasta", remind: "Meenuta", convert: "Koosta leping", bounced: "Saada uuesti", sign: "Allkirjasta", review: "Vaata üle", end: "Otsusta", waiting: "Ava" },
+      kind: { quote: "Ava pakkumine", contract: "Ava leping", import: "Vaata üle", key_date: "Ava leping" },
+    },
   },
   overview: {
     title: "Ülevaade", sub: "Kuidas meil läheb? — portfell, esemed ja tervis.",
@@ -57,6 +67,15 @@ const et = {
     keyDates30: "Tähtaegu 30 päeva jooksul", openImports: "Ootel impordid", health: "Portfelli tervis", healthGenerated: "Koostatud {date}",
     totals: "Kokku", active: "Aktiivsed", imported: "Imporditud", platform: "Platvormis loodud", noFindings: "Leide pole — portfell on korras.",
     severity: { info: "Info", warning: "Hoiatus", error: "Viga" },
+    // „Ülevaade = sakid” (demo v674/698): four KPI tiles that act as tabs, ONE detail pane below, neutral colours.
+    kpi: {
+      rent: "Üüritulu", rentSub: "neto kuus · {n} aktiivset üürilepingut", occupancy: "Täituvus", occupancySub: "{occupied}/{total} pinda hõivatud",
+      ending: "Lõpeb 12 kuu jooksul", endingSub: "{n} lepingut · {pct} üürist", vacant: "Tühja pinna hind", vacantSub: "{n} vaba pinda · hinnakirja järgi",
+      trend: "lepingute algused · 12 kuud", tabs: "Võtmenäitajad",
+      rentList: "Lepingud üüri järgi", occupancyList: "Täituvus hoonete kaupa", endingList: "Lõppevad lepingud 12 kuu jooksul", vacantList: "Vabad pinnad",
+      noData: "Andmeid pole", contract: "Leping", party: "Osapool", rentCol: "Üür kuus", ends: "Lõpeb", building: "Hoone", space: "Pind", area: "Pind, m²", price: "€/m²", value: "Hind kuus",
+      spaces: "{occupied}/{total} pinda", endsIn: "{n} p pärast", endedAgo: "{n} p tagasi", noEnd: "tähtajatu", listPrice: "hinnakirjata",
+    },
   },
   portfolio: {
     title: "Portfell", sub: "Mis meil on ja kellega?",
@@ -149,6 +168,13 @@ const et = {
     finish: "Lõpeta", status: { vaba: "Vaba", pakkumisel: "Pakkumisel", "üüritud": "Üüritud", "täidetud": "Täidetud", osaliselt: "Osaliselt", "täitmata": "Täitmata", jagatud: "Jagatud", mitteaktiivne: "Mitteaktiivne" },
     allocations: "Hõive", allocatedTo: "Seotud lepingud", noAllocations: "Hõivet pole", capacity: "Maht", children: "Alamüksused",
     attachmentsList: "Failid", noAttachments: "Faile pole", uploaded: "Fail üles laaditud", deleteAttachment: "Eemalda fail", detailsTab: "Andmed",
+    // Employment vertical: departments (containers) and positions (units, capacity = headcount) — a tööleping is drafted on a position.
+    employment: {
+      title: "Osakonnad ja ametikohad", sub: "Tööleping koostatakse ametikohale — osakond on konteiner, ametikoha maht on kohtade arv.",
+      addDepartment: "Lisa osakond", addPosition: "Lisa ametikoht", departmentName: "Osakonna nimi", positionName: "Ametikoha nimi", duties: "Tööülesanded", requirements: "Nõuded (valikuline)",
+      salary: "Töötasu, € kuus", headcount: "Kohtade arv", empty: "Osakondi pole veel", emptySub: "Lisa osakond ja selle ametikohad, et koostada tööleping.", noPositions: "Ametikohti pole",
+      positions: "{n} ametikohta", headcountN: "{n} kohta", occupancy: "{occupied}/{total} täidetud", departmentSaved: "Osakond lisatud", positionSaved: "Ametikoht lisatud",
+    },
     plans: {
       title: "Pinnaplaanid", sub: "Lohista või vali palju faile korraga — PDF, PNG, JPG, SVG või ZIP. Failid seotakse pindadega failinime järgi automaatselt („T6B_Pind_08” → Pind 8, „a101_plaan” → A-101); ilma pinnata fail on koondplaan (korruse või hoone ülevaade), „asendi” nimes → asendiplaan, „park” nimes → parkimisskeem; sidumist saab enne kinnitamist muuta.",
       drop: "Lohista plaanid siia või klõpsa valimiseks", dropHint: "Sama pind mitmes failis: PDF > SVG > pilt, teised jäetakse välja.", matching: "Tuvastan vasteid…",
@@ -252,6 +278,10 @@ const et = {
       title: "Teavituste vaikeajad", sub: "Mitu päeva enne tähtaega saadetakse teavitus.", end: "Lepingu lõpp", indexation: "Indekseerimine", probation: "Katseaeg", salaryReview: "Palgaülevaatus",
       quoteExpiry: "Pakkumuse aegumine", saved: "Seaded salvestatud", days: "päeva",
     },
+    ai: {
+      title: "AI", sub: "Kuu tokenieelarve ja selle kuu kasutus — eelarve täitumisel AI ootab järgmise kuuni.", budget: "Kuu tokenieelarve", budgetHint: "Tokeneid kuus (sisend + väljund).",
+      usage: "Selle kuu kasutus", used: "{used} / {budget} tokenit", remaining: "{n} alles", runs: "{n} vooru", exhausted: "Eelarve on ammendatud", saved: "AI seaded salvestatud",
+    },
   },
   audit: {
     title: "Sündmuslogi", sub: "Iga muudatus kirjutab siia ühe kirje — kes (inimene, süsteem või AI kellegi nimel), mida, millal ja mis muutus. Kirjeid ei muudeta ega kustutata.",
@@ -261,6 +291,44 @@ const et = {
   },
   search: { entity: { contract: "Leping", party: "Osapool", asset: "Ese", space: "Pind", key_date: "Võtmekuupäev", document: "Dokument", clause: "Punkt", company: "Ettevõte", quote: "Pakkumine" } },
   toast: { saved: "Salvestatud", deleted: "Kustutatud", error: "Viga" },
+  risk: {
+    title: "Riskiraport", advisory: "nõuandev", advisoryNote: "Nõuandev — lõpliku otsuse teeb operaator.", levels: { KÕRGE: "Kõrge", KESKMINE: "Keskmine", MADAL: "Madal" },
+    riskIs: "Risk on", points: "{n} punkti", checks: "{n} kontrolli", unavailable: "Liidestamata", unavailableN: "Liidestamata {n}", unavailableList: "liidestamata: {list}",
+    order: "Telli riskiraport", orderNew: "Telli uus raport", ordered: "Riskiraport tellitud", queued: "Raportit koostatakse — Äriregister ja EMTA avaandmed…", failed: "Raporti koostamine ebaõnnestus",
+    empty: "Riskiraportit pole veel — telli esimene", emptySub: "Raport tugineb Äriregistri ja EMTA avaandmetele; tasulised allikad lisanduvad liidestamisel.", missing: "Riskiraport puudub",
+    notCompany: "Riskiraport käib ettevõtte kohta — osapoolel puudub registrikood",
+    company: "Ettevõte · e-äriregister", companyName: "Ärinimi", registryCode: "Registrikood", legalForm: "Õiguslik vorm", status: "Staatus", registeredOn: "Esmakanne", activity: "Tegevusala",
+    turnover: "Käive kvartalite kaupa", turnoverLast4: "viimased 4 kvartalit", employees: "{n} töötajat", quarter: "{q} kv {year}", noTurnover: "EMTA käibeandmeid pole",
+    signals: "Signaalid", source: "Allikas", level: "Tase", signal: "Tähelepanek", noSignals: "Signaale pole",
+    sources: "Allikad", sourcesNames: "Äriregister, EMTA avaandmed", asOf: "seis {date}", generatedAt: "koostatud {at}", history: "Varasemad raportid", current: "praegune", show: "Näita",
+    wizard: { title: "Riskiraport", text: "Vaata kliendi riskiraportit enne pakkumise koostamist — nõuandev, pakkumist saab teha ka ilma.", continue: "Jätka", skip: "Jätka ilma", notCompany: "Eraisikule riskiraportit ei koostata." },
+    open: "Ava riskiraport",
+  },
+  ai: {
+    title: "AI", sub: "Küsi oma andmetelt", newThread: "Uus vestlus", history: "Vestlused", openHistory: "Ava vestluste loend", closeHistory: "Sulge vestluste loend",
+    context: "Kontekst", wholePortfolio: "Kogu portfell", backToOrigin: "Tagasi lehele, kust vestlus algas",
+    groups: { today: "Täna", yesterday: "Eile", week: "7 päeva", older: "Varem" }, untitled: "Uus vestlus", noThreads: "Vestlusi pole veel — küsi midagi.",
+    deleteThread: "Kustuta vestlus", deleted: "Vestlus kustutatud · {title}", undo: "Võta tagasi", restored: "Vestlus taastatud",
+    emptyTitle: "Mida tahad teada?", emptySub: "Vastused tulevad sinu portfellist — lepingutest, pakkumistest, pindadest ja kalendrist. Iga väide viitab punktile.",
+    examples: { indexation: "Mis indekseerub 2027?", freeSpaces: "Millised pinnad on vabad?", openQuotes: "Mis seisus on avatud pakkumised?", ending: "Kelle leping lõpeb 6 kuu jooksul?", keyDates: "Mis tähtajad on järgmise 30 päeva jooksul?" },
+    you: "Sina", assistant: "ThinkOne AI", thinking: "Mõtlen…", workLog: "Töö käik", stepRead: "lugemine · luba ei vaja", stepPrepare: "ettevalmistus · ootab kinnitust", stepFailed: "ebaõnnestus",
+    tools: {
+      search_portfolio: "Otsin portfellist", load_contract: "Loen lepingut", get_quote: "Loen pakkumist", get_contract: "Loen lepingut", list_key_dates: "Vaatan kalendrit",
+      get_property: "Loen hoonet", list_spaces: "Loen pindu", search_parties: "Otsin osapoolt", get_audit_trail: "Loen sündmuslogi", summarize_negotiation: "Loen läbirääkimisi",
+      get_effective_state: "Arvutan kehtiva seisu", create_quote_draft: "Valmistan ette pakkumist", create_lease_draft: "Valmistan ette lepingut", draft_special_term: "Sõnastan eritingimust",
+      draft_commercial_text: "Sõnastan pakkumise teksti", explain_clause: "Selgitan punkti", create_party_from_registry: "Otsin äriregistrist", citations: "Kontrollin viiteid", context: "Loen konteksti",
+    },
+    budgetNote: "Selle kuu AI-eelarve on täis — assistent jätkab järgmisel kuul või kui admin eelarvet tõstab.", failedNote: "Vastamine ebaõnnestus — proovi uuesti.",
+    openClause: "Ava punkt §{n}",
+    card: {
+      confirm: "Kinnita", edit: "Muuda", discard: "Loobu", open: "Ava →", confirmed: "Kinnitatud", confirming: "Kinnitan…", confirmedToast: "{title} loodud", discarded: "Loobutud",
+      copy: "Kopeeri", copied: "Kopeeritud", use: "Kasuta", used: "Kasutusel", clarify: "Täpsustus on vajalik — vasta allpool.", editPrefill: "Muuda ettepanekut: {title} — ",
+      overrides: "asendab {label}", noText: "Sõnastust ei tulnud — küsi uuesti.", linksEmpty: "Vasteid pole",
+    },
+    composer: { placeholder: "Küsi oma andmetelt…", send: "Saada", hint: "Enter saadab, Shift + Enter uus rida.", stop: "Katkesta" },
+    usage: "Sel kuul {n} päringut · eelarvest kasutatud {pct} %", usageExhausted: "Sel kuul {n} päringut · eelarve on täis",
+    askAbout: "Küsi selle {what} kohta", askQuote: "pakkumise", askLease: "lepingu",
+  },
   quotes: {
     title: "Pakkumised", one: "Pakkumine", create: "Loo pakkumine", search: "Otsi pakkumist…", back: "Pakkumised",
     status: { draft: "Mustand", sent: "Saadetud", client_proposal: "Kliendi ettepanek", accepted: "Aktsepteeritud", converted: "Lepinguks teisendatud", rejected: "Tagasi lükatud", expired: "Aegunud", cancelled: "Tühistatud" },
@@ -324,7 +392,7 @@ const et = {
     viewAsTenant: "Vaata üürnikuna", cancel: "Tühista leping", cancelConfirm: "Tühistad lepingu {number}? Üürnik ei saa enam lingi kaudu vastata ja pindade broneering vabaneb.", cancelled: "Leping tühistatud",
     yourTurn: "Sinu kord", tenantTurn: "Üürniku kord", done: "Korras", conflict: "Keegi muutis vahepeal — laadisin uuesti", updated: "Leping uuendatud",
     riba: { document: "Leping", annex: "Lisa {n} · {title}", missing: "lisamata", preview: "Eelvaade · PDF", changes: "Muudatused · {n} →", versions: "Versioonid · {n} →", current: "Praegune", v: "V{n}" },
-    key: { rent: "Üür kuus", gross: "koos KM {amount}", price: "€/m²", area: "Üüripind", deposit: "Tagatis", depositMonths: "{n} kuu üür", noDeposit: "ei nõuta", period: "{from} – {to} · {n} kuud" },
+    key: { rent: "Üür kuus", gross: "koos KM {amount}", price: "€/m²", area: "Üüripind", deposit: "Tagatis", depositMonths: "{n} kuu üür", noDeposit: "ei nõuta", period: "{from} – {to} · {n} kuud", salary: "Brutotöötasu", salarySub: "kuus", position: "Ametikoht", probation: "Katseaja lõpp", probationMonths: "{n} kuud", noProbation: "katseaega ei ole", salaryReview: "Palgaülevaatus", openEnded: "alates {from} · tähtajatu" },
     changes: { title: "Muudatused alates V1", sub: "Sõnastuse ja faktide muudatused võrreldes esimese saadetud versiooniga.", none: "Muudatusi pole", kinds: { added: "lisatud", wording: "sõnastus", removed: "eemaldatud", fact: "fakt" } },
     versions: { title: "Versioonid", open: "Ava", pdf: "PDF", note: "Märkus", first: "Esimene versioon", noChanges: "Sõnastus ei muutunud" },
     guide: {
@@ -353,6 +421,12 @@ const et = {
       deposit: "Tagatis (kuud)", purpose: "Kasutusotstarve", termNotes: "Tähtaja erisused", indexation: "Indekseerimine", indexMethod: "Meetod", indexNone: "Ei indekseerita", indexFixed: "Fikseeritud %", indexCpi: "Statistikaameti THI",
       indexRate: "Määr, %", indexNext: "Esimene indekseerimine", spaces: "Pinnad ja hind", price: "€/m²", electrical: "Elektrivõimsus, A", parking: "Parkimiskohad", parkingCount: "Parkimiskohti", parkingReset: "Pinna kohad", parkingOut: "kasutusest väljas",
       schedule: "+ hinnaperiood", scheduleTitle: "Astmeline üür", scheduleUntil: "kuni kuu", schedulePrice: "€/m²", scheduleOpen: "edasi", scheduleAdd: "Lisa aste", scheduleSave: "Salvesta astmed", scheduleClear: "Eemalda astmed", saved: "Tingimused salvestatud",
+      // employment vertical (Tööleping): the same card shows the TLS main terms instead of spaces/parking/deposit/indexation
+      employment: {
+        position: "Ametikoht", department: "Osakond", salary: "Brutotöötasu, € kuus", start: "Tööle asumine", months: "Tähtaeg", openEnded: "Tähtajatu", fixed: "Tähtajaline", monthsInput: "kuud",
+        probation: "Katseaeg (kuud)", probationNone: "Katseajata", probationEnd: "Katseaeg lõpeb {date}", workingTime: "Tööaeg", place: "Töö tegemise koht", salaryReview: "Palgaülevaatus", vacationDays: "Põhipuhkus (päeva)", payDay: "Palgapäev (kuupäev)",
+        termNotes: "Tähtaja erisused", end: "Lõpp {date}", saved: "Tingimused salvestatud",
+      },
     },
     reps: { title: "Poolte esindajad", landlord: "Üürileandja", tenant: "Üürnik", role: "Roll", name: "Nimi", phone: "Telefon", email: "E-post", saved: "Esindajad salvestatud", edit: "Muuda", empty: "—" },
     client: { title: "Üürnik", contactName: "Kontaktisik", email: "E-post", phone: "Telefon", saved: "Kontakt salvestatud", link: "Link kehtib kuni {date} · kontot pole vaja", opened: "Üürnik avas lingi {at}", notOpened: "Üürnik pole linki veel avanud", copyLink: "Kopeeri link", viewAsTenant: "Vaata üürnikuna", linkCopied: "Link kopeeritud", fromQuote: "Pakkumisest" },
@@ -363,7 +437,24 @@ const et = {
     chat: { title: "Vestlus", placeholder: "Kirjuta üürnikule…", send: "Saada", none: "Sõnumeid pole veel", sent: "Sõnum saadetud" },
     letters: { title: "Kirjad", none: "Kirju pole veel", kinds: { "contract.sent": "Lepingu mustand", "contract.round": "Vastused", "contract.message": "Sõnum", "contract.reminder": "Meeldetuletus" } },
     rounds: { title: "Voorud", none: "Voore pole veel", item: "Voor {n} · {side} · {date}", operator: "meie", client: "üürnik", version: "V{n}", threads: "{n} punkti" },
-    wizard: { title: "Uus leping", steps: { client: "Klient", risk: "Riskiraport", spaces: "Pinnad", terms: "Tingimused" }, termsTitle: "Lepingu tingimused", months: "Tähtaeg (kuud)", handover: "Üleandmispäev", deposit: "Tagatis (kuud)", purpose: "Kasutusotstarve (valikuline)", create: "Koosta lepingu mustand", created: "Lepingu mustand loodud", next: "Edasi" },
+    wizard: {
+      title: "Uus leping", steps: { kind: "Liik", client: "Klient", risk: "Riskiraport", spaces: "Pinnad", terms: "Tingimused" }, termsTitle: "Lepingu tingimused", months: "Tähtaeg (kuud)", handover: "Üleandmispäev", deposit: "Tagatis (kuud)", purpose: "Kasutusotstarve (valikuline)", create: "Koosta lepingu mustand", created: "Lepingu mustand loodud", next: "Edasi",
+      // first step: which contract type — the employment path is enabled only when a position asset exists
+      kind: {
+        title: "Lepingu liik", lease: "Üürileping", leaseSub: "Pind, hind ja tähtaeg — üürnik vastab lingi kaudu.", employment: "Tööleping", employmentSub: "Ametikoht, töötasu ja katseaeg — töötaja vastab lingi kaudu.",
+        needPosition: "Lisa esmalt ametikoht (Portfell → Esemed)",
+      },
+      employment: {
+        title: "Uus tööleping", steps: { candidate: "Kandidaat", position: "Ametikoht", terms: "Tingimused" },
+        candidatePick: "Vali kandidaat", candidateSearch: "Otsi kandidaati nime või isikukoodi järgi…", candidateSelected: "Valitud kandidaat", noCandidates: "Osapooli ei leitud",
+        positionPick: "Vali ametikoht", noPositions: "Ametikohti pole — lisa esmalt Portfell → Esemed.", noDepartment: "Osakonnata", headcount: "{n} kohta", free: "{n} vaba", full: "täidetud",
+        termsTitle: "Töölepingu tingimused", salary: "Brutotöötasu, € kuus", start: "Tööle asumine", term: "Tähtaeg", openEnded: "Tähtajatu", fixed: "Tähtajaline", months: "kuud",
+        probation: "Katseaeg (kuud)", probationNone: "Katseajata", workingTime: "Tööaeg", workingTimeDefault: "täistööaeg, 40 tundi nädalas", place: "Töö tegemise koht", payDay: "Palgapäev (kuupäev)", vacationDays: "Põhipuhkus (päeva)", salaryReview: "Palgaülevaatus (valikuline)",
+        create: "Koosta töölepingu mustand", created: "Töölepingu mustand loodud",
+      },
+    },
+    // labels that flip when deal.vertical === "employment" (header texts: Tööleping / Töötaja / Tööandja)
+    employment: { one: "Tööleping", employee: "Töötaja", employer: "Tööandja", chatPlaceholder: "Kirjuta töötajale…", viewAsEmployee: "Vaata töötajana" },
     list: { turn: { draft: "Sinu kord — saada üürnikule", sent: "Üürniku kord", ready_to_sign: "Allkirjastamine · etapp 4" }, platformBadge: "Platvormis" },
     home: { draft: "Mustand ootab saatmist", negotiating: "Läbirääkimistel — vaata punkte", ready_to_sign: "Üürnik aktsepteeris — allkirjastamine" },
   },
