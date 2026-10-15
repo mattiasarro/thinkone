@@ -58,13 +58,17 @@ async def test_import_lease_pdf_end_to_end(client: AsyncClient, admin: dict):
     assert r.status_code == 200 and r.json()["created"] == 3
     spot42 = next(s for s in (await client.get(f"/api/v1/assets/{prop_asset['id']}/parking")).json() if s["number"] == "42")
     await client.post(f"/api/v1/assets/{prop_asset['id']}/parking/update", json={"ids": [spot42["id"]], "patch": {"out_of_service": True}})
-    r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": j["uncertain"], "company_id": co["id"], "asset_id": space["id"]})
+    # one lease can cover several spaces of the building: commit with ``asset_ids`` (P_30 has no default spots)
+    space2 = (await client.post("/api/v1/assets", json={"type_code": "space", "name": "P_30", "parent_id": prop_asset["id"],
+                                                         "attributes": {"rentable_area_m2": 60, "price_per_m2": 7.6}})).json()
+    r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": j["uncertain"], "company_id": co["id"], "asset_ids": [space["id"], space2["id"]]})
     assert r.status_code == 200, r.text
     cid = r.json()["contract_id"]
     spots = {s["number"]: s for s in (await client.get(f"/api/v1/assets/{prop_asset['id']}/parking")).json()}
     assert spots["41"]["status"] == "üüritud" and spots["41"]["contract"]["id"] == cid and spots["42"]["status"] == "kasutusest väljas" and spots["43"]["status"] == "vaba"
     c = (await client.get(f"/api/v1/contracts/{cid}")).json()
-    assert {a["asset"]["name"] for a in c["allocations"]} == {"P_29", "P 41"}
+    assert {a["asset"]["name"] for a in c["allocations"]} == {"P_29", "P_30", "P 41"}
+    assert (await client.get(f"/api/v1/assets/{space2['id']}")).json()["status"] == "üüritud"
     assert c["origin"] == "imported" and c["category"] == "lease" and c["title"].startswith("Üürileping P_29")
     assert c["party"]["registry_code"] == "10714568"
     # default party set: the counterparty is the primary row with the lease's counterparty role
@@ -74,7 +78,7 @@ async def test_import_lease_pdf_end_to_end(client: AsyncClient, admin: dict):
     assert any(f["key"] == "rent_per_m2" for f in c["facts"])
     assert any(k["kind_code"] == "start" for k in c["key_dates"])
     assert len(c["clauses"]) > 100 and c["clauses"][0]["number"] == "1"
-    assert c["allocations"][0]["asset"]["name"] == "P_29" and c["allocations"][0]["kind"] == "exclusive"
+    assert next(a for a in c["allocations"] if a["asset"]["name"] == "P_29")["kind"] == "exclusive"
     assert c["source_documents"][0]["url"]
     # the space is now occupied (derived status)
     s = (await client.get(f"/api/v1/assets/{space['id']}")).json()

@@ -72,7 +72,7 @@ function Review({ job }: { job: ImportJobDetail }) {
   const [draft, setDraft] = useState<Proposal>(base);
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [link, setLink] = useState<LinkState>(() => ({
-    company_id: "", asset_id: "", space_id: "", parties: initialPartyRows(base), parking_numbers: null,
+    company_id: "", asset_id: "", space_ids: [], parties: initialPartyRows(base), parking_numbers: null,
     // supporting agreements (haldus/hooldus/kindlustus/turva) cover a property rather than occupying a space
     allocation_kind: SUPPORTING.includes(base.contract.category) ? "coverage" : "exclusive",
   }));
@@ -113,10 +113,10 @@ function Review({ job }: { job: ImportJobDetail }) {
     try {
       if (dirty.current) await save.mutateAsync(draft);
       const r = await commit.mutateAsync({
-        company_id: link.company_id || null, asset_id: link.space_id || link.asset_id || null, allocation_kind: link.asset_id || link.space_id ? link.allocation_kind : null,
+        company_id: link.company_id || null, asset_ids: link.space_ids.length ? link.space_ids : link.asset_id ? [link.asset_id] : null, allocation_kind: link.asset_id ? link.allocation_kind : null,
         parties: link.parties.filter((x) => x.include).map((x) => ({ index: x.mode === "new" ? x.index : null, party_id: x.mode === "existing" ? x.party_id : null, role: x.role, is_primary: x.is_primary, include: true })),
         category: draft.contract.category,
-        checked: Array.from(checked), parking_numbers: link.space_id ? link.parking_numbers : null,
+        checked: Array.from(checked), parking_numbers: link.space_ids.length ? link.parking_numbers : null,
       });
       toast.success(t("imports.committed"));
       router.push(`/app/portfell/leping/${r.contract_id}`);

@@ -105,7 +105,7 @@ export interface Proposal { contract: ProposalContract; parties: ProposalParty[]
 export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate }
 export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null }
 export interface ImportCommitParty { index: number | null; party_id: string | null; role: string; is_primary: boolean; include: boolean }
-export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; allocation_kind?: "exclusive" | "coverage" | null; parties?: ImportCommitParty[]; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
+export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; asset_ids?: UUID[] | null; allocation_kind?: "exclusive" | "coverage" | null; parties?: ImportCommitParty[]; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
 
 export interface SearchHit { entity_type: string; entity_id: UUID; title: string; subtitle: string | null; link: string | null }
 export interface AuditEvent { id: UUID | number; ts?: ISODate; action?: string; entity_type?: string; entity_id?: UUID | null; entity_label?: string | null; entity_link?: string | null; event_type?: string; kind?: string; actor_type?: string; actor_name?: string | null; actor?: string | null; on_behalf_of?: UUID | null; reason?: string | null; correlation_id?: string | null; occurred_at?: ISODate; created_at?: ISODate; payload?: Record<string, unknown> | null }

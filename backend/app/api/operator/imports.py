@@ -68,7 +68,8 @@ class CommitPartyIn(BaseModel):
 
 class CommitIn(BaseModel):
     company_id: uuid.UUID | None = None
-    asset_id: uuid.UUID | None = None
+    asset_id: uuid.UUID | None = None  # legacy single target …
+    asset_ids: list[uuid.UUID] | None = None  # … or several (e.g. two spaces of one building)
     allocation_kind: str | None = None
     parties: list[CommitPartyIn] | None = None  # None → the default set (every non-our-side proposal party, counterparty primary)
     category: str | None = None
@@ -133,7 +134,7 @@ async def retry(job_id: uuid.UUID, p: Principal = Depends(current_principal), se
 
 @router.post("/{job_id}/commit", response_model=CommitOut)
 async def commit(job_id: uuid.UUID, body: CommitIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> CommitOut:
-    c = await imports_domain.commit_import(session, p.actor, job_id, company_id=body.company_id, asset_id=body.asset_id,
+    c = await imports_domain.commit_import(session, p.actor, job_id, company_id=body.company_id, asset_id=body.asset_id, asset_ids=body.asset_ids,
                                            allocation_kind=body.allocation_kind, category=body.category, checked=body.checked,
                                            parties=[x.model_dump() for x in body.parties] if body.parties is not None else None, parking_numbers=body.parking_numbers)
     return CommitOut(contract_id=c.id)

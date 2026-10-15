@@ -15,7 +15,7 @@ import { defaultRole } from "@/features/contracts/PartiesCard";
 
 /** One party of the contract to commit: from the proposal (``index``, mode new → find-or-create) or an existing registry party. */
 export interface PartyRow { index: number | null; party_id: string; role: string; is_primary: boolean; include: boolean; mode: "new" | "existing" }
-export interface LinkState { company_id: string; asset_id: string; space_id: string; allocation_kind: "exclusive" | "coverage"; parties: PartyRow[]; parking_numbers: string[] | null }
+export interface LinkState { company_id: string; asset_id: string; space_ids: string[]; allocation_kind: "exclusive" | "coverage"; parties: PartyRow[]; parking_numbers: string[] | null }
 
 const OUR_SIDE = new Set(["landlord", "client", "insured", "employer"]);
 const roleOptions = PARTY_ROLES.map((r) => ({ value: r, label: tEnum("imports.partyRoles", r) }));
@@ -107,7 +107,7 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
   const parking = useParking(state.asset_id || undefined);
   const set = <K extends keyof LinkState>(k: K, v: LinkState[K]) => onChange({ ...state, [k]: v });
   const area = useMemo(() => contractArea(draft), [draft]);
-  const suggestion = useMemo(() => (state.asset_id && !state.space_id ? suggestSpace(spaces.data ?? [], area) : null), [spaces.data, area, state.asset_id, state.space_id]);
+  const suggestion = useMemo(() => (state.asset_id && state.space_ids.length === 0 ? suggestSpace(spaces.data ?? [], area) : null), [spaces.data, area, state.asset_id, state.space_ids]);
 
   // Sensible defaults: single company, company name match, counterparty name match, category-based allocation kind.
   useEffect(() => {
@@ -123,7 +123,7 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
       // a space named like the hint („P_29” → Pind 29) picks both the building and the space
       const key = draft.asset_hint.name ? spaceKey(draft.asset_hint.name) : null;
       const byName = key ? (allSpaces.data ?? []).filter((s) => s.parent_id && s.status !== "jagatud" && s.status !== "mitteaktiivne" && spaceKey(s.name) === key) : [];
-      if (byName.length === 1 && byName[0].parent_id) { onChange({ ...state, asset_id: byName[0].parent_id, space_id: byName[0].id, allocation_kind: "exclusive", parking_numbers: null }); return; }
+      if (byName.length === 1 && byName[0].parent_id) { onChange({ ...state, asset_id: byName[0].parent_id, space_ids: [byName[0].id], allocation_kind: "exclusive", parking_numbers: null }); return; }
       if (allSpaces.isLoading) return;
       const m = properties.data.find((p) => (p.name && hint.includes(p.name.toLowerCase())) || ((p.attributes.address as string | undefined)?.toLowerCase() && hint.includes((p.attributes.address as string).toLowerCase())))
         ?? (byName.length > 1 ? properties.data.find((p) => p.id === byName[0].parent_id) : undefined);
@@ -143,7 +143,12 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
   const dropRow = (i: number) => { const next = rows.filter((_, k) => k !== i); if (next.some((r) => r.include) && !next.some((r) => r.include && r.is_primary)) { const f = next.findIndex((r) => r.include); next[f] = { ...next[f], is_primary: true }; } set("parties", next); };
   const primaries = rows.filter((r) => r.include && r.is_primary).length;
   const spots = parking.data ?? [];
-  const spaceSpots = state.space_id ? spots.filter((s) => s.space_id === state.space_id).map((s) => s.number) : [];
+  const spaceSpots = state.space_ids.length ? spots.filter((s) => s.space_id && state.space_ids.includes(s.space_id)).map((s) => s.number) : [];
+  const pickable = (spaces.data ?? []).filter((s) => s.status !== "jagatud" && s.status !== "mitteaktiivne");
+  const pickedSpaces = state.space_ids.map((id) => pickable.find((s) => s.id === id) ?? (spaces.data ?? []).find((s) => s.id === id)).filter((s): s is Asset => !!s);
+  const addSpace = (id: string) => { if (id && !state.space_ids.includes(id)) onChange({ ...state, space_ids: [...state.space_ids, id], parking_numbers: null }); };
+  const dropSpace = (id: string) => onChange({ ...state, space_ids: state.space_ids.filter((x) => x !== id), parking_numbers: null });
+  const spaceLabel = (s: Asset) => `${s.name} · ${fmtNum((s.attributes as Partial<SpaceAttributes>).rentable_area_m2)} m²${s.status && s.status !== "vaba" ? ` · ${tEnum("assets.status", s.status)}` : ""}`;
   const picked = state.parking_numbers ?? spaceSpots;
   const togglePark = (n: string) => set("parking_numbers", picked.includes(n) ? picked.filter((x) => x !== n) : [...picked, n]);
   return (
@@ -153,25 +158,40 @@ export function LinkSection({ draft, state, onChange }: { draft: Proposal; state
         {(companies.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
       </Select>
       <div className="grid gap-x-4 sm:grid-cols-2">
-        <Select label={t("imports.asset")} value={state.asset_id} placeholder={t("common.selectPlaceholder")} onChange={(e) => onChange({ ...state, asset_id: e.target.value, space_id: "", parking_numbers: null })} hint={draft.asset_hint?.name || draft.asset_hint?.address ? `${t("imports.asset_hint")}: ${[draft.asset_hint.name, draft.asset_hint.address].filter(Boolean).join(", ")}` : undefined}>
+        <Select label={t("imports.asset")} value={state.asset_id} placeholder={t("common.selectPlaceholder")} onChange={(e) => onChange({ ...state, asset_id: e.target.value, space_ids: [], parking_numbers: null })} hint={draft.asset_hint?.name || draft.asset_hint?.address ? `${t("imports.asset_hint")}: ${[draft.asset_hint.name, draft.asset_hint.address].filter(Boolean).join(", ")}` : undefined}>
           {(properties.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>
-        <Select label={t("imports.space")} value={state.space_id} placeholder={t("common.selectPlaceholder")} disabled={!state.asset_id} onChange={(e) => onChange({ ...state, space_id: e.target.value, parking_numbers: null })}>
-          {(spaces.data ?? []).filter((s) => s.status !== "jagatud" && s.status !== "mitteaktiivne").map((s) => <option key={s.id} value={s.id}>{s.name} · {fmtNum((s.attributes as Partial<SpaceAttributes>).rentable_area_m2)} m²{s.status && s.status !== "vaba" ? ` · ${tEnum("assets.status", s.status)}` : ""}</option>)}
+        <Select label={pickedSpaces.length ? t("imports.addSpace") : t("imports.space")} value="" placeholder={t("common.selectPlaceholder")} disabled={!state.asset_id} onChange={(e) => addSpace(e.target.value)}>
+          {pickable.filter((s) => !state.space_ids.includes(s.id)).map((s) => <option key={s.id} value={s.id}>{spaceLabel(s)}</option>)}
         </Select>
       </div>
+      {state.asset_id && (
+        <div className="field">
+          <span className="field-label">{t("imports.spaces")} <Pill className="ml-1">{pickedSpaces.length}</Pill></span>
+          {pickedSpaces.length === 0 ? <p className="text-xs text-muted">{t("imports.noSpaces")}</p> : (
+            <ul className="flex flex-wrap gap-1.5">
+              {pickedSpaces.map((s) => (
+                <li key={s.id} className="pill flex items-center gap-1 pr-1">
+                  <span>{spaceLabel(s)}</span>
+                  <button type="button" className="icon-btn !w-6 !h-6" aria-label={`${t("common.remove")}: ${s.name}`} onClick={() => dropSpace(s.id)}>×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {suggestion && (
         <div className="note info items-center flex-wrap gap-2">
           <span><b>{t("imports.spaceSuggest", { name: suggestion.name })}</b> <span className="text-muted">{t("imports.spaceSuggestWhy", { area: fmtNum(area), name: suggestion.name })}</span></span>
-          <Button size="sm" variant="primary" className="ml-auto" onClick={() => onChange({ ...state, space_id: suggestion.id, allocation_kind: "exclusive", parking_numbers: null })}>{t("imports.useSuggestion")}</Button>
+          <Button size="sm" variant="primary" className="ml-auto" onClick={() => onChange({ ...state, space_ids: [suggestion.id], allocation_kind: "exclusive", parking_numbers: null })}>{t("imports.useSuggestion")}</Button>
         </div>
       )}
       <Select label={t("imports.allocationKind")} value={state.allocation_kind} onChange={(e) => set("allocation_kind", e.target.value as LinkState["allocation_kind"])} options={[{ value: "exclusive", label: tEnum("contract.allocationKind", "exclusive") }, { value: "coverage", label: tEnum("contract.allocationKind", "coverage") }]} />
-      {state.space_id && state.allocation_kind === "exclusive" && spots.length > 0 && (
+      {state.space_ids.length > 0 && state.allocation_kind === "exclusive" && spots.length > 0 && (
         <fieldset className="field">
           <legend className="field-label">{t("imports.parkingTake")} <Pill className="ml-1">{picked.length}</Pill></legend>
           <p className="text-xs text-muted mb-2">{t("imports.parkingTakeHint")} <Link href={`/app/portfell/objekt/${state.asset_id}/parkimine`} className="text-primary font-semibold">{t("assets.parkingRegisterLink")}</Link></p>
-          <div className="flex flex-wrap gap-1.5">{spots.map((s) => <SpotChip key={s.id} s={s} on={picked.includes(s.number)} onClick={() => togglePark(s.number)} title={s.space_id && s.space_id !== state.space_id ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}</div>
+          <div className="flex flex-wrap gap-1.5">{spots.map((s) => <SpotChip key={s.id} s={s} on={picked.includes(s.number)} onClick={() => togglePark(s.number)} title={s.space_id && !state.space_ids.includes(s.space_id) ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}</div>
         </fieldset>
       )}
       <fieldset className="field">

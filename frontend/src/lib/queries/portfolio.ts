@@ -114,6 +114,22 @@ export function useImportSpaces(propertyId: string) {
 }
 const invalidateAssets = (qc: ReturnType<typeof useQueryClient>) => { qc.invalidateQueries({ queryKey: ["assets"] }); qc.invalidateQueries({ queryKey: ["asset"] }); qc.invalidateQueries({ queryKey: ["parking"] }); qc.invalidateQueries({ queryKey: ["parking-plan"] }); qc.invalidateQueries({ queryKey: ["audit"] }); };
 
+// ---- allocations (contract ↔ asset) ----
+const invalidateAllocations = (qc: ReturnType<typeof useQueryClient>, contractId: string) => {
+  qc.invalidateQueries({ queryKey: ["contract", contractId] }); qc.invalidateQueries({ queryKey: ["contracts"] }); invalidateAssets(qc);
+};
+export function useCreateAllocation(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { asset_id: string; kind: "exclusive" | "coverage" }) => api.post<Allocation>("/allocations", { contract_id: contractId, ...body }),
+    onSuccess: () => invalidateAllocations(qc, contractId),
+  });
+}
+export function useDeleteAllocation(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => api.delete(`/allocations/${id}`), onSuccess: () => invalidateAllocations(qc, contractId) });
+}
+
 // ---- parking register ----
 export function useParking(propertyId: string | undefined) {
   return useQuery({ queryKey: ["parking", propertyId], queryFn: () => api.get<ParkingSpot[]>(`/assets/${propertyId}/parking`), enabled: !!propertyId });

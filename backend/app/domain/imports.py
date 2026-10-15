@@ -166,11 +166,12 @@ async def source_pdf_url(doc: SourceDocument) -> str | None:
 
 async def commit_import(
     session: AsyncSession, actor: Actor, job_id: uuid.UUID, *, company_id: uuid.UUID | None = None, asset_id: uuid.UUID | None = None,
-    allocation_kind: str | None = None, category: str | None = None, checked: list[str] | None = None,
+    asset_ids: list[uuid.UUID] | None = None, allocation_kind: str | None = None, category: str | None = None, checked: list[str] | None = None,
     parties: list[dict[str, Any]] | None = None, parking_numbers: list[str] | None = None,
 ) -> Contract:
     """``parties``: [{index: <position in prop.parties> | None, party_id: <existing> | None, role, is_primary, include}].
-    ``None`` → the default set: every proposal party that is not our side, the counterparty primary."""
+    ``None`` → the default set: every proposal party that is not our side, the counterparty primary.
+    ``asset_ids`` (plus the legacy single ``asset_id``): every asset the contract is allocated to — several spaces of one building, or the building."""
     job = await get_job(session, job_id)
     if job.status != "review":
         raise DomainError("Import ei ole ülevaatuse seisus")
@@ -244,37 +245,50 @@ async def commit_import(
 
     # allocation (linking): exclusive for a lease on a space, coverage for a whole-building service contract
     parking_linked: list[str] = []
-    if asset_id:
+    targets: list[uuid.UUID] = []
+    for aid in [*(asset_ids or []), *([asset_id] if asset_id else [])]:
+        if aid not in targets:
+            targets.append(aid)
+    if targets:
         from app.domain.assets import allocate, get_asset, spots_of_space
         from app.domain.parking import list_spots
 
         kind = allocation_kind or ("exclusive" if cat == "lease" else "coverage")
-        await allocate(session, actor, contract_id=contract.id, asset_id=asset_id, kind=kind,
-                       period_start=prop.contract.start_date, period_end=prop.contract.end_date)
-        # a lease on a space takes the space's default parking spots (demo v586), or the numbers the operator picked
-        asset = await get_asset(session, asset_id)
-        if kind == "exclusive" and asset.type_code == "space" and asset.parent_id:
-            if parking_numbers is not None:
-                wanted = set(parking_numbers)
-                spots = [s for s in await list_spots(session, asset.parent_id) if (s.attributes or {}).get("number") in wanted]
-            else:
-                spots = await spots_of_space(session, asset.parent_id, asset.id)
-            for spot in spots:
-                if (spot.attributes or {}).get("out_of_service"):
-                    continue
-                try:
-                    await allocate(session, actor, contract_id=contract.id, asset_id=spot.id, kind="exclusive",
-                                   period_start=prop.contract.start_date, period_end=prop.contract.end_date)
-                    parking_linked.append(spot.attributes["number"])
-                except DomainError:
-                    continue  # already taken for the period — the operator sees the discrepancy on the register
+        spaces = []
+        for aid in targets:
+            await allocate(session, actor, contract_id=contract.id, asset_id=aid, kind=kind,
+                           period_start=prop.contract.start_date, period_end=prop.contract.end_date)
+            asset = await get_asset(session, aid)
+            if kind == "exclusive" and asset.type_code == "space" and asset.parent_id:
+                spaces.append(asset)
+        # a lease on spaces takes the spaces' default parking spots (demo v586), or the numbers the operator picked
+        spots: dict[uuid.UUID, Any] = {}
+        if parking_numbers is not None:
+            wanted = set(parking_numbers)
+            for pid in {sp.parent_id for sp in spaces}:
+                for s in await list_spots(session, pid):
+                    if (s.attributes or {}).get("number") in wanted:
+                        spots[s.id] = s
+        else:
+            for sp in spaces:
+                for s in await spots_of_space(session, sp.parent_id, sp.id):
+                    spots[s.id] = s
+        for spot in spots.values():
+            if (spot.attributes or {}).get("out_of_service"):
+                continue
+            try:
+                await allocate(session, actor, contract_id=contract.id, asset_id=spot.id, kind="exclusive",
+                               period_start=prop.contract.start_date, period_end=prop.contract.end_date)
+                parking_linked.append(spot.attributes["number"])
+            except DomainError:
+                continue  # already taken for the period — the operator sees the discrepancy on the register
 
     await index_entity(session, actor.account_id, "contract", contract.id, f"{contract.number} · {contract.title}",
                        _search_text(prop), f"/app/portfell/leping/{contract.id}", subtitle=party.name if party else None)
     job.status, job.committed_contract_id = "committed", contract.id
     emit(session, actor, "contract", contract.id, action,
          {"import_job_id": job.id, "source_document_id": doc.id, "category": cat,
-          "parties": [{"party_id": ln["party_id"], "role": ln["role"], "is_primary": ln["is_primary"]} for ln in links], "asset_id": asset_id, "parking_spots": parking_linked or None, "clauses": len(prop.clauses), "parameters": len(prop.parameters), "key_dates": len(prop.key_dates),
+          "parties": [{"party_id": ln["party_id"], "role": ln["role"], "is_primary": ln["is_primary"]} for ln in links], "asset_id": targets[0] if targets else None, "asset_ids": targets or None, "parking_spots": parking_linked or None, "clauses": len(prop.clauses), "parameters": len(prop.parameters), "key_dates": len(prop.key_dates),
           "edits": job.edits_count, "prompt_version": job.prompt_version, "model": job.model})
     emit(session, actor, "import_job", job.id, "import.committed", {"contract_id": contract.id})
     return contract

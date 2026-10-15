@@ -2,7 +2,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
-import { useAudit, useContract, useDeleteKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
+import { useAudit, useContract, useDeleteAllocation, useDeleteKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
 import { api, errorMessage } from "@/lib/api";
 import { Card, CardHeader, CardBody, PageHead } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
@@ -18,9 +18,10 @@ import { ProvenanceAnchor, SourceViewerContext } from "./ProvenanceAnchor";
 import { SourceViewer } from "./SourceViewer";
 import { AmendmentDialog } from "./AmendmentDialog";
 import { AttachmentsList } from "./AttachmentsList";
+import { AllocationDialog } from "./AllocationDialog";
 import { PartiesCard } from "./PartiesCard";
 import { LeaseDraftPage } from "@/features/leases/LeaseDraftPage";
-import type { ContractDetail, ContractFact, KeyDate, SourceDocument } from "@/types/api";
+import type { Allocation, ContractDetail, ContractFact, KeyDate, SourceDocument } from "@/types/api";
 
 export function ContractDetailPage({ id }: { id: string }) {
   const q = useContract(id);
@@ -35,17 +36,21 @@ function Detail({ c }: { c: ContractDetail }) {
   const imported = c.origin === "imported";
   const [kdDialog, setKdDialog] = useState<{ open: boolean; item?: KeyDate | null }>({ open: false });
   const [kdDel, setKdDel] = useState<KeyDate | null>(null);
+  const [allocOpen, setAllocOpen] = useState(false);
+  const [allocDel, setAllocDel] = useState<Allocation | null>(null);
   const [amend, setAmend] = useState(false);
   const [src, setSrc] = useState<{ docId: string; page: number } | null>(null);
   const openSource = useCallback((docId: string, page: number) => setSrc({ docId, page }), []);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notes, setNotes] = useState(c.notes ?? "");
   const delKd = useDeleteKeyDate();
+  const delAlloc = useDeleteAllocation(c.id);
   const update = useUpdateContract(c.id);
   const audit = useAudit("contract", c.id);
   const toast = useToast();
 
   const onDeleteKd = async () => { if (!kdDel) return; try { await delKd.mutateAsync(kdDel.id); toast.success(t("keyDates.deleted")); setKdDel(null); } catch (e) { toast.error(errorMessage(e)); } };
+  const onDeleteAlloc = async () => { if (!allocDel) return; try { await delAlloc.mutateAsync(allocDel.id); toast.success(t("contract.allocationRemoved")); setAllocDel(null); } catch (e) { toast.error(errorMessage(e)); } };
   const saveNotes = async () => { try { await update.mutateAsync({ notes }); toast.success(t("contract.updated")); setNotesOpen(false); } catch (e) { toast.error(errorMessage(e)); } };
   const exportAudit = async () => {
     try {
@@ -150,7 +155,7 @@ function Detail({ c }: { c: ContractDetail }) {
           </Card>
 
           <Card>
-            <CardHeader title={t("contract.allocations")} />
+            <CardHeader title={t("contract.allocations")} actions={<Button size="sm" onClick={() => setAllocOpen(true)}><IconPlus width={14} height={14} />{t("contract.addAllocation")}</Button>} />
             <CardBody>
               {c.allocations.length === 0 ? <p className="text-sm text-muted">{t("contract.noAllocations")}</p> : (
                 <ul className="grid gap-2">
@@ -158,6 +163,7 @@ function Detail({ c }: { c: ContractDetail }) {
                     <li key={a.id} className="flex items-center gap-2 text-sm">
                       {a.asset ? <Link href={a.asset.type_code === "space" ? `/app/portfell/pind/${a.asset.id}` : a.asset.type_code === "parking_spot" && a.asset.parent_id ? `/app/portfell/objekt/${a.asset.parent_id}/parkimine` : `/app/portfell/objekt/${a.asset.id}`} className="text-primary font-semibold truncate">{a.asset.name}</Link> : "—"}
                       <span className="pill ml-auto">{tEnum("contract.allocationKind", a.kind)}</span>
+                      <button type="button" className="icon-btn !w-8 !h-8 text-error" aria-label={t("common.remove")} onClick={() => setAllocDel(a)}><IconTrash width={14} height={14} /></button>
                     </li>
                   ))}
                 </ul>
@@ -193,6 +199,8 @@ function Detail({ c }: { c: ContractDetail }) {
 
       <KeyDateDialog open={kdDialog.open} onClose={() => setKdDialog({ open: false })} initial={kdDialog.item} contractId={c.id} lockContract />
       <ConfirmDialog open={!!kdDel} onClose={() => setKdDel(null)} onConfirm={onDeleteKd} busy={delKd.isPending} title={t("common.delete")} body={kdDel ? t("keyDates.deleteConfirm", { title: kdDel.title }) : null} />
+      <AllocationDialog open={allocOpen} onClose={() => setAllocOpen(false)} c={c} />
+      <ConfirmDialog open={!!allocDel} onClose={() => setAllocDel(null)} onConfirm={onDeleteAlloc} busy={delAlloc.isPending} title={t("common.remove")} body={allocDel ? t("contract.allocationRemoveConfirm", { name: allocDel.asset?.name ?? "" }) : null} />
       <AmendmentDialog open={amend} onClose={() => setAmend(false)} contractId={c.id} facts={allFacts} endDate={c.end_date} />
       <SourceViewer contractId={c.id} docId={src?.docId ?? null} page={src?.page ?? null} onClose={() => setSrc(null)} />
     </div>
