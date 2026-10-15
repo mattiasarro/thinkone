@@ -31,29 +31,30 @@ class AnthropicChatModel:
         self.model = model
 
     async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 64000,
-                         images: list[ImageInput] | None = None) -> StructuredResult:
+                         images: list[ImageInput] | None = None, effort: str = "high", model: str | None = None) -> StructuredResult:
+        kw: dict[str, Any] = dict(system=system, user=user, schema=schema, max_tokens=max_tokens, images=images, effort=effort, model=model or self.model)
         try:
-            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=True, images=images)
+            return await self._call(grammar=True, **kw)
         except anthropic.BadRequestError as e:
             # The API compiles the JSON schema into a grammar and refuses large ones; the schema still goes into
             # the prompt and Pydantic validates the reply, so fall back to free-form JSON for this call.
             if "grammar" not in str(e).lower():
                 raise
             log.warning("llm_structured_grammar_fallback", error=str(e)[:200])
-            return await self._call(system=system, user=user, schema=schema, max_tokens=max_tokens, grammar=False, images=images)
+            return await self._call(grammar=False, **kw)
 
-    async def _call(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int, grammar: bool,
+    async def _call(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int, grammar: bool, effort: str, model: str,
                     images: list[ImageInput] | None = None) -> StructuredResult:
         # Streaming keeps long structuring runs clear of HTTP timeouts; the stable system prompt is cached.
-        # max_tokens covers thinking as well as the JSON (thinking is always on for Opus 5.5).
-        output_config: dict[str, Any] = {"effort": "high"}
+        # max_tokens covers thinking as well as the JSON (thinking is always on for Opus 5.5 / Sonnet 5.5); effort bounds the thinking.
+        output_config: dict[str, Any] = {"effort": effort}
         sys_text = system
         if grammar:
             output_config["format"] = {"type": "json_schema", "schema": schema}
         else:
             sys_text = f"{system}\n\nReply with ONLY one JSON object (no prose, no code fences) that validates against this JSON schema:\n{json.dumps(schema, ensure_ascii=False)}"
         async with self.client.beta.messages.stream(
-            model=self.model,
+            model=model,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": sys_text, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": _content(user, images)}],
@@ -78,7 +79,7 @@ class AnthropicChatModel:
             "cache_read_input_tokens": getattr(msg.usage, "cache_read_input_tokens", 0) or 0,
             "cache_creation_input_tokens": getattr(msg.usage, "cache_creation_input_tokens", 0) or 0,
         }
-        log.info("llm_structured", model=msg.model, request_id=request_id, grammar=grammar, **usage)
+        log.info("llm_structured", model=msg.model, request_id=request_id, grammar=grammar, effort=effort, **usage)
         return StructuredResult(data=json.loads(text), model=msg.model, usage=usage, raw_text=text)
 
     async def stream(self, *, system: str, messages: list[dict[str, Any]], tools: list[Any], max_tokens: int = 8000,

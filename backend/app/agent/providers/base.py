@@ -45,8 +45,9 @@ class StreamEvent:
 
 class ChatModel(Protocol):
     async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 32000,
-                         images: list[ImageInput] | None = None) -> StructuredResult:
-        """Return JSON validated by the API against ``schema`` (JSON schema). ``images`` precede the text (vision tasks)."""
+                         images: list[ImageInput] | None = None, effort: str = "high", model: str | None = None) -> StructuredResult:
+        """Return JSON validated by the API against ``schema`` (JSON schema). ``images`` precede the text (vision tasks).
+        ``effort`` sets the thinking depth for this call; ``model`` overrides the default model for this call."""
         ...
 
     def stream(self, *, system: str, messages: list[dict[str, Any]], tools: list[ToolDef], max_tokens: int = 8000,

@@ -1,17 +1,23 @@
-"""LLM structuring: text (with anchors) → validated Proposal. First consumer of the ChatModel seam."""
+"""LLM structuring: text (with anchors) → validated Proposal. First consumer of the ChatModel seam.
+
+Two calls run in parallel over the same text: the facts (head, parties, parameters, key dates) on the main model at low
+effort, and the clause transcription on a cheaper model. Output tokens set both the time and the cost of an import, and
+the clause text is most of them, so the split roughly halves the wall time and cuts the price without a per-page merge.
+"""
 
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
 import structlog
 
-from app.agent.prompts.import_structure import PROMPT_VERSION, SYSTEM
+from app.agent.prompts.import_structure import CLAUSES_SYSTEM, FACTS_SYSTEM, PROMPT_VERSION
 from app.agent.providers.base import StructuredResult, chat_model
 from app.ingest.extract import Extraction
-from app.ingest.schema import KeyDateProposal, Proposal, proposal_json_schema
+from app.ingest.schema import KeyDateProposal, Proposal, clauses_json_schema, facts_json_schema
 
 log = structlog.get_logger()
 MAX_INPUT_CHARS = 600_000  # ~150k tokens; contracts are far smaller — refuse rather than truncate
@@ -21,6 +27,19 @@ def build_user_message(ex: Extraction) -> str:
     if len(ex.text) > MAX_INPUT_CHARS:
         raise ValueError("Dokument on struktureerimiseks liiga pikk")
     return "".join(f"<<<PAGE {p.page}>>> [offset={p.char_start}]\n{p.text}" for p in ex.pages)
+
+
+_MARKED_RE = re.compile(r"^\s*(?:\d{1,2}(?:\.\d{1,2}){0,3}\.?|[a-zõäöü]\)|[-–•])\s+\S", re.M)
+
+
+def count_marked_items(text: str) -> int:
+    """Lines that start like a clause (1., 1.1, a), dash): the yardstick for a complete transcription."""
+    return len(_MARKED_RE.findall(text))
+
+
+def build_clauses_user_message(ex: Extraction, n_items: int) -> str:
+    # a cheaper model at modest effort tends to stop part-way through a long transcription; the count keeps it honest
+    return build_user_message(ex) + f"\n\nThe text above contains about {n_items} marked items (numbered, lettered or dashed lines). Transcribe every one of them, to the end of the document."
 
 
 def validate_and_anchor(data: dict[str, Any], ex: Extraction) -> Proposal:
@@ -47,13 +66,48 @@ def validate_and_anchor(data: dict[str, Any], ex: Extraction) -> Proposal:
 
 
 async def structure(ex: Extraction) -> tuple[Proposal, StructuredResult, str]:
+    from app.infra.settings import get_settings
+
+    s = get_settings()
     user = build_user_message(ex)
-    # 128K output: thinking + a long clause list (a 10-page lease is ~40-60K JSON tokens) must both fit
-    result = await chat_model().structured(system=SYSTEM, user=user, schema=proposal_json_schema(), max_tokens=128000)
+    n_items = count_marked_items(ex.text)
+    model = chat_model()
+
+    async def clause_call(effort: str, clause_model: str) -> StructuredResult:
+        # 128K output: thinking + a long clause list (a 10-page lease is ~20-30K JSON tokens) must both fit
+        return await model.structured(system=CLAUSES_SYSTEM, user=build_clauses_user_message(ex, n_items), schema=clauses_json_schema(),
+                                      max_tokens=128000, effort=effort, model=clause_model)
+
+    facts, clauses = await asyncio.gather(
+        # the facts are a few KB of JSON; low effort keeps the thinking short
+        model.structured(system=FACTS_SYSTEM, user=user, schema=facts_json_schema(), max_tokens=32000, effort=s.llm_facts_effort),
+        clause_call(s.llm_clause_effort, s.llm_clause_model),
+    )
+    got = len(clauses.data.get("clauses") or [])
+    if n_items >= 10 and got < n_items // 2:
+        # the transcription stopped short (Sonnet 5.5 below high effort does this): once more, harder — at high effort,
+        # and on the main model when the clause model already ran at high
+        again = (s.llm_clause_model, "high") if s.llm_clause_effort != "high" else (s.llm_model, "high")
+        log.warning("import_clauses_incomplete", model=clauses.model, effort=s.llm_clause_effort, got=got, expected=n_items, retry=again)
+        retry = await clause_call(again[1], again[0])
+        if len(retry.data.get("clauses") or []) > got:
+            retry.usage = {k: clauses.usage.get(k, 0) + retry.usage.get(k, 0) for k in set(clauses.usage) | set(retry.usage)}
+            clauses = retry
+    result = merge_results(facts, clauses)
     prop = validate_and_anchor(result.data, ex)
     log.info("import_structured", model=result.model, prompt=PROMPT_VERSION, clauses=len(prop.clauses),
-             params=len(prop.parameters), key_dates=len(prop.key_dates), uncertain=len(prop.uncertain()))
+             params=len(prop.parameters), key_dates=len(prop.key_dates), uncertain=len(prop.uncertain()), usage=result.usage)
     return prop, result, PROMPT_VERSION
+
+
+def merge_results(facts: StructuredResult, clauses: StructuredResult) -> StructuredResult:
+    """One result for the job record: the facts JSON plus the clause list, usage summed, both model names kept."""
+    data = {**facts.data, "clauses": clauses.data.get("clauses", [])}
+    usage = {k: facts.usage.get(k, 0) + clauses.usage.get(k, 0) for k in sorted(set(facts.usage) | set(clauses.usage))}
+    usage.update({f"facts_{k}": v for k, v in facts.usage.items()})  # per-call detail, flat so the job's usage stays str → int
+    usage.update({f"clauses_{k}": v for k, v in clauses.usage.items()})
+    model = facts.model if facts.model == clauses.model else f"{facts.model}+{clauses.model}"
+    return StructuredResult(data=data, model=model, usage=usage, raw_text=None)
 
 
 def today() -> date:

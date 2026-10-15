@@ -12,19 +12,21 @@ class FakeChatModel:
         self.calls: list[dict[str, Any]] = []
 
     async def structured(self, *, system: str, user: str, schema: dict[str, Any], max_tokens: int = 32000,
-                         images: list[ImageInput] | None = None) -> StructuredResult:
-        from app.agent.prompts import general_terms, parking_plan, plan_match
+                         images: list[ImageInput] | None = None, effort: str = "high", model: str | None = None) -> StructuredResult:
+        from app.agent.prompts import general_terms, import_structure, parking_plan, plan_match
         from app.ingest.heuristic import heuristic_structure
 
-        self.calls.append({"system": system, "user": user, "images": len(images or [])})
+        self.calls.append({"system": system, "user": user, "images": len(images or []), "effort": effort, "model": model})
         if system.startswith(plan_match.MARKER):
             data = fake_plan_match(user)
         elif system.startswith(parking_plan.MARKER):
             data = fake_parking_plan(user)
         elif system.startswith(general_terms.MARKER):
             data = fake_general_terms(user)
+        elif system.startswith(import_structure.CLAUSES_MARKER):
+            data = {"clauses": heuristic_structure(user)["clauses"]}
         else:
-            data = heuristic_structure(user)
+            data = {k: v for k, v in heuristic_structure(user).items() if k != "clauses"}
         return StructuredResult(data=data, model="fake-heuristic", usage={"input_tokens": len(user) // 4, "output_tokens": 0})
 
 

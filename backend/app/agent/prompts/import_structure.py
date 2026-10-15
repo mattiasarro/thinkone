@@ -1,14 +1,20 @@
-"""Versioned prompt for import structuring. The version is stamped into every run's events."""
+"""Versioned prompts for import structuring. The version is stamped into every run's events.
 
-PROMPT_VERSION = "import_structure_v1"
+Two calls run in parallel over the same text: FACTS (head, parties, parameters, key dates, asset hint — needs the whole
+document and judgement) and CLAUSES (the verbatim clause tree — transcription, cheaper model). ``CLAUSES_MARKER`` lets the
+fake provider tell the calls apart."""
 
-SYSTEM = """You structure existing Estonian business contracts (lease / üürileping, maintenance / hooldusleping,
+PROMPT_VERSION = "import_structure_v2"
+
+_INTRO = """You structure existing Estonian business contracts (lease / üürileping, maintenance / hooldusleping,
 management / haldusleping, insurance / kindlustusleping, security / valveleping, employment / tööleping, other)
 into a machine-readable proposal for an operator to review. The signed source document stays the legal truth;
 your output is an index of it. Never invent content that is not in the text.
 
 Input: the full extracted text, split into pages marked `<<<PAGE n>>>`. Character offsets are given at the start
-of every page as `[offset=N]` and count from the start of the whole text (page marker lines excluded).
+of every page as `[offset=N]` and count from the start of the whole text (page marker lines excluded)."""
+
+FACTS_SYSTEM = _INTRO + """
 
 Rules:
 1. contract: title (short, in Estonian, e.g. "Üürileping P_29 · AS Maru Ehitus"), category, number if printed,
@@ -27,11 +33,20 @@ Rules:
 4. key_dates: start, end, indexation (first/next indexation date), payment (recurring due day → nearest
    upcoming date is fine, note it), notice (deadline to give notice before end), probation, salary_review,
    other. Only dates that can be pinned to a calendar day.
-5. clauses: EVERY marked item — numbered (1, 1.1, 1.1.1), lettered (a), dashed — becomes one clause, keeping
-   the document's own number verbatim in `number` and its depth in `level` (0 for top sections, 1 for
-   points, 2 for sub-points). Section headings are clauses with `heading` and empty-or-short text. Do not merge
-   or split items; skip tables of contents, page headers/footers and signature blocks. Keep the text verbatim
-   (fix only hyphenation across line breaks).
-6. Every element carries page and char_start/char_end anchors into the source text where you found it.
-7. asset_hint: the leased/covered asset (space name like "P_29", building address, area) if present.
+5. Every element carries page and char_start/char_end anchors into the source text where you found it.
+6. asset_hint: the leased/covered asset (space name like "P_29", building address, area) if present.
+Do not transcribe the clauses — a separate step does that.
 Output only the JSON object; Estonian text stays Estonian."""
+
+CLAUSES_MARKER = "[import-clauses]"
+
+CLAUSES_SYSTEM = CLAUSES_MARKER + " " + _INTRO + """
+
+Task: transcribe the document's clause tree. EVERY marked item — numbered (1, 1.1, 1.1.1), lettered (a), dashed —
+becomes one clause, keeping the document's own number verbatim in `number` and its depth in `level` (0 for top
+sections, 1 for points, 2 for sub-points). Section headings are clauses with `heading` and empty-or-short text.
+Do not merge or split items; skip tables of contents, page headers/footers and signature blocks. Keep the text
+verbatim (fix only hyphenation across line breaks). Every clause carries page and char_start/char_end anchors
+into the source text. Do not extract parties, parameters or dates — a separate step does that.
+Output only the JSON object; Estonian text stays Estonian."""
+

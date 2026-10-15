@@ -80,13 +80,26 @@ class AssetHint(BaseModel):
     area_m2: float | None = None
 
 
-class Proposal(BaseModel):
+class FactsProposal(BaseModel):
+    """What the facts call returns: everything that needs the whole document and judgement, no clause text."""
+
     contract: ContractHead
     parties: list[PartyProposal] = Field(default_factory=list)
     parameters: list[ParameterProposal] = Field(default_factory=list)
     key_dates: list[KeyDateProposal] = Field(default_factory=list)
-    clauses: list[ClauseProposal] = Field(default_factory=list)
     asset_hint: AssetHint | None = None
+
+
+class ClausesProposal(BaseModel):
+    """What the clause call returns: the verbatim clause tree (transcription, run on a cheaper model in parallel)."""
+
+    clauses: list[ClauseProposal] = Field(default_factory=list)
+
+
+class Proposal(FactsProposal):
+    """The two halves merged — the shape the review UI edits and the commit path reads."""
+
+    clauses: list[ClauseProposal] = Field(default_factory=list)
 
     def uncertain(self, threshold: float = 0.8) -> list[str]:
         out = [f"parameter:{i}" for i, p in enumerate(self.parameters) if p.confidence < threshold]
@@ -135,3 +148,11 @@ def _strictify(schema: dict[str, Any]) -> dict[str, Any]:
 
 def proposal_json_schema() -> dict[str, Any]:
     return _strictify(Proposal.model_json_schema())
+
+
+def facts_json_schema() -> dict[str, Any]:
+    return _strictify(FactsProposal.model_json_schema())
+
+
+def clauses_json_schema() -> dict[str, Any]:
+    return _strictify(ClausesProposal.model_json_schema())

@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     # LLM — Anthropic API behind the ChatModel seam
     anthropic_api_key: str | None = None
     llm_model: str = "claude-opus-5-5"
+    # import structuring runs two calls in parallel: the facts (head, parties, parameters, dates) on llm_model at low
+    # effort, the clause transcription on a cheaper model. Below "high" Sonnet 5.5 tends to stop a long transcription
+    # after a few clauses (measured 2026-10-15), so the clause call stays at high.
+    llm_clause_model: str = "claude-sonnet-5-5"
+    llm_facts_effort: str = "low"
+    llm_clause_effort: str = "high"
     llm_mode: Literal["fake", "live"] = "fake"
 
     # integrations: one switch, per-adapter overrides
