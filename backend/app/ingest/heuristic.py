@@ -4,7 +4,7 @@ tests; the live model replaces it. Same output shape as the LLM (see schema.Prop
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 CLAUSE_RE = re.compile(r"^(?P<num>\d{1,2}(?:\.\d{1,2}){0,3})\.?\s+(?P<text>\S.*)$")
@@ -85,19 +85,11 @@ def heuristic_structure(user: str) -> dict[str, Any]:
         if any(w in ctx for w in ("sõlminud", "sõlmitud", "allkirjast")):
             signed = d
             break
-    if not signed and dates:
-        signed = dates[0][1]
-    start = signed
+    # a digitally signed contract prints no signing date — the container's signature time fills it (structure.derive_dates);
+    # the handover date („Üleandmine · Hiljemalt 02.01.2024”) is the start, and the end follows from the term there too
+    handover = next(((m, d) for m, d in dates if re.search(r"üleandmi\w*\s*(?:hiljemalt\s*)?$", low[max(0, m.start() - 40): m.start()].strip() + " ") or "hiljemalt" in low[max(0, m.start() - 12): m.start()]), None)
+    start = handover[1] if handover else signed
     end = None
-    term_years = re.search(r"tähtajaliselt\s+(\d{1,2})\s+aastaks", low)
-    term_months = re.search(r"tähtajaliselt\s+(\d{1,3})\s+kuuks", low)
-    if start and term_years:
-        y = int(term_years.group(1))
-        s = date.fromisoformat(start)
-        end = s.replace(year=s.year + y).isoformat()
-    elif start and term_months:
-        s = date.fromisoformat(start)
-        end = (s + timedelta(days=30 * int(term_months.group(1)))).isoformat()
     for m, d in dates:
         ctx = low[max(0, m.start() - 60): m.start()]
         if "kehtib kuni" in ctx or "lõpeb" in ctx or "kuni" in ctx[-12:]:
@@ -125,6 +117,8 @@ def heuristic_structure(user: str) -> dict[str, Any]:
     m = re.search(r"tähtajaliselt\s+(\d{1,2}\s+aastaks|\d{1,3}\s+kuuks)", text)
     if m:
         add_param("term", "Tähtaeg", m.group(1), None, m)
+    if handover:
+        add_param("handover_date", "Üleandmine", handover[1], None, handover[0], 0.85)
     m = re.search(r"(\d{1,2})\.\s*kuupäevaks", text)
     if m:
         add_param("payment_due", "Maksetähtaeg", f"kuu {m.group(1)}.", "päev", m, 0.75, "Tuletatud korduvast maksetähtajast")
@@ -142,8 +136,7 @@ def heuristic_structure(user: str) -> dict[str, Any]:
     if start:
         key_dates.append({"kind": "start", "date": start, "title": "Lepingu algus", "confidence": 0.85, "note": None, "page": 1, "char_start": None, "char_end": None})
     if end:
-        key_dates.append({"kind": "end", "date": end, "title": "Lepingu lõpp", "confidence": 0.7 if term_years or term_months else 0.85,
-                          "note": "Tuletatud tähtajast" if (term_years or term_months) else None, "page": 1, "char_start": None, "char_end": None})
+        key_dates.append({"kind": "end", "date": end, "title": "Lepingu lõpp", "confidence": 0.85, "note": None, "page": 1, "char_start": None, "char_end": None})
     idx = re.search(r"(?:esimene indekseerimine|indekseeritakse alates|alates)\s+(\d{1,2})\.(\d{1,2})\.(\d{4})", text)
     if idx and _to_iso(idx):
         key_dates.append({"kind": "indexation", "date": _to_iso(idx), "title": "Indekseerimine", "confidence": 0.75, "note": "Kontrolli",

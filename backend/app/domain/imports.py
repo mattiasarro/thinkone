@@ -182,6 +182,10 @@ async def commit_import(
     cat = category or prop.contract.category
     doc = await session.get(SourceDocument, job.source_document_id)
     assert doc
+    # proposals reviewed before derivation existed (or dates the operator cleared): fill what the container/term still pins down
+    from app.ingest.structure import derive_dates
+
+    derive_dates(prop, [s.get("signing_time") for s in (doc.container_signatures or [])])
 
     party_items = await _resolve_parties(session, actor, prop, cat, parties)
     party = next((pt for it, pt in party_items if it["is_primary"]), None)
@@ -237,11 +241,15 @@ async def commit_import(
         await write_tree(session, actor, _nest(prop.clauses), contract_id=contract.id, source="imported", locked=False)
 
     # key dates
-    from app.domain.keydates import add_key_date
+    from app.domain.keydates import add_key_date, recurrences
 
     for kd in prop.key_dates:
-        await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=kd.date, title=kd.title,
-                           provenance={"page": kd.page, "char_start": kd.char_start, "confidence": kd.confidence, "import_job_id": str(job.id)})
+        prov = {"page": kd.page, "char_start": kd.char_start, "confidence": kd.confidence, "import_job_id": str(job.id)}
+        # indexation recurs every year of the term — the calendar needs every occurrence, not just the first
+        dues = recurrences(kd.date, until=prop.contract.end_date) if kd.kind == "indexation" else [kd.date]
+        for i, due in enumerate(dues):
+            await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=due, title=kd.title,
+                               provenance=prov if i == 0 else {**prov, "recurrence_of": kd.date.isoformat(), "n": i})
 
     # allocation (linking): exclusive for a lease on a space, coverage for a whole-building service contract
     parking_linked: list[str] = []

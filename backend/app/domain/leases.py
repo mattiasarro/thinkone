@@ -8,7 +8,7 @@ overriding clauses by id). Facts are versioned rows (invariant 2); the document 
 from __future__ import annotations
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -25,7 +25,7 @@ from app.domain.clauses import render as render_tree
 from app.domain.contracts import create_contract, get_contract, index_contract
 from app.domain.errors import Conflict, DomainError, NotFound
 from app.domain.events import Actor, emit
-from app.domain.keydates import add_key_date
+from app.domain.keydates import add_key_date, recurrences
 from app.domain.parties import get_party
 from app.domain.seed import DEFAULT_ACCOUNT_SETTINGS
 from app.models.contracts import Clause, Contract, ContractFact, KeyDate
@@ -156,7 +156,9 @@ async def lease_deal(session: AsyncSession, c: Contract) -> dict[str, Any]:
     d["facts"] = facts_of(d)
     d["key_dates"] = {"start": handover, "end": end}
     if d["indexation"].get("method") and d["indexation"].get("next_date"):
-        d["key_dates"]["indexation"] = date.fromisoformat(d["indexation"]["next_date"])
+        # every indexation of the term, not just the first: the calendar shows each one
+        d["key_dates"]["indexation"] = recurrences(date.fromisoformat(d["indexation"]["next_date"]), until=end,
+                                                   every_months=int(d["indexation"].get("frequency_months") or 12))
     allocs: list[tuple[uuid.UUID, str, int, date, date]] = [(sp["space_id"], "exclusive", 1, handover, end) for sp in spaces]
     if prop:
         reg = {str(x.id): x for x in spots.values()}
@@ -286,19 +288,25 @@ async def _write_facts(session: AsyncSession, actor: Actor, c: Contract, d: dict
 
 
 async def _sync_key_dates(session: AsyncSession, actor: Actor, c: Contract, d: dict[str, Any]) -> None:
+    """Generated key dates follow the deal: one per kind, or a dated series (indexation). Operator-added rows are left alone."""
     rows = list((await session.execute(select(KeyDate).where(KeyDate.subject_id == c.id, KeyDate.deleted_at.is_(None)))).scalars())
-    wanted = {k: v for k, v in d["key_dates"].items() if v}
-    by_kind = {k.kind_code: k for k in rows if (k.provenance or {}).get("generated")}
-    for kind, due in wanted.items():
-        kd = by_kind.get(kind)
-        if kd:
+    wanted: dict[str, list[date]] = {k: (v if isinstance(v, list) else [v]) for k, v in d["key_dates"].items() if v}
+    by_kind: dict[str, list[KeyDate]] = {}
+    for k in sorted((k for k in rows if (k.provenance or {}).get("generated")), key=lambda k: k.due_date):
+        by_kind.setdefault(k.kind_code, []).append(k)
+    for kind, dues in wanted.items():
+        have = by_kind.get(kind, [])
+        for kd, due in zip(have, dues, strict=False):
             if kd.due_date != due:
                 kd.due_date = due
-        else:
+        for due in dues[len(have):]:
             await add_key_date(session, actor, contract_id=c.id, kind_code=kind, due_date=due, provenance={"generated": True})
-    for kind, kd in by_kind.items():
+        for kd in have[len(dues):]:
+            kd.deleted_at = datetime.now(UTC)
+    for kind, have in by_kind.items():
         if kind not in wanted:
-            kd.deleted_at = __import__("datetime").datetime.now(__import__("datetime").UTC)
+            for kd in have:
+                kd.deleted_at = datetime.now(UTC)
 
 
 async def _sync_allocations(session: AsyncSession, actor: Actor, c: Contract, d: dict[str, Any]) -> None:

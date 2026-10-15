@@ -76,6 +76,9 @@ async def test_convert_quote_to_draft(client: AsyncClient, admin: dict):
     facts = {f["key"]: f for f in c["facts"]}
     assert facts["rent_monthly"]["value"] == 1024.0 and facts["deposit"]["value"] == 3072.0 and facts["period_months"]["value"] == 60
     assert {k["kind_code"] for k in c["key_dates"]} == {"start", "end", "indexation"}
+    # one indexation per year of the term (first = next_date, then yearly until the end)
+    idx = sorted(k["due_date"] for k in c["key_dates"] if k["kind_code"] == "indexation")
+    assert len(idx) >= 2 and idx[-1] <= c["end_date"] and idx[1][:4] == str(int(idx[0][:4]) + 1) and idx[1][4:] == idx[0][4:]
     assert {a["asset"]["name"] for a in c["allocations"]} == {"Pind 12", "P 12"}
     assert c["start_date"] == deal["handover"] and c["end_date"] == deal["end"]
     # the quote is converted; the space is „lepingus” (draft) — still not free

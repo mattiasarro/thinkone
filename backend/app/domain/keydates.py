@@ -13,6 +13,30 @@ from app.domain.events import Actor, emit
 from app.models.contracts import Contract, KeyDate, KeyDateKind
 
 
+def add_months(d: date, months: int) -> date:
+    """Calendar-month step that keeps the day where the target month allows it (31.01 + 1 → 28.02)."""
+    import calendar
+
+    y, m = divmod(d.month - 1 + months, 12)
+    y, m = d.year + y, m + 1
+    return d.replace(year=y, month=m, day=min(d.day, calendar.monthrange(y, m)[1]))
+
+
+def recurrences(first: date, *, until: date | None, every_months: int = 12, default_count: int = 5, cap: int = 40) -> list[date]:
+    """Every occurrence of a recurring key date (indexation): ``first``, then every ``every_months`` up to ``until``
+    (the contract end); with no end known, ``default_count`` occurrences. Capped so a bad term cannot flood the calendar."""
+    out = [first]
+    while len(out) < cap:
+        nxt = add_months(out[-1], every_months)
+        if until is not None:
+            if nxt > until:
+                break
+        elif len(out) >= default_count:
+            break
+        out.append(nxt)
+    return out
+
+
 async def kinds(session: AsyncSession, account_id: uuid.UUID) -> list[KeyDateKind]:
     rows = (await session.execute(select(KeyDateKind).where((KeyDateKind.account_id.is_(None)) | (KeyDateKind.account_id == account_id)))).scalars()
     return list(rows)

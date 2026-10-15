@@ -87,7 +87,10 @@ async def run_structuring(job_id: uuid.UUID) -> None:
     async with tenant_session(account_id) as session:
         job = await session.get(ImportJob, job_id)
         from app.domain.imports import find_duplicate
+        from app.ingest.structure import derive_dates
 
+        doc = await session.get(SourceDocument, job.source_document_id)
+        derived = derive_dates(prop, [s.get("signing_time") for s in (doc.container_signatures or [])] if doc else None)
         job.proposal = prop.model_dump(mode="json")
         job.reviewed = None
         job.prompt_version, job.model, job.usage = prompt_version, result.model, result.usage
@@ -95,5 +98,5 @@ async def run_structuring(job_id: uuid.UUID) -> None:
         job.status = "review"
         emit(session, actor, "import_job", job.id, "import.proposed",
              {"model": result.model, "prompt_version": prompt_version, "usage": result.usage, "clauses": len(prop.clauses),
-              "parameters": len(prop.parameters), "key_dates": len(prop.key_dates), "uncertain": prop.uncertain(),
+              "parameters": len(prop.parameters), "key_dates": len(prop.key_dates), "uncertain": prop.uncertain(), "derived_dates": derived or None,
               "duplicate_of": job.duplicate_of_contract_id})

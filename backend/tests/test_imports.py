@@ -199,9 +199,21 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     await _run_worker_inline(job["id"])
     j = (await client.get(f"/api/v1/imports/{job['id']}")).json()
     assert j["status"] == "review" and j["proposal"]["contract"]["category"] == "lease"
+    # the text says „allkirjastatud digitaalselt” and „tähtajaliselt 7 aastaks alates allkirjastamisest”: the dates come from
+    # the container's signing time + the term, and land in the calendar as start/end key dates
+    head = j["proposal"]["contract"]
+    # (the only printed date is the handover „Hiljemalt 02.01.2024” — that is the start, not the signing)
+    assert (head["signed_at"], head["start_date"], head["end_date"]) == ("2023-11-25", "2024-01-02", "2030-11-25")
+    assert {(k["kind"], k["date"]) for k in j["proposal"]["key_dates"]} >= {("start", "2024-01-02"), ("end", "2030-11-25")}
+    # an indexation date recurs every year of the term in the calendar, not only the first time
+    prop = j["proposal"]
+    prop["key_dates"].append({"kind": "indexation", "date": "2024-11-01", "title": "Indekseerimine", "confidence": 1.0, "note": None, "page": 1, "char_start": None, "char_end": None})
+    assert (await client.patch(f"/api/v1/imports/{job['id']}", json={"reviewed": prop})).status_code == 200
     r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": j["uncertain"]})
-    assert r.status_code == 200
+    assert r.status_code == 200, r.text
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
+    assert (c["signed_at"], c["start_date"], c["end_date"]) == ("2023-11-25", "2024-01-02", "2030-11-25")
+    assert [k["due_date"] for k in sorted(c["key_dates"], key=lambda k: k["due_date"]) if k["kind_code"] == "indexation"] == [f"{y}-11-01" for y in range(2024, 2031)]
     assert c["source_documents"][0]["container_signatures"][0]["personal_code"] == "37001010000"
     # provenance anchors open the signed PDF inside the container, plus the extracted text pages as fallback
     v = (await client.get(f"/api/v1/contracts/{c['id']}/source-documents/{c['source_documents'][0]['id']}/view")).json()
