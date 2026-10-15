@@ -51,6 +51,8 @@ const et = {
       company: "Ettevõte äriregistrist", companySub: "Üürileandja, kelle nimel lepingud sõlmitakse.", building: "Hoone ehitisregistrist", buildingSub: "EHR-otsing täidab aadressi ja hooneandmed.",
       spaces: "Pinnad tabelist", spacesSub: "CSV või Excelist kopeeritud read — üks rida = üks pind.", contracts: "Olemasolevad lepingud", contractsSub: "Impordi allkirjastatud PDF-id ja konteinerid; struktuur tuvastatakse.",
       done: "Tehtud", todo: "Tee ära", progress: "{done}/{total} sammu tehtud", hide: "Peida",
+      left: "≈ {min} min jäänud · registritest ainult loetakse", start: "Alusta: {step}", resume: "Jätka: {step}",
+      barTitle: "Seadistus on pooleli", barNext: "Järgmine: {step} · ≈ {min} min", barGo: "Jätka",
     },
     // „Fookus” (demo v672 → v770): one compact focus card, „Järgmisena” rows, two links, the composer at the bottom.
     focus: {
@@ -60,6 +62,48 @@ const et = {
       composer: "Küsi või anna korraldus…", send: "Saada AI-le",
       verb: { send: "Saada", answer: "Vasta", remind: "Meenuta", convert: "Koosta leping", bounced: "Saada uuesti", sign: "Allkirjasta", review: "Vaata üle", end: "Otsusta", waiting: "Ava" },
       kind: { quote: "Ava pakkumine", contract: "Ava leping", import: "Vaata üle", key_date: "Ava leping" },
+    },
+  },
+  // „Alusta · 10 minutit” (demo v623): the four setup steps on ONE page — the rail on the left, the active step's form on the right.
+  setup: {
+    overlineNew: "Uus konto · seadistus", overline: "{name} · seadistus", title: "Alusta · 10 minutit", titleDone: "Portfell on püsti",
+    sub: "Neli sammu ja portfell on püsti. Iga samm näitab enne küsimist, mida registrid juba teavad — sina ainult kinnitad.",
+    subDone: "Kõik neli sammu on tehtud. Avaleht ütleb edaspidi iga päev, mis on järgmine samm.",
+    progress: "{n} sammu 4-st tehtud", ofSteps: "/ 4 sammu", allDone: "kõik tehtud", leftShort: "≈ {min} min jäänud", railLabel: "Seadistuse sammud",
+    railNote: "Registritest ainult loetakse — neile ei saadeta midagi peale otsingusõna.",
+    stepOf: "Samm {n} / 4", minutes: "≈ {min} min", statusDone: "tehtud", statusNext: "järgmine · ≈ {min} min", statusPending: "pooleli · {n} faili impordilaual", statusPendingShort: "pooleli",
+    later: "Hiljem", next: "Järgmine: {step}", summary: "Vaata kokkuvõtet", manual: "Sisesta käsitsi", pickOther: "Vali teine", change: "Muuda",
+    steps: { company: "ettevõte", building: "hoone", spaces: "pinnad", contracts: "lepingud" },
+    company: {
+      q: "Milline ettevõte?", sub: "Sisesta registrikood või nimi — nimi, aadress ja staatus tulevad e-äriregistrist.",
+      knows: "E-äriregister teab juba", address: "Aadress", legalForm: "Õiguslik vorm", status: "Staatus", source: "Allikas", sourceValue: "e-äriregister",
+      name: "Ettevõtte nimi", registryCode: "Registrikood", confirm: "Kinnita ettevõte", confirmed: "Kinnitatud · {name} on konto ettevõte",
+      doneLine: "Kinnitatud — äriregistri andmed on dokumentide päises", company: "Ettevõte", vat: "KMKR", editInSettings: "Muuda seadetes",
+    },
+    building: {
+      q: "Milline hoone?", sub: "Otsi aadressi või EHR-koodi järgi — hoone andmed tulevad ehitisregistrist.",
+      knows: "Ehitisregister teab juba", useType: "Kasutusotstarve", footprint: "Ehitisealune pind", netArea: "Suletud netopind", floors: "Korruseid", buildYear: "Ehitusaasta",
+      name: "Objekti nimi portfellis", address: "Aadress", confirm: "Kinnita hoone", confirmed: "Kinnitatud · {name} on portfellis", noCompany: "Enne hoonet kinnita ettevõte.",
+      doneOne: "Hoone on portfellis — ehitisregistri andmed on objektikaardil", doneMany: "{n} hoonet on portfellis — ehitisregistri andmed on objektikaardil", addAnother: "Lisa veel üks hoone",
+    },
+    spaces: {
+      q: "Millised pinnad?", sub: "Laadi pindade tabel või kleebi read Excelist — osad, hinnad ja parkimiskohad tulevad tabelist.",
+      target: "Pinnad lisanduvad objektile", noBuilding: "Enne pindu kinnita hoone.", noBuildingSub: "Pinnad kuuluvad hoone alla — ehitisregistri samm võtab paar minutit.",
+      manual: "Lisa käsitsi", manualSub: "pind korraga, pindade redaktoris", added: "Lisatud · {n} pinda · {name}",
+      doneLine: "Pinnad on registris — iga pind on oma kaardiga esemete all", perBuilding: "{n} pinda", editor: "Ava pindade redaktor", addOther: "Lisa teise hoone pinnad",
+    },
+    contracts: {
+      q: "Olemasolevad lepingud", sub: "Lohista allkirjastatud originaalid — loen tingimused ja tähtajad ning seon lepingud pindadega. Enne sinu kinnitust registrisse midagi ei jõua.",
+      drop: "Lohista siia olemasolevad lepingud", dropHint: "Digiallkirjastatud konteinerid (.asice, .bdoc), PDF-id ja Wordi failid — ka mitu korraga.",
+      openDesk: "Ava impordilaud", continueDesk: "Jätka impordilaual", desk: "Impordilaud", needsReview: "vajab ülevaatust", reading: "loen veel", failed: "ebaõnnestus",
+      pendingNote: "{n} faili on impordilaual. Kinnitatud lepingud jõuavad registrisse ja tähtajad kalendrisse.",
+      doneLine: "{n} lepingut on registris", doneNote: "Portfelli tervis näitab, mis vajab pilku — lõppevad lepingud, puuduvad lisad ja allkirjad, riskiraportid.",
+      uploaded: "{n} faili üles laaditud · impordilaud loeb neid",
+    },
+    done: {
+      title: "Kõik neli sammu on tehtud", sub: "Portfell on püsti. Avaleht ütleb edaspidi iga päev, mis on järgmine samm.",
+      company: "Ettevõte", building: "Hoone", buildings: "Hooned", spaces: "Pinnad", contracts: "Lepingud", contractsValue: "{n} lepingut registris",
+      openPortfolio: "Ava portfell", openHome: "Ava avaleht",
     },
   },
   overview: {

@@ -8,6 +8,7 @@ import { Topbar } from "./Topbar";
 import { Spinner, ErrorState } from "@/components/ui/State";
 import { t } from "@/i18n";
 import { cx } from "@/lib/format";
+import { SetupBar } from "@/features/setup/SetupBar";
 
 /** Demo shell (index.html): sidebar in the left column across both rows, topbar beside it, the page column below the topbar. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -51,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Sidebar me={me.data} onCloseMobile={() => setMobileOpen(false)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </Suspense>
       <div className="main">
-        <main id="main" tabIndex={-1} className="view outline-none">{children}</main>
+        <main id="main" tabIndex={-1} className="view outline-none"><SetupBar />{children}</main>
       </div>
     </div>
   );

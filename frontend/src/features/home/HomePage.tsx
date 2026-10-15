@@ -14,6 +14,7 @@ import { Loading } from "@/components/ui/State";
 import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconArrowUp, IconCal, IconFile, IconCheck, IconChat, Glyph } from "@/components/ui/Icons";
 import { cx } from "@/lib/format";
 import type { AttentionRow } from "@/types/api";
+import { setupSteps } from "@/features/setup/useSetupSteps";
 
 const LATER_KEY = "thinkone.home.later";
 const rowKey = (r: AttentionRow) => `${r.kind}:${r.link}:${r.step ?? ""}`;
@@ -168,38 +169,40 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
   );
 }
 
-/** „Alusta · 10 minutit” (demo v623): four setup steps whose done-state comes from the data, shown until all are done. */
+/** „Alusta · 10 minutit” (demo v623 `alDashHTML`): the four steps with their done-state from the data, every row and the button opening the ONE setup page. */
 function SetupCard({ summary }: { summary: ReturnType<typeof usePortfolioSummary>["data"] }) {
-  if (!summary) return null;
-  const contracts = Object.values(summary.contracts_by_status).reduce((a, b) => a + b, 0);
-  const steps = [
-    { key: "company", done: summary.companies > 0, href: "/app/seaded?tab=ettevotted", title: t("home.setup.company"), sub: t("home.setup.companySub"), icon: <IconUsers /> },
-    { key: "building", done: summary.assets.properties > 0, href: "/app/portfell/objekt/uus", title: t("home.setup.building"), sub: t("home.setup.buildingSub"), icon: <IconBuilding /> },
-    { key: "spaces", done: summary.assets.spaces > 0, href: "/app/portfell?tab=esemed", title: t("home.setup.spaces"), sub: t("home.setup.spacesSub"), icon: <IconFile /> },
-    { key: "contracts", done: contracts > 0, href: "/app/portfell/import", title: t("home.setup.contracts"), sub: t("home.setup.contractsSub"), icon: <IconImport /> },
-  ];
+  const steps = setupSteps(summary);
+  if (!steps) return null;
   const done = steps.filter((s) => s.done).length;
-  if (done === steps.length) return null;
+  const next = steps.find((s) => !s.done);
+  if (!next) return null;
+  const left = steps.filter((s) => !s.done).reduce((a, s) => a + s.min, 0);
+  const icons = { company: <IconUsers />, building: <IconBuilding />, spaces: <IconFile />, contracts: <IconImport /> };
+  const subs = { company: t("home.setup.companySub"), building: t("home.setup.buildingSub"), spaces: t("home.setup.spacesSub"), contracts: t("home.setup.contractsSub") };
   return (
     <Card>
       <CardHeader title={t("home.setup.title")} actions={<Pill tone="primary">{t("home.setup.progress", { done, total: steps.length })}</Pill>}>
         <p className="text-sm text-muted">{t("home.setup.sub")}</p>
       </CardHeader>
-      <ol className="px-[var(--card-padding)] pb-2 divide-y" style={{ borderColor: "var(--line)" }}>
-        {steps.map((s, i) => (
+      <ol className="px-[var(--card-padding)] divide-y" style={{ borderColor: "var(--line)" }}>
+        {steps.map((s) => (
           <li key={s.key}>
-            <Link href={s.href} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-subtle min-h-[52px]">
-              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success-ink bg-success-subtle" : "text-ink bg-subtle")}>{s.done ? <IconCheck /> : s.icon}</span>
+            <Link href={`/app/alusta?step=${s.index + 1}`} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-subtle min-h-[52px]">
+              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success-ink bg-success-subtle" : "text-ink bg-subtle")}>{s.done ? <IconCheck /> : icons[s.key]}</span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{i + 1}. {s.title}</span>
-                <span className="block text-xs text-muted">{s.sub}</span>
+                <span className="block text-sm font-semibold">{s.index + 1}. {s.title}</span>
+                <span className="block text-xs text-muted">{subs[s.key]}</span>
               </span>
-              <Pill tone={s.done ? "success" : "neutral"}>{s.done ? t("home.setup.done") : t("home.setup.todo")}</Pill>
+              <Pill tone={s.done ? "success" : s.pending ? "warning" : "neutral"}>{s.done ? t("home.setup.done") : s.pending ? t("setup.statusPendingShort") : t("home.setup.todo")}</Pill>
               <IconArrowRight width={16} height={16} className="text-muted flex-none" />
             </Link>
           </li>
         ))}
       </ol>
+      <div className="px-[var(--card-padding)] py-3 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--line)" }}>
+        <span className="text-xs text-muted">{t("home.setup.left", { min: left })}</span>
+        <LinkButton href={`/app/alusta?step=${next.index + 1}`} variant="primary" size="sm">{done ? t("home.setup.resume", { step: next.short }) : t("home.setup.start", { step: next.short })}<IconArrowRight width={14} height={14} /></LinkButton>
+      </div>
     </Card>
   );
 }
