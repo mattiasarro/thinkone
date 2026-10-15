@@ -52,8 +52,8 @@ export function ObjectWizard({ propertyId, step }: { propertyId?: string; step: 
             return (
               <li key={k}>
                 <button type="button" disabled={!canClick} onClick={() => propertyId && go(propertyId, n)} aria-current={n === stepValid ? "step" : undefined}
-                  className={cx("w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm text-left transition-colors", n === stepValid ? "bg-surface shadow-surface font-semibold text-primary" : canClick ? "hover:bg-[rgb(20_26_38/0.05)] text-ink" : "text-muted")}>
-                  <span className={cx("w-6 h-6 rounded-full grid place-items-center text-xs font-semibold flex-none", n === stepValid ? "bg-primary text-white" : done ? "text-success" : "text-muted")} style={{ background: n === stepValid ? "var(--color-primary)" : done ? "var(--color-success-subtle)" : "var(--color-surface-subtle)" }}>{done ? <IconCheck width={12} height={12} /> : n}</span>
+                  className={cx("w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm text-left transition-colors", n === stepValid ? "bg-subtle shadow-[inset_0_0_0_1px_var(--line)] font-semibold text-ink" : canClick ? "hover:bg-subtle text-ink" : "text-muted")}>
+                  <span className={cx("w-7 h-7 rounded-[8px] grid place-items-center font-mono text-[12px] font-[650] flex-none", n === stepValid ? "bg-ink text-onink" : done ? "text-success-ink bg-success-subtle" : "text-ink2 shadow-[inset_0_0_0_1.5px_var(--line-strong)]")}>{done ? <IconCheck width={12} height={12} /> : n}</span>
                   <span>{t(k)}</span>
                 </button>
               </li>

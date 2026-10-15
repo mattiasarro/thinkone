@@ -18,7 +18,7 @@ export function SettingsPage() {
   return (
     <div className="grid gap-5">
       <PageHead title={t("settings.title")} />
-      <Tabs ariaLabel={t("settings.title")} active={tab} tabs={[
+      <Tabs variant="line" ariaLabel={t("settings.title")} active={tab} tabs={[
         { key: "ettevotted", label: t("settings.tabs.companies"), href: "/app/seaded?tab=ettevotted" },
         { key: "kasutajad", label: t("settings.tabs.members"), href: "/app/seaded?tab=kasutajad" },
         { key: "mallid", label: t("settings.tabs.templates"), href: "/app/seaded?tab=mallid" },

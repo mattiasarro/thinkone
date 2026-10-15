@@ -175,7 +175,7 @@ function Features({ q, editable, onSave }: { q: QuoteDetail; editable: boolean; 
       <div className="text-xs font-semibold text-muted mb-1">{t("quotes.spaces.features")}</div>
       <div className="flex flex-wrap gap-1 items-center">
         {q.features.map((f) => (
-          <span key={f.label} className="pill primary">{f.label}{f.value ? `: ${f.value}` : ""}{editable && <button type="button" className="ml-1 -mr-1 inline-grid place-items-center w-4 h-4 rounded-full hover:bg-white/40" aria-label={t("common.remove")} onClick={() => onSave(q.features.filter((x) => x.label !== f.label))}><IconX width={10} height={10} /></button>}</span>
+          <span key={f.label} className="pill primary">{f.label}{f.value ? `: ${f.value}` : ""}{editable && <button type="button" className="ml-1 -mr-1 inline-grid place-items-center w-4 h-4 rounded-full hover:bg-subtle" aria-label={t("common.remove")} onClick={() => onSave(q.features.filter((x) => x.label !== f.label))}><IconX width={10} height={10} /></button>}</span>
         ))}
         {editable && SUGGEST.map((k) => { const label = tEnum("quotes.spaces.featureSuggest", k); if (have.has(label)) return null; return <button key={k} type="button" className={cx("pill cursor-pointer", pending === label && "info")} onClick={() => { setPending(label); setValue(""); }}>+ {label}</button>; })}
         {q.features.length === 0 && !editable && <span className="text-sm text-muted">—</span>}

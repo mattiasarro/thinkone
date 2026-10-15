@@ -22,7 +22,7 @@ export function MessageView({ m, threadId, contextContractId, live, onEdit }: { 
   const streaming = m.status === "streaming";
   return (
     <div className="flex gap-3 items-start">
-      <span aria-hidden="true" className={cx("w-8 h-8 rounded-[10px] grid place-items-center flex-none text-white", streaming && "animate-pulse")} style={{ background: "var(--color-text)" }}><IconAi width={16} height={16} /></span>
+      <span aria-hidden="true" className={cx("w-8 h-8 rounded-[10px] grid place-items-center flex-none text-onink", streaming && "animate-pulse")} style={{ background: "var(--ink-grad)" }}><IconAi width={16} height={16} /></span>
       <div className="min-w-0 flex-1 grid gap-3">
         {m.steps.length > 0 && <Steps steps={m.steps} open={streaming} />}
         {m.text ? <AnswerText text={m.text} citations={m.citations} fallbackContractId={contextContractId} /> : streaming ? <div className="text-sm text-muted">{t("ai.thinking")}</div> : null}
@@ -74,7 +74,7 @@ export function AnswerText({ text, citations, fallbackContractId }: { text: stri
       const cit = byClause.get(clauseId) ?? [...byClause.values()].find((c) => c.clause_id.startsWith(clauseId));
       const contractId = cit?.contract_id ?? fallbackContractId;
       const chip = (
-        <span className="inline-flex items-center h-[22px] px-2 rounded-sm border font-mono text-[11px] font-semibold align-[1px] whitespace-nowrap transition-colors hover:bg-ink hover:text-white"
+        <span className="inline-flex items-center h-[22px] px-2 rounded-sm border font-mono text-[11px] font-semibold align-[1px] whitespace-nowrap transition-colors hover:bg-ink hover:text-onink"
           style={{ borderColor: "var(--color-divider)", background: "var(--color-surface-subtle)" }}>§{number}</span>
       );
       out.push(contractId

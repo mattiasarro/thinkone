@@ -11,7 +11,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Loading } from "@/components/ui/State";
-import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconCal, IconFile, IconCheck, IconChat } from "@/components/ui/Icons";
+import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconArrowUp, IconCal, IconFile, IconCheck, IconChat, Glyph } from "@/components/ui/Icons";
 import { cx } from "@/lib/format";
 import type { AttentionRow } from "@/types/api";
 
@@ -72,15 +72,15 @@ export function HomePage() {
   const ask = (e: FormEvent) => { e.preventDefault(); const text = q.trim(); if (!text) return; router.push(`/app/ai?q=${encodeURIComponent(text)}`); };
 
   return (
-    <div className="grid gap-6 max-w-[960px]">
+    <div className="grid gap-6 max-w-[760px]">
       <div className="pt-4">
-        <h1 className="font-heading text-[32px] leading-10 md:text-[40px] md:leading-[44px] font-semibold tracking-tight">{t("home.focus.hello", { name: firstName })}</h1>
+        <h1 className="font-heading text-[clamp(26px,2.5vw,32px)] leading-[1.15] font-[650] tracking-[-.03em] [text-wrap:balance]">{t("home.focus.hello", { name: firstName })}</h1>
         <p className="page-sub">{attention.isLoading ? t("common.loading") : rows.length === 0 ? t("home.focus.empty") : rows.length === 1 ? t("home.focus.waitingOne") : t("home.focus.waiting", { n: rows.length })}</p>
       </div>
 
       <SetupCard summary={summary.data} />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         <QuickLink href="/app/portfell/pakkumine/uus" icon={<IconFile />} label={t("home.createQuote")} />
         <QuickLink href="/app/portfell/leping/uus" icon={<IconFile />} label={t("home.createLease")} />
         <QuickLink href="/app/portfell/objekt/uus" icon={<IconBuilding />} label={t("home.addAsset")} />
@@ -94,18 +94,21 @@ export function HomePage() {
           {rest.length > 0 && (
             <Card>
               <CardHeader title={t("home.focus.next", { n: rest.length })} />
-              <ul className="px-[var(--card-padding)] divide-y" style={{ borderColor: "var(--line)" }}>
-                {visible.map((r) => {
+              <ul className="px-[var(--card-padding)] m-0 p-0 list-none">
+                {visible.map((r, i) => {
                   const due = dueLabel(r.due);
                   return (
-                    <li key={rowKey(r)} className="flex items-center gap-3 py-3 min-h-[52px]">
-                      <KindIcon kind={r.kind} width={16} height={16} className="text-muted flex-none" />
-                      <Link href={r.link} className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold truncate">{r.title}</span>
-                        <span className="block text-xs text-muted truncate">{r.text}</span>
+                    <li key={rowKey(r)}>
+                      <Link href={r.link} className="dh-row">
+                        <span className="dh-n">{String(i + 2).padStart(2, "0")}</span>
+                        <KindIcon kind={r.kind} width={16} height={16} className="text-muted flex-none" />
+                        <span className="min-w-0 text-[13.5px]">
+                          <b className="block font-semibold text-ink truncate">{r.title}</b>
+                          <small className="block text-xs text-muted truncate mt-0.5">{r.text}</small>
+                        </span>
+                        <span className={cx("dh-miks text-xs tabular-nums whitespace-nowrap", due && (due.late || r.tone === "red") ? "text-warning-ink font-semibold" : "text-muted")}>{due?.text}</span>
+                        <span className="dh-go">{verb(r)}<IconArrowRight /></span>
                       </Link>
-                      {due && <span className={cx("text-xs tabular-nums whitespace-nowrap hidden sm:inline", due.late || r.tone === "red" ? "text-error font-medium" : "text-muted")}>{due.text}</span>}
-                      <LinkButton href={r.link} size="sm" className="flex-none">{verb(r)}</LinkButton>
                     </li>
                   );
                 })}
@@ -123,9 +126,13 @@ export function HomePage() {
         </div>
       )}
 
-      <form onSubmit={ask} className="card flex items-center gap-2 pl-4 pr-2 py-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("home.focus.composer")} aria-label={t("home.focus.composer")} className="flex-1 min-w-0 bg-transparent outline-none text-sm h-9" />
-        <button type="submit" className="w-10 h-10 rounded-full grid place-items-center flex-none text-white disabled:opacity-50" style={{ background: "var(--color-primary)" }} aria-label={t("home.focus.send")} disabled={!q.trim()}><IconArrowRight width={18} height={18} /></button>
+      <form onSubmit={ask} className="composer mt-2">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("home.focus.composer")} aria-label={t("home.focus.composer")} />
+        <div className="comp-row">
+          <span className="comp-mark" aria-hidden><Glyph /></span>
+          <span className="comp-sp" />
+          <button type="submit" className="send-btn" aria-label={t("home.focus.send")} disabled={!q.trim()}><IconArrowUp /></button>
+        </div>
       </form>
     </div>
   );
@@ -136,16 +143,16 @@ function FocusCard({ row, onLater }: { row: AttentionRow; onLater?: () => void }
   const urgent = row.tone === "red";
   const due = dueLabel(row.due);
   return (
-    <Card className="pad">
-      <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
-        <span className={cx("uppercase tracking-wide", urgent ? "text-error font-semibold" : "text-muted")}>{urgent ? t("home.focus.labelUrgent") : t("home.focus.labelYours")}</span>
-        {due && <span className={cx("ml-auto", due.late ? "text-error" : "text-muted")}>{due.text}</span>}
+    <Card className="dh-hero px-5 py-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className={cx("dh-l", urgent && "!text-error")}>{urgent ? t("home.focus.labelUrgent") : t("home.focus.labelYours")}</span>
+        {due && <span className={cx("ml-auto text-xs font-medium whitespace-nowrap", due.late ? "text-warning-ink font-semibold" : "text-muted")}>{due.text}</span>}
       </div>
-      <h2 className="text-lg leading-6 mt-2 flex items-center gap-2 min-w-0"><KindIcon kind={row.kind} width={18} height={18} className="text-muted flex-none" /><span className="truncate">{row.title}</span></h2>
-      <p className="text-sm text-muted mt-1 truncate">{row.text}</p>
-      <div className="flex items-center gap-2 mt-4 flex-wrap">
-        <LinkButton href={row.link} variant="primary">{verb(row)}</LinkButton>
-        {onLater && <Button variant="text" onClick={onLater}>{t("home.focus.later")}</Button>}
+      <h2 className="dh-t mt-2 flex items-center gap-2 min-w-0"><KindIcon kind={row.kind} width={17} height={17} className="text-muted flex-none" /><span className="truncate">{row.title}</span></h2>
+      <p className="text-[13px] text-muted mt-1 truncate">{row.text}</p>
+      <div className="flex items-center gap-2 mt-3.5 flex-wrap">
+        <LinkButton href={row.link} variant="primary" size="sm">{verb(row)}</LinkButton>
+        {onLater && <Button variant="text" size="sm" className="ml-auto" onClick={onLater}>{t("home.focus.later")}</Button>}
       </div>
     </Card>
   );
@@ -153,10 +160,10 @@ function FocusCard({ row, onLater }: { row: AttentionRow; onLater?: () => void }
 
 function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
-    <Link href={href} className="card pad flex items-center gap-3 hover:shadow-floating transition-shadow min-h-[64px]">
-      <span className="w-10 h-10 rounded-control grid place-items-center text-primary flex-none" style={{ background: "var(--color-primary-subtle)" }}>{icon}</span>
-      <span className="font-semibold text-sm">{label}</span>
-      <IconArrowRight width={16} height={16} className="ml-auto text-muted" />
+    <Link href={href} className="card flex items-center gap-3 px-4 py-3 hover:shadow-floating transition-shadow min-h-[56px]">
+      <span className="w-9 h-9 rounded-control grid place-items-center text-ink bg-subtle flex-none [&>svg]:w-[17px] [&>svg]:h-[17px]">{icon}</span>
+      <span className="font-semibold text-[13px]">{label}</span>
+      <IconArrowRight width={14} height={14} className="ml-auto text-faint" />
     </Link>
   );
 }
@@ -181,8 +188,8 @@ function SetupCard({ summary }: { summary: ReturnType<typeof usePortfolioSummary
       <ol className="px-[var(--card-padding)] pb-2 divide-y" style={{ borderColor: "var(--line)" }}>
         {steps.map((s, i) => (
           <li key={s.key}>
-            <Link href={s.href} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-canvas min-h-[52px]">
-              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success" : "text-primary")} style={{ background: s.done ? "var(--color-success-subtle)" : "var(--color-primary-subtle)" }}>{s.done ? <IconCheck /> : s.icon}</span>
+            <Link href={s.href} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-subtle min-h-[52px]">
+              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success-ink bg-success-subtle" : "text-ink bg-subtle")}>{s.done ? <IconCheck /> : s.icon}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{i + 1}. {s.title}</span>
                 <span className="block text-xs text-muted">{s.sub}</span>

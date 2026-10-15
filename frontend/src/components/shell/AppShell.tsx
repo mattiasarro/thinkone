@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMe } from "@/lib/queries/auth";
 import { isApiError } from "@/lib/api";
@@ -9,6 +9,7 @@ import { Spinner, ErrorState } from "@/components/ui/State";
 import { t } from "@/i18n";
 import { cx } from "@/lib/format";
 
+/** Demo shell (index.html): sidebar in the left column across both rows, topbar beside it, the page column below the topbar. */
 export function AppShell({ children }: { children: ReactNode }) {
   const me = useMe();
   const router = useRouter();
@@ -24,10 +25,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
-    try { setCollapsed(localStorage.getItem("t1.sb") === "1"); } catch { /* ignore */ }
+    try { setCollapsed(localStorage.getItem("thinkone_sbmin") === "1"); } catch { /* ignore */ }
   }, []);
+  useEffect(() => {
+    document.body.classList.toggle("nav-open", mobileOpen);
+    return () => document.body.classList.remove("nav-open");
+  }, [mobileOpen]);
   const toggleCollapsed = () => {
-    setCollapsed((c) => { try { localStorage.setItem("t1.sb", c ? "0" : "1"); } catch { /* ignore */ } return !c; });
+    setCollapsed((c) => { try { localStorage.setItem("thinkone_sbmin", c ? "0" : "1"); } catch { /* ignore */ } return !c; });
   };
 
   if (me.isLoading || (me.error && isApiError(me.error) && me.error.status === 401)) {
@@ -38,15 +43,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={cx("min-h-screen md:grid", collapsed ? "md:grid-cols-[76px_minmax(0,1fr)]" : "md:grid-cols-[248px_minmax(0,1fr)]")}>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] btn btn-primary">{t("common.skipToContent")}</a>
-      {mobileOpen && <button type="button" className="fixed inset-0 z-[29] md:hidden" style={{ background: "var(--color-scrim)" }} aria-label={t("nav.closeMenu")} onClick={() => setMobileOpen(false)} />}
-      <Sidebar me={me.data} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
-      <div className="min-w-0 flex flex-col min-h-screen">
-        <Topbar me={me.data} onOpenMobile={() => setMobileOpen(true)} />
-        <main id="main" tabIndex={-1} className="flex-1 min-w-0 outline-none" style={{ padding: "var(--page-gutter)" }}>
-          <div className="mx-auto w-full max-w-[1440px]">{children}</div>
-        </main>
+    <div className={cx("app", collapsed && "sb-min", mobileOpen && "nav-open")}>
+      <a href="#main" className="skip-link">{t("common.skipToContent")}</a>
+      {mobileOpen && <button type="button" className="nav-backdrop" tabIndex={-1} aria-label={t("nav.closeMenu")} onClick={() => setMobileOpen(false)} />}
+      <Topbar me={me.data} onOpenMobile={() => setMobileOpen(true)} />
+      <Suspense fallback={<aside className="sidebar" aria-hidden />}>
+        <Sidebar me={me.data} onCloseMobile={() => setMobileOpen(false)} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      </Suspense>
+      <div className="main">
+        <main id="main" tabIndex={-1} className="view outline-none">{children}</main>
       </div>
     </div>
   );

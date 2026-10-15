@@ -36,8 +36,8 @@ export function Modal({ open, onClose, title, sub, children, footer, wide }: { o
 
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-[40] flex items-end sm:items-center justify-center p-0 sm:p-6" style={{ background: "var(--color-scrim)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby="modal-title" className={cx("card rise w-full max-h-[92vh] flex flex-col rounded-b-none sm:rounded-b-[var(--radius-surface)]", wide ? "sm:max-w-3xl" : "sm:max-w-lg")} style={{ boxShadow: "var(--shadow-modal)" }}>
+    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-7" style={{ background: "var(--scrim-bg)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby="modal-title" className={cx("card rise w-full max-h-[92vh] flex flex-col rounded-b-none sm:rounded-[var(--r-xl)] overflow-hidden", wide ? "sm:max-w-3xl" : "sm:max-w-lg")} style={{ boxShadow: "var(--shadow-lg)", border: "none" }}>
         <header className="card-h">
           <div className="min-w-0">
             <h3 id="modal-title">{title}</h3>
@@ -46,7 +46,7 @@ export function Modal({ open, onClose, title, sub, children, footer, wide }: { o
           <button type="button" className="icon-btn" onClick={onClose} aria-label={t("common.close")} data-close><IconX /></button>
         </header>
         <div className="card-b overflow-y-auto flex-1 min-h-0">{children}</div>
-        {footer && <footer className="flex items-center justify-end gap-2 flex-wrap px-[var(--card-padding)] py-4 border-t" style={{ borderColor: "var(--line)" }}>{footer}</footer>}
+        {footer && <footer className="flex items-center justify-end gap-2 flex-wrap px-[var(--card-padding)] py-4 border-t" style={{ borderColor: "var(--line)", background: "var(--surface-soft)" }}>{footer}</footer>}
       </div>
     </div>,
     document.body,

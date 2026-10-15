@@ -22,9 +22,10 @@ const et = {
     ai: "AI", aiQ: "Küsi oma andmetelt",
     seaded: "Seaded", audit: "Sündmuslogi", openMenu: "Ava menüü", closeMenu: "Sulge menüü", collapse: "Tõmba menüü kokku", expand: "Ava menüü laiemaks", mainNav: "Põhinavigatsioon",
     company: "Ettevõte", switchAccount: "Vaheta kontot", newButton: "Uus", newQuote: "Pakkumine", newLease: "Leping",
+    theme: "Hele / tume vaade", themeDark: "Tume vaade", themeLight: "Hele vaade",
   },
   topbar: {
-    searchPlaceholder: "Otsi… lepingud · osapooled · pinnad", searchLabel: "Otsi", searching: "Otsin…", noSearchResults: "Vasteid ei leitud", askAi: "Küsi AI-lt: „{q}”",
+    searchPlaceholder: "Otsi või küsi… lepingud · osapooled · pinnad", send: "Küsi AI-lt (Enter)", searchLabel: "Otsi", searching: "Otsin…", noSearchResults: "Vasteid ei leitud", askAi: "Küsi AI-lt: „{q}”",
     notifications: "Teavitused", noNotifications: "Teavitusi pole", markRead: "Märgi loetuks", markAllRead: "Märgi kõik loetuks", unread: "{n} lugemata",
     userMenu: "Kasutajamenüü", logout: "Logi välja", settings: "Seaded", role: { admin: "Admin", operator: "Operaator", viewer: "Vaataja" },
   },

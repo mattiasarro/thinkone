@@ -1,11 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { t, tEnum } from "@/i18n";
 import { useDebounced, useClickOutside } from "@/lib/hooks";
 import { useSearch } from "@/lib/queries/portfolio";
-import { IconAi, IconSearch } from "@/components/ui/Icons";
+import { Glyph, IconAi, IconArrowUp, IconBuilding, IconCal, IconFile, IconUsers } from "@/components/ui/Icons";
 import { Spinner } from "@/components/ui/State";
 import { cx } from "@/lib/format";
 import type { SearchHit } from "@/types/api";
@@ -21,6 +20,14 @@ export function hitHref(h: SearchHit): string {
   }
 }
 
+function HitIcon({ type }: { type: string }) {
+  if (type === "party") return <IconUsers className="ic" />;
+  if (type === "key_date") return <IconCal className="ic" />;
+  if (type === "asset" || type === "space" || type === "property") return <IconBuilding className="ic" />;
+  return <IconFile className="ic" />;
+}
+
+/** The omnibox (demo v773): 32 px flat box with the ThinkOne glyph, ⌘K, results below; Enter with no result or the send button asks the AI. */
 export function SearchBox() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -42,17 +49,18 @@ export function SearchBox() {
 
   const hits = res.data ?? [];
   const go = (h: SearchHit) => { setOpen(false); setQ(""); router.push(hitHref(h)); };
+  const ask = () => { const text = q.trim(); if (!text) return; setOpen(false); setQ(""); router.push(`/app/ai?q=${encodeURIComponent(text)}`); };
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => Math.min(i + 1, hits.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter" && idx >= 0 && hits[idx]) go(hits[idx]);
-    else if (e.key === "Escape") setOpen(false);
+    else if (e.key === "Enter") { if (idx >= 0 && hits[idx]) go(hits[idx]); else ask(); }
+    else if (e.key === "Escape") { setOpen(false); input.current?.blur(); }
   };
 
   return (
-    <div ref={ref} className="relative w-full max-w-[560px]">
-      <div className="flex items-center gap-2 h-10 px-3 rounded-control border" style={{ borderColor: "var(--color-divider)", background: "var(--color-canvas)" }}>
-        <IconSearch width={16} height={16} className="text-muted flex-none" />
+    <div ref={ref} className="omni-wrap">
+      <div className="omni">
+        <span className="omni-mark" title={t("app.name")}><Glyph /></span>
         <input
           ref={input}
           value={q}
@@ -65,29 +73,30 @@ export function SearchBox() {
           aria-expanded={open && dq.length >= 2}
           aria-controls="search-results"
           aria-autocomplete="list"
-          className="flex-1 min-w-0 bg-transparent outline-none text-sm"
+          autoComplete="off"
         />
-        <kbd className="hidden sm:inline text-[11px] text-muted border rounded px-1" style={{ borderColor: "var(--color-divider)" }}>⌘K</kbd>
+        <kbd>⌘K</kbd>
+        <button type="button" className="omni-send" onClick={ask} title={t("topbar.send")} aria-label={t("topbar.send")}><IconArrowUp /></button>
       </div>
       {open && dq.trim().length >= 2 && (
-        <div id="search-results" role="listbox" className="drop rise left-0 right-0 max-h-[60vh] overflow-y-auto">
+        <div id="search-results" role="listbox" className="drop omni-pop rise">
           {res.isLoading ? (
-            <div className="flex items-center gap-2 p-3 text-sm text-muted"><Spinner /> {t("topbar.searching")}</div>
-          ) : hits.length === 0 ? (
-            <>
-              <div className="p-3 text-sm text-muted">{t("topbar.noSearchResults")}</div>
-              <Link href={`/app/ai?q=${encodeURIComponent(dq.trim())}`} className="drop-item" role="option" aria-selected={false} onClick={() => { setOpen(false); setQ(""); }}>
-                <IconAi width={16} height={16} className="text-muted flex-none" />
-                <span className="min-w-0 truncate font-medium">{t("topbar.askAi", { q: dq.trim() })}</span>
-              </Link>
-            </>
+            <div className="flex items-center gap-2 p-3 text-[12.5px] text-muted"><Spinner /> {t("topbar.searching")}</div>
           ) : (
-            hits.map((h, i) => (
-              <button key={`${h.entity_type}-${h.entity_id}`} type="button" role="option" aria-selected={i === idx} className={cx("drop-item", i === idx && "bg-canvas")} onMouseEnter={() => setIdx(i)} onClick={() => go(h)}>
-                <span className="pill flex-none">{tEnum("search.entity", h.entity_type)}</span>
-                <span className="min-w-0"><span className="block truncate font-medium">{h.title}</span>{h.subtitle && <span className="block text-xs text-muted truncate">{h.subtitle}</span>}</span>
+            <>
+              {hits.length > 0 && <div className="om-lbl">{t("topbar.searchLabel")}</div>}
+              {hits.length === 0 && <div className="p-3 text-[12.5px] text-muted">{t("topbar.noSearchResults")}</div>}
+              {hits.map((h, i) => (
+                <button key={`${h.entity_type}-${h.entity_id}`} type="button" role="option" aria-selected={i === idx} className={cx("om-row", i === idx && "sel")} onMouseEnter={() => setIdx(i)} onClick={() => go(h)}>
+                  <HitIcon type={h.entity_type} />
+                  <span className="tx"><span className="t">{h.title}</span><span className="s">{tEnum("search.entity", h.entity_type)}{h.subtitle ? ` · ${h.subtitle}` : ""}</span></span>
+                </button>
+              ))}
+              <button type="button" role="option" aria-selected={false} className="om-row om-ai" onClick={ask}>
+                <IconAi className="ic" />
+                <span className="tx"><span className="t">{t("topbar.askAi", { q: dq.trim() })}</span></span>
               </button>
-            ))
+            </>
           )}
         </div>
       )}

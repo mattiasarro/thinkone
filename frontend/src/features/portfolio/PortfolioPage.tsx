@@ -18,7 +18,7 @@ export function PortfolioPage() {
   return (
     <div className="grid gap-5">
       <PageHead title={t("portfolio.title")} sub={t("portfolio.sub")} />
-      <Tabs ariaLabel={t("portfolio.title")} active={tab} tabs={[
+      <Tabs variant="line" ariaLabel={t("portfolio.title")} active={tab} tabs={[
         { key: "lepingud", label: t("portfolio.tabs.contracts"), href: "/app/portfell?tab=lepingud" },
         { key: "pakkumised", label: t("portfolio.tabs.quotes"), href: "/app/portfell?tab=pakkumised" },
         { key: "esemed", label: t("portfolio.tabs.assets"), href: "/app/portfell?tab=esemed" },

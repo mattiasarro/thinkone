@@ -1,26 +1,38 @@
 "use client";
 import type { Me } from "@/types/api";
 import { t } from "@/i18n";
-import { IconMenu, IconPlus } from "@/components/ui/Icons";
+import { IconMenu, IconMoon, IconPlus, IconSun } from "@/components/ui/Icons";
 import { SearchBox } from "./SearchBox";
 import { NotificationsBell } from "./NotificationsBell";
 import { Popover } from "@/components/ui/Popover";
+import { useTheme } from "@/lib/theme";
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { NAV } from "./Sidebar";
+import { cx } from "@/lib/format";
 
+/** Topbar beside the sidebar (demo): crumb left, omnibox + „+ Uus” centred, theme switch and notifications right. */
 export function Topbar({ me, onOpenMobile }: { me: Me; onOpenMobile: () => void }) {
   const [newOpen, setNewOpen] = useState(false);
+  const [theme, toggleTheme] = useTheme();
+  const pathname = usePathname();
+  const section = NAV.find((n) => ("exact" in n && n.exact ? pathname === n.href : pathname === n.href || pathname.startsWith(n.href + "/")))
+    ?? (pathname.startsWith("/app/seaded") ? { label: "nav.seaded" as const } : pathname.startsWith("/app/audit") ? { label: "nav.audit" as const } : null);
   return (
-    <header className="sticky top-0 z-[20] h-16 flex items-center gap-3 px-4 md:px-6 bg-surface border-b" style={{ borderColor: "var(--line)" }}>
-      <button type="button" className="icon-btn md:hidden" onClick={onOpenMobile} aria-label={t("nav.openMenu")} aria-controls="sidebar"><IconMenu /></button>
-      <div className="flex-1 min-w-0 flex items-center justify-center gap-2">
+    <header className="topbar">
+      <div className="top-left">
+        <button type="button" className="mobile-nav-toggle" onClick={onOpenMobile} aria-label={t("nav.openMenu")} aria-controls="sidebar"><IconMenu /></button>
+        <div className="crumb">{t("app.name")}{section && <><b>/</b>{t(section.label)}</>}</div>
+      </div>
+      <div className="omni-center">
         <SearchBox />
-        <Popover open={newOpen} onClose={() => setNewOpen(false)} trigger={
-          <button type="button" className="btn btn-primary btn-sm h-10 px-3" onClick={() => setNewOpen((o) => !o)} aria-haspopup="menu" aria-expanded={newOpen}>
-            <IconPlus width={16} height={16} /><span className="hidden sm:inline">{t("nav.newButton")}</span>
+        <Popover open={newOpen} onClose={() => setNewOpen(false)} className="loo-pop" trigger={
+          <button type="button" className={cx("btn btn-primary btn-sm btn-loo", newOpen && "open")} onClick={() => setNewOpen((o) => !o)} aria-haspopup="menu" aria-expanded={newOpen} title={t("nav.newButton")}>
+            <IconPlus /><span>{t("nav.newButton")}</span>
           </button>
         }>
-          <div role="menu" className="min-w-[200px]">
+          <div role="menu">
             <Link role="menuitem" className="drop-item" href="/app/portfell/pakkumine/uus" onClick={() => setNewOpen(false)}>{t("nav.newQuote")}</Link>
             <Link role="menuitem" className="drop-item" href="/app/portfell/leping/uus" onClick={() => setNewOpen(false)}>{t("nav.newLease")}</Link>
             <Link role="menuitem" className="drop-item" href="/app/portfell/objekt/uus" onClick={() => setNewOpen(false)}>{t("home.addAsset")}</Link>
@@ -29,7 +41,10 @@ export function Topbar({ me, onOpenMobile }: { me: Me; onOpenMobile: () => void 
           </div>
         </Popover>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="top-actions">
+        <button type="button" className="icon-btn theme-btn" onClick={toggleTheme} title={t("nav.theme")} aria-label={t("nav.theme")}>
+          {theme === "dark" ? <IconSun /> : <IconMoon />}
+        </button>
         <NotificationsBell />
         <span className="sr-only">{me.name}</span>
       </div>

@@ -91,10 +91,10 @@ export function OverviewPage() {
               const active = k.key === tab;
               return (
                 <button key={k.key} type="button" role="tab" aria-selected={active} onClick={() => setTab(k.key)}
-                  className={cx("card pad text-left min-w-0 transition-shadow hover:shadow-floating border-2", active ? "border-ink" : "border-transparent")}>
-                  <div className="overline">{k.label}</div>
-                  <div className="font-heading text-[22px] leading-7 md:text-[26px] md:leading-8 font-semibold mt-1 tabular-nums text-ink break-words">{loading ? "…" : k.value}</div>
-                  <div className="text-muted text-xs mt-1 leading-4">{k.sub}</div>
+                  className={cx("card yl-k", active && "on")}>
+                  <div className="l">{k.label}</div>
+                  <div className="n tabular-nums break-words">{loading ? "…" : k.value}</div>
+                  <div className="d">{k.sub}</div>
                   <Strip values={data.strip} placeholder={!data.hasHistory} active={active} />
                 </button>
               );

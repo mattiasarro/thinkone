@@ -37,10 +37,10 @@ export function PageHead({ title, sub, actions }: { title: ReactNode; sub?: Reac
 export function Stat({ label, value, sub, tone }: { label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: "primary" | "warning" | "error" | "success" }) {
   const color = tone === "primary" ? "text-primary" : tone === "warning" ? "text-warning" : tone === "error" ? "text-error" : tone === "success" ? "text-success" : "text-ink";
   return (
-    <div className="card pad min-w-0">
-      <div className="overline">{label}</div>
-      <div className={cx("font-heading text-[32px] leading-10 font-semibold mt-1 tabular-nums", color)}>{value}</div>
-      {sub && <div className="text-muted text-sm mt-1">{sub}</div>}
+    <div className="card yl-k cursor-default">
+      <div className="l">{label}</div>
+      <div className={cx("n tabular-nums", color)}>{value}</div>
+      {sub && <div className="d">{sub}</div>}
     </div>
   );
 }

@@ -41,7 +41,7 @@ export const Composer = forwardRef<ComposerHandle, { value: string; onChange: (v
           className="flex-1 min-w-0 resize-none bg-transparent outline-none text-[15px] leading-6 py-2 max-h-[160px] disabled:text-muted"
         />
         <button type="submit" aria-label={t("ai.composer.send")} title={t("ai.composer.send")} disabled={!canSend} aria-busy={busy || undefined}
-          className={cx("w-10 h-10 rounded-full grid place-items-center flex-none transition-colors", canSend ? "bg-primary text-white hover:bg-primary-hover" : "bg-subtle text-muted cursor-not-allowed")}>
+          className={cx("w-10 h-10 rounded-full grid place-items-center flex-none transition-colors", canSend ? "bg-accent text-accent-on hover:bg-primary-hover" : "bg-subtle text-muted cursor-not-allowed")}>
           {busy ? <span className="spinner !w-4 !h-4 !border-divider !border-t-muted" /> : <IconArrowUp width={18} height={18} />}
         </button>
       </form>

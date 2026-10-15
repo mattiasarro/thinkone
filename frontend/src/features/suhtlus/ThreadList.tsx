@@ -70,7 +70,7 @@ function Row({ th, selected, onSelect }: { th: Thread; selected: boolean; onSele
 
 export function Avatar({ name, unread, large }: { name: string; unread?: boolean; large?: boolean }) {
   return (
-    <span aria-hidden="true" className={cx("rounded-full grid place-items-center font-bold flex-none", large ? "w-11 h-11 text-base" : "w-9 h-9 text-sm", unread ? "text-white" : "text-ink")}
+    <span aria-hidden="true" className={cx("rounded-full grid place-items-center font-bold flex-none", large ? "w-11 h-11 text-base" : "w-9 h-9 text-sm", unread ? "text-onink" : "text-ink")}
       style={{ background: unread ? "var(--color-primary)" : "var(--color-surface-subtle)" }}>
       {initials(name)}
     </span>

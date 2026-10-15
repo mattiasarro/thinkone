@@ -18,7 +18,7 @@ export function Conversation({ messages, threadId, contextContractId, liveId, on
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center text-center pt-12 pb-6 rise">
-        <span aria-hidden="true" className="w-[54px] h-[54px] rounded-[16px] grid place-items-center text-white" style={{ background: "var(--color-text)", boxShadow: "0 0 32px -4px var(--color-primary-ring)" }}><IconAi width={24} height={24} /></span>
+        <span aria-hidden="true" className="w-[54px] h-[54px] rounded-[16px] grid place-items-center text-onink" style={{ background: "var(--ink-grad)", boxShadow: "0 0 32px -4px var(--ring)" }}><IconAi width={24} height={24} /></span>
         <h2 className="mt-5 mb-2 text-[26px] leading-tight font-heading">{t("ai.emptyTitle")}</h2>
         <p className="m-0 max-w-[54ch] text-sm leading-relaxed text-muted">{t("ai.emptySub")}</p>
         <div className="grid sm:grid-cols-2 gap-2.5 w-full max-w-[640px] mt-7">

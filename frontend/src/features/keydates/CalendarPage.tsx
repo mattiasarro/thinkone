@@ -142,7 +142,7 @@ function MonthView({ cursor, items, onEdit }: { cursor: Date; items: KeyDate[]; 
           const iso = d ? isoDay(new Date(cursor.getFullYear(), cursor.getMonth(), d)) : "";
           return (
             <div key={i} className={cx("min-h-[72px] md:min-h-[96px] border-b border-r p-1 text-xs", !d && "bg-canvas")} style={{ borderColor: "var(--line)" }}>
-              {d && <div className={cx("w-6 h-6 grid place-items-center rounded-full mb-1 font-semibold", iso === todayIso && "bg-primary text-white")}>{d}</div>}
+              {d && <div className={cx("w-6 h-6 grid place-items-center rounded-full mb-1 font-semibold", iso === todayIso && "bg-accent text-accent-on")}>{d}</div>}
               {d && (byDay.get(d) ?? []).map((it) => (
                 <button key={it.id} type="button" onClick={() => onEdit(it)} className="block w-full text-left truncate rounded px-1 py-0.5 mb-0.5 text-[11px] font-medium hover:opacity-80" style={{ background: "var(--color-primary-subtle)", color: "var(--color-primary)" }} title={`${it.title}${it.contract ? ` — ${it.contract.number ?? it.contract.title}` : ""}`}>
                   {it.title}

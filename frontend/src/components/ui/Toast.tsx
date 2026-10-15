@@ -28,10 +28,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={ctx}>
       {children}
-      <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[50] grid gap-2 justify-items-center pointer-events-none px-4 w-full max-w-[560px]" aria-live="polite" aria-relevant="additions">
+      <div className="fixed left-1/2 -translate-x-1/2 bottom-[26px] z-[200] grid gap-2 justify-items-center pointer-events-none px-4 w-full max-w-[600px]" aria-live="polite" aria-relevant="additions">
         {items.map((tst) => (
-          <button key={tst.id} type="button" onClick={() => dismiss(tst.id)} className={cx("card pointer-events-auto flex gap-3 items-start text-left px-4 py-3 text-sm font-medium max-w-full transition-all", tst.leaving ? "opacity-0 translate-y-2" : "rise")} style={{ boxShadow: "var(--shadow-floating)" }}>
-            <span className={cx("mt-0.5", tst.kind === "success" ? "text-success" : tst.kind === "error" ? "text-error" : "text-info")}>
+          <button key={tst.id} type="button" onClick={() => dismiss(tst.id)} className={cx("toastx pointer-events-auto", tst.kind === "success" && "ok", tst.kind === "error" && "err", tst.leaving ? "out" : "rise")}>
+            <span className="tic">
               {tst.kind === "success" ? <IconCheck width={16} height={16} /> : tst.kind === "error" ? <IconAlert width={16} height={16} /> : <IconInfo width={16} height={16} />}
             </span>
             <span className="break-words">{tst.text}</span>
