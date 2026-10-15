@@ -300,7 +300,8 @@ async def _sync_key_dates(session: AsyncSession, actor: Actor, c: Contract, d: d
             if kd.due_date != due:
                 kd.due_date = due
         for due in dues[len(have):]:
-            await add_key_date(session, actor, contract_id=c.id, kind_code=kind, due_date=due, provenance={"generated": True})
+            prov = {"generated": True, **({"recurs_months": int(d["indexation"].get("frequency_months") or 12)} if kind == "indexation" else {})}
+            await add_key_date(session, actor, contract_id=c.id, kind_code=kind, due_date=due, provenance=prov)
         for kd in have[len(dues):]:
             kd.deleted_at = datetime.now(UTC)
     for kind, have in by_kind.items():

@@ -246,7 +246,11 @@ async def commit_import(
     for kd in prop.key_dates:
         prov = {"page": kd.page, "char_start": kd.char_start, "confidence": kd.confidence, "import_job_id": str(job.id)}
         # indexation recurs every year of the term — the calendar needs every occurrence, not just the first
-        dues = recurrences(kd.date, until=prop.contract.end_date) if kd.kind == "indexation" else [kd.date]
+        if kd.kind == "indexation":
+            prov["recurs_months"] = 12  # the daily scan keeps an open-ended series filled up to the horizon
+            dues = recurrences(kd.date, until=prop.contract.end_date)
+        else:
+            dues = [kd.date]
         for i, due in enumerate(dues):
             await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=due, title=kd.title,
                                provenance=prov if i == 0 else {**prov, "recurrence_of": kd.date.isoformat(), "n": i})

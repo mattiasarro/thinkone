@@ -22,19 +22,57 @@ def add_months(d: date, months: int) -> date:
     return d.replace(year=y, month=m, day=min(d.day, calendar.monthrange(y, m)[1]))
 
 
-def recurrences(first: date, *, until: date | None, every_months: int = 12, default_count: int = 5, cap: int = 40) -> list[date]:
-    """Every occurrence of a recurring key date (indexation): ``first``, then every ``every_months`` up to ``until``
-    (the contract end); with no end known, ``default_count`` occurrences. Capped so a bad term cannot flood the calendar."""
+RECUR_HORIZON_MONTHS = 24  # how far ahead an open-ended series is kept filled (the daily scan extends it)
+RECUR_CAP = 40
+
+
+def recurrences(first: date, *, until: date | None, every_months: int = 12, today: date | None = None, cap: int = RECUR_CAP) -> list[date]:
+    """Every occurrence of a recurring key date (indexation): ``first``, then every ``every_months`` up to ``until`` (the
+    contract end). With no end known, up to the rolling horizon — ``extend_recurrences`` (daily scan) adds the rest as time
+    passes. Capped so a bad term cannot flood the calendar."""
+    limit = until if until is not None else add_months(today or date.today(), RECUR_HORIZON_MONTHS)
     out = [first]
     while len(out) < cap:
         nxt = add_months(out[-1], every_months)
-        if until is not None:
-            if nxt > until:
-                break
-        elif len(out) >= default_count:
+        if nxt > limit:
             break
         out.append(nxt)
     return out
+
+
+TERMINAL_STATUSES = {"ended", "cancelled", "early_terminated", "archived"}
+
+
+async def extend_recurrences(session: AsyncSession, actor: Actor, today: date | None = None) -> int:
+    """Heartbeat for recurring series (indexation): on every live contract, keep occurrences generated up to the rolling
+    horizon (or the contract end). A series is any (contract, kind) whose rows carry ``recurs_months`` in provenance; the
+    latest row — deleted ones included, so an operator's deletion is not re-added — says where it has reached. Returns the
+    number of key dates added."""
+    today = today or date.today()
+    horizon = add_months(today, RECUR_HORIZON_MONTHS)
+    stmt = (select(KeyDate, Contract).join(Contract, Contract.id == KeyDate.subject_id)
+            .where(KeyDate.provenance.has_key("recurs_months"), Contract.deleted_at.is_(None), Contract.status.not_in(TERMINAL_STATUSES))
+            .order_by(KeyDate.due_date))
+    series: dict[tuple[uuid.UUID, str], tuple[KeyDate, Contract]] = {}
+    for kd, c in (await session.execute(stmt)).all():
+        series[(kd.subject_id, kd.kind_code)] = (kd, c)  # ordered by due date → the last one wins
+    added = 0
+    for (contract_id, kind), (latest, c) in series.items():
+        prov = latest.provenance or {}
+        every = int(prov.get("recurs_months") or 12)
+        if every < 1:
+            continue
+        limit = min(horizon, c.end_date) if c.end_date else horizon
+        due, n = latest.due_date, 0
+        while n < RECUR_CAP:
+            due = add_months(due, every)
+            if due > limit:
+                break
+            await add_key_date(session, actor, contract_id=contract_id, kind_code=kind, due_date=due, title=latest.title,
+                               provenance={"recurs_months": every, "extended": True, **({"generated": True} if prov.get("generated") else {})})
+            added += 1
+            n += 1
+    return added
 
 
 async def kinds(session: AsyncSession, account_id: uuid.UUID) -> list[KeyDateKind]:
@@ -111,6 +149,7 @@ async def scan_and_notify(session: AsyncSession, actor: Actor, today: date | Non
     from app.domain.notify import notify_account_users
 
     today = today or date.today()
+    await extend_recurrences(session, actor, today)
     stmt = select(KeyDate, Contract).outerjoin(Contract, Contract.id == KeyDate.subject_id).where(
         KeyDate.deleted_at.is_(None), KeyDate.fired_at.is_(None), KeyDate.due_date >= today - timedelta(days=1))
     fired = 0

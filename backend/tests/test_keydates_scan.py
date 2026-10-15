@@ -49,3 +49,53 @@ async def test_scan_fires_once_and_health_flags_dates(client: AsyncClient, admin
     inbox = (await client.get("/api/v1/notifications")).json()
     assert any(n["kind"] == "key_date.end" for n in inbox)
     assert str(far_id)  # silence unused
+
+
+async def test_recurring_series_extend_on_the_daily_scan(client: AsyncClient, admin: dict):
+    """An open-ended indexation series is kept filled to the rolling horizon by the scan; the contract end bounds it;
+    an operator's deletion is not re-added; ended contracts are left alone."""
+    from app.domain.contracts import create_contract
+    from app.domain.events import Actor
+    from app.domain.keydates import (
+        RECUR_HORIZON_MONTHS,
+        add_key_date,
+        add_months,
+        delete_key_date,
+        extend_recurrences,
+        scan_and_notify,
+    )
+    from app.infra.db import tenant_session
+    from app.models.contracts import KeyDate
+
+    aid = uuid.UUID(admin["account"]["id"])
+    actor = Actor(account_id=aid, user_id=uuid.UUID(admin["user_id"]), role="admin")
+    today = date.today()
+    first = today - timedelta(days=100)
+    async with tenant_session(aid) as s:
+        open_ended = await create_contract(s, actor, type_code="lease", title="Tähtajatu", number="LEP-2026-010", status="active", origin="imported", category="lease")
+        bounded = await create_contract(s, actor, type_code="lease", title="Tähtajaline", number="LEP-2026-011", status="active", origin="imported",
+                                        category="lease", end_date=add_months(first, 15))
+        over = await create_contract(s, actor, type_code="lease", title="Lõppenud", number="LEP-2026-012", status="ended", origin="imported", category="lease")
+        for c in (open_ended, bounded, over):
+            await add_key_date(s, actor, contract_id=c.id, kind_code="indexation", due_date=first, title="Indekseerimine", provenance={"recurs_months": 12})
+        await add_key_date(s, actor, contract_id=open_ended.id, kind_code="end", due_date=today + timedelta(days=900))  # not a series: untouched
+        ids = (open_ended.id, bounded.id, over.id)
+
+    async def dues(s, cid):
+        return sorted(k.due_date for k in (await s.execute(select(KeyDate).where(KeyDate.subject_id == cid, KeyDate.kind_code == "indexation", KeyDate.deleted_at.is_(None)))).scalars())
+
+    async with tenant_session(aid) as s:
+        added = await extend_recurrences(s, Actor.system(aid), today=today)
+        assert added == 3  # open-ended: +12m, +24m (≤ horizon); bounded: +12m only (15-month term); ended: none
+        assert await dues(s, ids[0]) == [first, add_months(first, 12), add_months(first, 24)]
+        assert add_months(first, 24) <= add_months(today, RECUR_HORIZON_MONTHS) < add_months(first, 36)
+        assert await dues(s, ids[1]) == [first, add_months(first, 12)]
+        assert await dues(s, ids[2]) == [first]
+        assert await extend_recurrences(s, Actor.system(aid), today=today) == 0  # idempotent
+        # the operator removes the last occurrence: the scan does not put it back
+        last = next(k for k in (await s.execute(select(KeyDate).where(KeyDate.subject_id == ids[0], KeyDate.due_date == add_months(first, 24)))).scalars())
+        await delete_key_date(s, actor, last.id)
+        assert await extend_recurrences(s, Actor.system(aid), today=today) == 0
+        # a year later the horizon has moved: the next occurrence appears (via the daily scan entry point)
+        await scan_and_notify(s, Actor.system(aid), today=add_months(today, 12))
+        assert await dues(s, ids[0]) == [first, add_months(first, 12), add_months(first, 36)]
