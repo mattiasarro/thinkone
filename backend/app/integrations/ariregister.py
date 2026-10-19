@@ -46,6 +46,7 @@ class CompanyRecord:
     phone: str | None = None
     representatives: list[Representative] = field(default_factory=list)
     raw: dict[str, Any] | None = None
+    postal_code: str | None = None
 
 
 class Ariregister(Protocol):
@@ -96,7 +97,7 @@ class PublicAriregister:
             log.warning("ariregister_lookup_failed", backend="public", query=query, error=str(e)[:200])
             return []
         return [CompanyRecord(name=row.get("name", ""), registry_code=str(row.get("reg_code", "")),
-                              address=row.get("legal_address"), status=row.get("status"), raw=row) for row in data]
+                              address=row.get("legal_address"), postal_code=row.get("zip_code") or None, status=row.get("status"), raw=row) for row in data]
 
     async def detail(self, registry_code: str) -> CompanyRecord | None:
         code = registry_code.strip()
@@ -159,7 +160,7 @@ def parse_simple(xml_text: str) -> list[CompanyRecord]:
         address = _t(addr, "aadress_ads__ads_normaliseeritud_taisaadress") or ", ".join(p for p in (street, area) if p) or None
         code = _t(item, "ariregistri_kood") or ""
         out.append(CompanyRecord(
-            name=_t(item, "evnimi") or "", registry_code=code, address=address, status=_t(item, "staatus_tekstina"),
+            name=_t(item, "evnimi") or "", registry_code=code, address=address, postal_code=_t(addr, "indeks_ettevotja_aadressis"), status=_t(item, "staatus_tekstina"),
             legal_form=_t(item, "oiguslik_vorm_tekstina"),
             raw={"source": "rik_xml", "registry_code": code, "name": _t(item, "evnimi"), "legal_form_code": _t(item, "oiguslik_vorm"),
                  "status_code": _t(item, "staatus"), "region": _t(item, "piirkond_tekstina"), "first_registered": _date(_t(item, "esmakande_aeg")),
@@ -213,7 +214,7 @@ def parse_detail(xml_text: str) -> CompanyRecord | None:
     report = next(iter(_children(y, "info_majandusaasta_aruannetest")), None)
 
     return CompanyRecord(
-        name=_t(item, "nimi") or "", registry_code=code, address=address, vat_number=_t(item, "kmkr_number"),
+        name=_t(item, "nimi") or "", registry_code=code, address=address, postal_code=addresses[0]["postal_code"] if addresses else None, vat_number=_t(item, "kmkr_number"),
         status=_t(y, "staatus_tekstina"), legal_form=_t(y, "oiguslik_vorm_tekstina"), email=email, phone=phone, representatives=reps,
         raw={"source": "rik_xml", "registry_code": code, "name": _t(item, "nimi"), "vat_number": _t(item, "kmkr_number"),
              "legal_form_code": _t(y, "oiguslik_vorm"), "legal_form": _t(y, "oiguslik_vorm_tekstina"), "status_code": _t(y, "staatus"),

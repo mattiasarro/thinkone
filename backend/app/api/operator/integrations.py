@@ -23,6 +23,7 @@ class CompanyLookupOut(BaseModel):
     name: str
     registry_code: str
     address: str | None = None
+    postal_code: str | None = None
     vat_number: str | None = None
     status: str | None = None
     legal_form: str | None = None
@@ -57,7 +58,7 @@ async def ariregister_detail(registry_code: str) -> CompanyLookupOut:
 
 
 def _company_out(r: CompanyRecord) -> CompanyLookupOut:
-    return CompanyLookupOut(name=r.name, registry_code=r.registry_code, address=r.address, vat_number=r.vat_number, status=r.status,
+    return CompanyLookupOut(name=r.name, registry_code=r.registry_code, address=r.address, postal_code=r.postal_code, vat_number=r.vat_number, status=r.status,
                             legal_form=r.legal_form, email=r.email, phone=r.phone,
                             representatives=[RepresentativeOut(name=p.name, role=p.role, role_code=p.role_code, since=p.since) for p in r.representatives])
 

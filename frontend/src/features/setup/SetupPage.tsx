@@ -14,7 +14,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 import { Dropzone } from "@/components/ui/FileInput";
 import { Spinner, Loading } from "@/components/ui/State";
-import { AriregisterSearch } from "@/components/ui/AriregisterSearch";
+import { AriregisterSearch, hitAddress } from "@/components/ui/AriregisterSearch";
 import { useToast } from "@/components/ui/Toast";
 import { IconAlert, IconArrowLeft, IconArrowRight, IconBuilding, IconCheck, IconChevronRight, IconGrid, IconInfo, IconLock, IconPlus, IconSearch, IconUpload } from "@/components/ui/Icons";
 import { useSetupSteps, type SetupStep } from "./useSetupSteps";
@@ -175,8 +175,6 @@ function Chips({ label, items }: { label?: string; items: { t: string; s?: strin
 function ObjRow({ href, icon, title, sub }: { href: string; icon: ReactNode; title: string; sub: string }) {
   return <Link href={href} className="al-obj-r"><span className="al-valik-ik">{icon}</span><span className="al-pick-t"><b>{title}</b><small>{sub}</small></span><IconChevronRight /></Link>;
 }
-// Registry addresses run county → parish → village → street; read street first (demo `alAadress`).
-const streetFirst = (a: string | null | undefined) => (a && /maakond/i.test(a.split(",")[0] ?? "") ? a.split(",").map((x) => x.trim()).reverse().join(", ") : a ?? "");
 const REGISTERED = new Set(["R", "registrisse kantud"]);
 
 /* --- 1 · company from äriregister ----------------------------------------------------------------------------- */
@@ -192,7 +190,7 @@ function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }
   const ok = manual ? name.trim().length > 0 : !!hit;
   const confirm = async () => {
     const body = manual ? { name: name.trim(), registry_code: code.trim() || null, address: address.trim() || null, vat_number: null, email: null, phone: null, accent_color: null }
-      : { name: hit!.name, registry_code: hit!.registry_code, address: streetFirst(hit!.address) || null, vat_number: hit!.vat_number, email: hit!.email, phone: hit!.phone, accent_color: null };
+      : { name: hit!.name, registry_code: hit!.registry_code, address: hitAddress(hit!) || null, vat_number: hit!.vat_number, email: hit!.email, phone: hit!.phone, accent_color: null };
     try { await save.mutateAsync(body); toast.success(t("setup.company.confirmed", { name: body.name })); onDone(); } catch (e) { toast.error(errorMessage(e)); }
   };
   const registered = !hit?.status || REGISTERED.has(hit.status) || REGISTERED.has(hit.status.toLowerCase());
@@ -205,17 +203,17 @@ function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }
             <div className="grid sm:grid-cols-2 gap-x-4"><Input label={t("setup.company.registryCode")} value={code} onChange={(e) => setCode(e.target.value)} /><Input label={t("setup.company.address")} value={address} onChange={(e) => setAddress(e.target.value)} /></div>
             <div><button type="button" className="steplink" onClick={() => setManual(false)}>{t("settings.companies.searchRegistry")}</button></div>
           </div>
-        ) : hit ? (
-          <Picked title={hit.name} sub={hit.registry_code} pill={hit.status ? <span className={cx("al-seis", registered ? "green" : "amber")}>{registered ? t("setup.company.status_registered") : hit.status}</span> : undefined}
-            actions={<><button type="button" className="steplink" onClick={() => setHit(null)}>{t("setup.pickOther")}</button><a className="steplink" href={`https://ariregister.rik.ee/est/company/${hit.registry_code}`} target="_blank" rel="noopener noreferrer">{t("setup.company.openRegistry")}</a></>}>
-            <div className="overline">{t("setup.company.knows")}</div>
-            <KV rows={[[t("setup.company.address"), streetFirst(hit.address) || "—"], ...(hit.legal_form ? [[t("setup.company.legalForm"), hit.legal_form.toLowerCase()] as [string, ReactNode]] : []), ...(hit.vat_number ? [[t("setup.company.vat"), hit.vat_number, true] as [string, ReactNode, boolean]] : []), [t("setup.company.source"), `${t("setup.company.sourceValue")} · ${fmtDate(new Date())}`]]} />
-            {!registered && <div className="al-hoiatus"><IconAlert /><span>{t("setup.company.statusWarn", { status: (hit.status ?? "").toLowerCase() })}</span></div>}
-          </Picked>
         ) : (
           <>
-            <AriregisterSearch id="al-reg" variant="setup" onPick={pick} examples={REG_EXAMPLES} examplesLabel={t("setup.company.examples")} />
-            <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
+            <AriregisterSearch id="al-reg" variant="setup" onPick={pick} picked={!!hit} onQuery={() => setHit(null)} examples={REG_EXAMPLES} examplesLabel={t("setup.company.examples")} />
+            {hit ? (
+              <Picked title={hit.name} sub={hit.registry_code} pill={hit.status ? <span className={cx("al-seis", registered ? "green" : "amber")}>{registered ? t("setup.company.status_registered") : hit.status}</span> : undefined}
+                actions={<><button type="button" className="steplink" onClick={() => { setHit(null); document.getElementById("al-reg")?.focus(); }}>{t("setup.pickOther")}</button><a className="steplink" href={`https://ariregister.rik.ee/est/company/${hit.registry_code}`} target="_blank" rel="noopener noreferrer">{t("setup.company.openRegistry")}</a></>}>
+                <div className="overline">{t("setup.company.knows")}</div>
+                <KV rows={[[t("setup.company.address"), hitAddress(hit) || "—"], ...(hit.legal_form ? [[t("setup.company.legalForm"), hit.legal_form.toLowerCase()] as [string, ReactNode]] : []), ...(hit.vat_number ? [[t("setup.company.vat"), hit.vat_number, true] as [string, ReactNode, boolean]] : []), [t("setup.company.source"), `${t("setup.company.sourceValue")} · ${fmtDate(new Date())}`]]} />
+                {!registered && <div className="al-hoiatus"><IconAlert /><span>{t("setup.company.statusWarn", { status: (hit.status ?? "").toLowerCase() })}</span></div>}
+              </Picked>
+            ) : <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>}
           </>
         )}
       </Body>
@@ -271,7 +269,7 @@ function BuildingForm({ company, existing, goCompany, onDone, later }: { company
   };
   // „Näiteks”: the company's own street address is the likeliest first building (demo `alEhrResHTML`)
   const street = (company.address ?? "").split(",")[0]?.trim();
-  const fill = (v: string) => { setQ(v); input.current?.focus(); };
+  const fill = (v: string) => { setQ(v); setHit(null); input.current?.focus(); };
   const examples = street ? [{ t: street, s: t("setup.building.companyAddress"), on: () => fill(street) }] : [];
   const hits = (ehr.data ?? []).slice(0, 8);
   const m2 = (v: number | null | undefined) => (v != null ? `${fmtNum(v)} m²` : "—");
@@ -284,34 +282,38 @@ function BuildingForm({ company, existing, goCompany, onDone, later }: { company
             <Input label={t("setup.building.address")} required value={address} onChange={(e) => setAddress(e.target.value)} />
             <div><button type="button" className="steplink" onClick={() => setManual(false)}>{t("assets.ehrSearch")}</button></div>
           </div>
-        ) : hit ? (
-          <Picked title={hit.address} sub={`EHR ${hit.ehr_code}`} actions={<button type="button" className="steplink" onClick={() => setHit(null)}>{t("setup.pickOther")}</button>}>
-            <div className="overline">{t("setup.building.knows")}</div>
-            <KV rows={[[t("setup.building.useType"), hit.use_type || "—"], [t("setup.building.footprint"), m2(hit.footprint_m2), true], [t("setup.building.netArea"), m2(hit.net_area_m2), true], [t("setup.building.floors"), hit.floors ?? "—", true], [t("setup.building.buildYear"), hit.build_year ?? "—", true]]} />
-            <Input label={t("setup.building.name")} required value={name} onChange={(e) => setName(e.target.value)} className="!mb-0" />
-          </Picked>
         ) : (
           <>
             <div className="al-otsi">
               <span className="al-otsi-ik"><IconSearch /></span>
-              <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.building.placeholder")} aria-label={t("setup.building.placeholder")} autoComplete="off" spellCheck={false} autoFocus />
+              <input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setHit(null); }} placeholder={t("setup.building.placeholder")} aria-label={t("setup.building.placeholder")} autoComplete="off" spellCheck={false} autoFocus />
               <span className="al-otsi-src">{ehr.isFetching && <Spinner />}{t("setup.building.source")}</span>
             </div>
-            <div className="al-res" aria-live="polite">
-              {dq.length < 2 ? (examples.length > 0 && <Chips label={t("setup.building.examples")} items={examples} />)
-                : ehr.isLoading ? null
-                : hits.length === 0 ? <Empty title={t("setup.building.noResults")} sub={examples.length ? t("setup.building.noResultsSub") : undefined}>{examples.length > 0 && <Chips items={examples} />}</Empty>
-                : hits.map((h) => {
-                  const own = taken.has(h.ehr_code);
-                  return (
-                    <button key={h.ehr_code} type="button" className="al-pick" disabled={own} onClick={() => pickHit(h)}>
-                      <span className="al-pick-t"><b>{h.address}</b><small>{[h.use_type, h.build_year, own && t("setup.building.inPortfolio")].filter(Boolean).join(" · ") || "—"}</small></span>
-                      <span className="al-pick-r"><span className="mono">EHR {h.ehr_code}</span></span>
-                    </button>
-                  );
-                })}
-            </div>
-            <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
+            {hit ? (
+              <Picked title={hit.address} sub={`EHR ${hit.ehr_code}`} actions={<button type="button" className="steplink" onClick={() => { setHit(null); input.current?.focus(); }}>{t("setup.pickOther")}</button>}>
+                <div className="overline">{t("setup.building.knows")}</div>
+                <KV rows={[[t("setup.building.useType"), hit.use_type || "—"], [t("setup.building.footprint"), m2(hit.footprint_m2), true], [t("setup.building.netArea"), m2(hit.net_area_m2), true], [t("setup.building.floors"), hit.floors ?? "—", true], [t("setup.building.buildYear"), hit.build_year ?? "—", true]]} />
+                <Input label={t("setup.building.name")} required value={name} onChange={(e) => setName(e.target.value)} />
+              </Picked>
+            ) : (
+              <>
+                <div className="al-res" aria-live="polite">
+                  {dq.length < 2 ? (examples.length > 0 && <Chips label={t("setup.building.examples")} items={examples} />)
+                    : ehr.isLoading ? null
+                    : hits.length === 0 ? <Empty title={t("setup.building.noResults")} sub={examples.length ? t("setup.building.noResultsSub") : undefined}>{examples.length > 0 && <Chips items={examples} />}</Empty>
+                    : hits.map((h) => {
+                      const own = taken.has(h.ehr_code);
+                      return (
+                        <button key={h.ehr_code} type="button" className="al-pick" disabled={own} onClick={() => pickHit(h)}>
+                          <span className="al-pick-t"><b>{h.address}</b><small>{[h.use_type, h.build_year, own && t("setup.building.inPortfolio")].filter(Boolean).join(" · ") || "—"}</small></span>
+                          <span className="al-pick-r"><span className="mono">EHR {h.ehr_code}</span></span>
+                        </button>
+                      );
+                    })}
+                </div>
+                <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
+              </>
+            )}
           </>
         )}
       </Body>
