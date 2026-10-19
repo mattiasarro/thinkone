@@ -14,7 +14,7 @@ const et = {
     sessionExpired: "Sessioon aegus, logi uuesti sisse", networkError: "Ühendus serveriga ebaõnnestus", skipToContent: "Liigu põhisisu juurde",
   },
   nav: {
-    avaleht: "Avaleht", avalehtQ: "Mida ma täna tegema pean?",
+    alusta: "Alusta", avaleht: "Avaleht", avalehtQ: "Mida ma täna tegema pean?",
     ylevaade: "Ülevaade", ylevaadeQ: "Kuidas meil läheb?",
     portfell: "Portfell", portfellQ: "Mis meil on ja kellega?",
     kalender: "Kalender", kalenderQ: "Mis millal juhtub?",

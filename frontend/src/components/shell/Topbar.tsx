@@ -18,7 +18,7 @@ export function Topbar({ me, onOpenMobile }: { me: Me; onOpenMobile: () => void 
   const [theme, toggleTheme] = useTheme();
   const pathname = usePathname();
   const section = NAV.find((n) => ("exact" in n && n.exact ? pathname === n.href : pathname === n.href || pathname.startsWith(n.href + "/")))
-    ?? (pathname.startsWith("/app/seaded") ? { label: "nav.seaded" as const } : pathname.startsWith("/app/audit") ? { label: "nav.audit" as const } : null);
+    ?? (pathname.startsWith("/app/alusta") ? { label: "nav.alusta" as const } : pathname.startsWith("/app/seaded") ? { label: "nav.seaded" as const } : pathname.startsWith("/app/audit") ? { label: "nav.audit" as const } : null);
   return (
     <header className="topbar">
       <div className="top-left">

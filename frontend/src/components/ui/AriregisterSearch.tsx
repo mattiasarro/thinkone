@@ -40,7 +40,7 @@ export function AriregisterSearch({ id = "ar-q", onPick, variant = "field" }: { 
     <>
       <div className="al-otsi">
         <span className="al-otsi-ik"><IconSearch /></span>
-        <input id={id} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.company.placeholder")} aria-label={t("setup.company.placeholder")} aria-controls={`${id}-res`} autoComplete="off" spellCheck={false} />
+        <input id={id} type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.company.placeholder")} aria-label={t("setup.company.placeholder")} aria-controls={`${id}-res`} autoComplete="off" spellCheck={false} />
         <span className="al-otsi-src">{busy && <Spinner />}{t("setup.company.sourceValue")}</span>
       </div>
       {dq.length >= 2 && !reg.isLoading && (
