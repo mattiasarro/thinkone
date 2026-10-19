@@ -93,7 +93,7 @@ export function SetupPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-[300px_minmax(0,1fr)] items-start">
+      <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)] items-start">
         <nav className="card p-2.5 md:sticky md:top-20" aria-label={t("setup.railLabel")}>
           <ol className="grid gap-1">
             {steps.map((s) => {
