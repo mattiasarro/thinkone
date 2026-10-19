@@ -1,0 +1,2 @@
+Company = Taevavärava OÜ
+Object = Taevavärava tee 6b / ehitisregistri kood: 121378008
