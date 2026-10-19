@@ -93,7 +93,7 @@ export interface ContractFact { id?: UUID; key: string; label?: string | null; v
 export interface KeyDate { id: UUID; kind_code: string; title: string; due_date: ISODate; notify_days_before: number | null; fired_at: ISODate | null; provenance?: Record<string, unknown> | null; contract: { id: UUID; number: string | null; title: string; type_code: string; party_name: string | null } | null }
 export interface KeyDateKind { code: string; name_et: string; default_notify_days: number }
 export interface SourceDocument { id: UUID; filename: string; content_type: string; role: string; format?: string | null; page_count?: number | null; url?: string | null; container_signatures?: ContainerSignature[] | null }
-export interface ContainerSignature { signer?: string | null; name?: string | null; personal_code?: string | null; signed_at?: ISODate | null; time?: ISODate | null; valid?: boolean | null }
+export interface ContainerSignature { signer?: string | null; name?: string | null; personal_code?: string | null; signing_time?: ISODate | null; signed_at?: ISODate | null; time?: ISODate | null; valid?: boolean | null; files?: string[] | null }
 export interface ContractParty { id: UUID; party: { id: UUID; name: string; registry_code: string | null }; role: string; is_primary: boolean; valid_from: ISODate | null; valid_to: ISODate | null; source: string }
 export interface SourceView { id: UUID; filename: string; format: string; page_count: number | null; pdf_url: string | null; text_pages: { page: number; text: string }[] | null }
 export interface ContractDetail extends ContractSummary { notes?: string | null; facts: ContractFact[]; key_dates: KeyDate[]; allocations: Allocation[]; source_documents: SourceDocument[]; clauses: Clause[]; attachments: Attachment[]; parties: ContractParty[] }
@@ -103,9 +103,9 @@ export interface PartyContractRow { id: UUID; number: string | null; title: stri
 export type ImportStatus = "uploaded" | "extracting" | "structuring" | "review" | "committed" | "failed" | "manual" | "excluded";
 export interface ImportSourceDocument { id: UUID; filename: string; format: "pdf" | "docx" | "asice"; page_count: number | null; has_text_layer: boolean | null; container_signatures: ContainerSignature[] | null }
 export interface ProposalContract { title: string; category: ContractCategory; number?: string | null; signed_at?: ISODate | null; start_date?: ISODate | null; end_date?: ISODate | null; counterparty_name: string; our_company_name?: string | null; summary: string }
-export interface ProposalParty { name: string; role: string; registry_code?: string | null; address?: string | null; confidence: number }
-export interface ProposalParameter { key: string; label: string; value: string | number | null; unit?: string | null; text: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; source_number?: string | null }
-export interface ProposalKeyDate { kind: string; date: ISODate; title: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null }
+export interface ProposalParty { name: string; role: string; registry_code?: string | null; address?: string | null; email?: string | null; confidence: number; page?: number | null }
+export interface ProposalParameter { key: string; label: string; value: string | number | null; unit?: string | null; text: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; source_number?: string | null; note?: string | null }
+export interface ProposalKeyDate { kind: string; date: ISODate; title: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; note?: string | null }
 export interface ProposalClause { number: string; level: number; heading?: string | null; text: string; page?: number | null; char_start?: number | null; char_end?: number | null }
 export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null }
 export type ImportDocKind = "contract" | "annex" | "document";
@@ -124,7 +124,9 @@ export interface DeskToimik { state: ToimikState; open: number; row: DeskRow; ch
 export interface DeskBatch { id: UUID; name: string; date: string; time: string; created_at: ISODate; files: number; contracts: number; records: number; children: number; review: number; ready: number; committed: number; excluded: number; reading: number; opened_at: ISODate | null; state: "reading" | "open" | "done" }
 export interface DeskReady { contracts: number; children: number; key_dates: number; new_parties: number }
 export interface DeskOut { batches: DeskBatch[]; batch?: DeskBatch; toimikud?: DeskToimik[]; ready?: DeskReady }
-export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null }
+/** A file of the import's source: the file itself, or a datafile of an ASiC-E container (GET /imports/{id}/files/{index}). */
+export interface ImportSourceFile { index: number; name: string; kind: "pdf" | "image" | "docx" | "other"; main: boolean; size: number | null }
+export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null; files?: ImportSourceFile[] }
 export interface ImportCommitParty { index: number | null; party_id: string | null; role: string; is_primary: boolean; include: boolean }
 export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; asset_ids?: UUID[] | null; allocation_kind?: "exclusive" | "coverage" | null; parties?: ImportCommitParty[]; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }
 

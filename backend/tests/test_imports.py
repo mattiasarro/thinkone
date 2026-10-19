@@ -189,7 +189,8 @@ async def test_scanned_pdf_fails_structuring_and_manual_registration(client: Asy
 async def test_asice_container_import(client: AsyncClient, admin: dict):
     from app.ingest.container import build_test_container
 
-    data = build_test_container({"leping.pdf": LEASE_PDF.read_bytes()}, signer="Varne Mälksoo", code="37001010000", time="2023-11-25T12:00:00Z")
+    data = build_test_container({"leping.pdf": LEASE_PDF.read_bytes(), "T6B_Pind_29_plaan.pdf": SCAN_LIKE_PDF.read_bytes()},
+                                signer="Varne Mälksoo", code="37001010000", time="2023-11-25T12:00:00Z")
     r = await client.post("/api/v1/imports", files={"file": ("leping.asice", data, "application/vnd.etsi.asic-e+zip")})
     assert r.status_code == 201, r.text
     job = r.json()
@@ -199,6 +200,11 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     await _run_worker_inline(job["id"])
     j = (await client.get(f"/api/v1/imports/{job['id']}")).json()
     assert j["status"] == "review" and j["proposal"]["contract"]["category"] == "lease"
+    # the review's document tabs: the signed lease first-class, the plan in the same container as a further tab
+    assert [(f["name"], f["kind"], f["main"]) for f in j["files"]] == [("leping.pdf", "pdf", True), ("T6B_Pind_29_plaan.pdf", "pdf", False)]
+    r = await client.get(f"/api/v1/imports/{job['id']}/files/0")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content == LEASE_PDF.read_bytes()
+    assert (await client.get(f"/api/v1/imports/{job['id']}/files/5")).status_code == 404
     # the text says „allkirjastatud digitaalselt” and „tähtajaliselt 7 aastaks alates allkirjastamisest”: the dates come from
     # the container's signing time + the term, and land in the calendar as start/end key dates
     head = j["proposal"]["contract"]

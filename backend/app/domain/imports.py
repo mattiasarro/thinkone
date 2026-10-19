@@ -212,6 +212,43 @@ async def source_pages(job: ImportJob | None, doc: SourceDocument) -> list[dict[
     return json.loads(await blobstore().get(doc.extracted_text_s3_key))
 
 
+_FILE_KINDS = {"pdf": "pdf", "png": "image", "jpg": "image", "jpeg": "image", "gif": "image", "webp": "image", "svg": "image", "docx": "docx"}
+_FILE_TYPES = {"pdf": "application/pdf", "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
+               "svg": "image/svg+xml", "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+
+
+def _ext(name: str) -> str:
+    return name.rsplit(".", 1)[-1].lower() if "." in name else ""
+
+
+def source_files(doc: SourceDocument) -> list[dict[str, Any]]:
+    """What the review's document tabs show: the file itself, or every datafile of an ASiC-E/BDOC container (the main
+    document first-class, plans and annexes in the same container as further tabs — demo `irDokud`)."""
+    if doc.format != "asice":
+        return [{"index": 0, "name": doc.filename, "kind": _FILE_KINDS.get(_ext(doc.filename), "other"), "main": True, "size": doc.size}]
+    df = [(d.get("name") or "", int(d.get("size") or 0)) for d in (doc.datafiles or [])]
+    # the same pick as Container.main_document: first PDF, then DOCX, else the largest
+    main = next((n for ext in ("pdf", "docx") for n, _ in df if _ext(n) == ext), max(df, key=lambda x: x[1])[0] if df else None)
+    return [{"index": i, "name": n.rsplit("/", 1)[-1], "kind": _FILE_KINDS.get(_ext(n), "other"), "main": n == main, "size": size} for i, (n, size) in enumerate(df)]
+
+
+async def source_file(doc: SourceDocument, index: int) -> tuple[str, bytes, str]:
+    """One file of the source (``index`` from ``source_files``): name, bytes, media type."""
+    data = await blobstore().get(doc.s3_key)
+    if doc.format == "asice":
+        from app.ingest.container import unpack
+
+        files = unpack(data).datafiles
+        if not 0 <= index < len(files):
+            raise NotFound("Faili ei leitud")
+        name, data = files[index]
+    elif index != 0:
+        raise NotFound("Faili ei leitud")
+    else:
+        name = doc.filename
+    return name.rsplit("/", 1)[-1], data, _FILE_TYPES.get(_ext(name), "application/octet-stream")
+
+
 async def source_pdf_url(doc: SourceDocument) -> str | None:
     """Presigned URL of the PDF a browser can embed at ``#page=N``: the file itself, or for an ASiC-E/BDOC container the
     signed PDF datafile inside it (unpacked once and cached next to the container in object storage). None for DOCX."""

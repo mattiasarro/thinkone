@@ -5,21 +5,22 @@ import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { markOpened, useCommitImport, useExcludeImport, useImport, useImportBatch, useRestoreImport, useSaveDeskState, useSaveReview, IMPORT_PENDING } from "@/lib/queries/imports";
 import { useContracts } from "@/lib/queries/portfolio";
-import { Select, Input } from "@/components/ui/Field";
-import { Card, PageHead } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
 import { ErrorState, Loading, Spinner } from "@/components/ui/State";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
-import { IconArrowLeft, IconCheck, IconAlert, IconX } from "@/components/ui/Icons";
-import { SourcePane } from "./SourcePane";
-import { ProposalEditor } from "./ProposalEditor";
-import { LinkSection, initialPartyRows, partyRowsValid, syncPartyRows, type LinkState } from "./LinkSection";
-import { uncertainKeys } from "./reviewState";
-import type { DeskToimik, ImportJobDetail, Proposal } from "@/types/api";
+import { fmtDate, fmtFixed } from "@/lib/format";
+import { IconArrowLeft, IconCheck, IconAlert, IconX, IconChevronLeft, IconChevronRight } from "@/components/ui/Icons";
+import { SourceViewer, fileLabel, type SourceFocus } from "./SourceViewer";
+import { CalendarCard, ClausesCard, FilesStep, Note, PaneHead, PartiesStep, Signatures, SpaceStep, Step, ValuesStep, type ReviewCtl } from "./ReviewPane";
+import { initialPartyRows, partyRowsValid, syncPartyRows, useLinkDefaults, type LinkState } from "./LinkSection";
+import { monthlyOf, needlesFor, num, spotsOf, termYears } from "./reviewModel";
+import type { DeskRow, DeskToimik, ImportJobDetail, ImportSourceFile, Proposal } from "@/types/api";
 
 const SUPPORTING = ["maintenance", "management", "insurance", "security"];
+const EMPTY: Proposal = { contract: { title: "", category: "other", counterparty_name: "", summary: "" }, parties: [], parameters: [], key_dates: [], clauses: [] };
 
 export function ImportReviewPage({ id }: { id: string }) {
   const job = useImport(id);
@@ -86,24 +87,14 @@ function Excluded({ job }: { job: ImportJobDetail }) {
   );
 }
 
-/** Annex or supporting document: which contract it belongs to (demo „vali leping”) — a contract of this import or one in the registry. */
-function ParentPicker({ job, toimikud, value, onChange }: { job: ImportJobDetail; toimikud: DeskToimik[]; value: string; onChange: (v: string) => void }) {
-  const contracts = useContracts({});
-  const imported = (contracts.data ?? []).filter((c) => c.origin === "imported"); // an external annex goes only onto an imported contract
-  const inBatch = toimikud.flatMap((x) => [x.row]).filter((r) => r.kind === "contract" && r.id !== job.id && r.state !== "ei" && r.state !== "viga");
-  return (
-    <Card className="pad grid gap-3">
-      <h3 className="text-base">{t("imports.desk.parent")}</h3>
-      <Select label={t("imports.desk.parentPick")} value={value} onChange={(e) => onChange(e.target.value)} placeholder={t("imports.desk.parentNone")}>
-        {inBatch.length > 0 && <optgroup label={t("imports.desk.parentBatch")}>{inBatch.map((r) => <option key={r.id} value={`job:${r.id}`}>{[r.counterparty || r.title || r.filename, r.spaces.join(" + "), r.number].filter(Boolean).join(" · ")}</option>)}</optgroup>}
-        {imported.length > 0 && <optgroup label={t("imports.desk.parentRegistry")}>{imported.map((c) => <option key={c.id} value={`contract:${c.id}`}>{[c.number, c.party?.name || c.title].filter(Boolean).join(" · ")}</option>)}</optgroup>}
-      </Select>
-    </Card>
-  );
-}
+const nextOf = (toimikud: DeskToimik[], rootId: string | undefined) => {
+  const left = toimikud.filter((x) => (x.state === "ootab" || x.state === "valmis") && x.row.id !== rootId);
+  return left.find((x) => x.state === "ootab") ?? left[0];
+};
 
 function Review({ job }: { job: ImportJobDetail }) {
-  const base = useMemo<Proposal>(() => job.reviewed ?? job.proposal ?? { contract: { title: "", category: "other", counterparty_name: "", summary: "" }, parties: [], parameters: [], key_dates: [], clauses: [] }, [job.reviewed, job.proposal]);
+  const original = useMemo<Proposal>(() => job.proposal ?? job.reviewed ?? EMPTY, [job.proposal, job.reviewed]);
+  const base = useMemo<Proposal>(() => job.reviewed ?? job.proposal ?? EMPTY, [job.reviewed, job.proposal]);
   const [draft, setDraft] = useState<Proposal>(base);
   const [checked, setChecked] = useState<Set<string>>(() => new Set(job.checked ?? []));
   const [link, setLink] = useState<LinkState>(() => (job.link as unknown as LinkState | null) ?? ({
@@ -116,10 +107,14 @@ function Review({ job }: { job: ImportJobDetail }) {
   const exclude = useExcludeImport();
   const [excluding, setExcluding] = useState<string | null>(null);
   const isChild = job.kind === "annex" || job.kind === "document";
-  const deskRow = useMemo(() => batch.data?.toimikud?.flatMap((x) => [x.row, ...x.children]).find((r) => r.id === job.id), [batch.data, job.id]);
+  const toimikud = useMemo(() => batch.data?.toimikud ?? [], [batch.data]);
+  const deskRow = useMemo(() => toimikud.flatMap((x) => [x.row, ...x.children]).find((r) => r.id === job.id), [toimikud, job.id]);
+  const toimik = useMemo(() => toimikud.find((x) => x.row.id === job.id || x.children.some((ch) => ch.id === job.id)), [toimikud, job.id]);
   const [parent, setParent] = useState<string>(() => job.parent_job_id ? `job:${job.parent_job_id}` : job.parent_contract_id ? `contract:${job.parent_contract_id}` : "");
   useEffect(() => { if (!parent && deskRow?.parent) setParent(`${deskRow.parent.kind}:${deskRow.parent.id}`); }, [deskRow, parent]);
   useEffect(() => { void markOpened(job.id); }, [job.id]);
+  const stableLink = useCallback((s: LinkState) => setLink(s), []);
+  const defaults = useLinkDefaults(draft, link, stableLink);
   // the link decisions live on the job, so the desk knows the lease has its space (and can confirm it in bulk)
   const linkSaved = useRef(false);
   useEffect(() => {
@@ -134,7 +129,6 @@ function Review({ job }: { job: ImportJobDetail }) {
     const [kind, id] = v.split(":");
     desk.mutate({ parent_job_id: kind === "job" ? id : null, parent_contract_id: kind === "contract" ? id : null });
   };
-  const [activePage, setActivePage] = useState<number | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const dirty = useRef(false);
   const save = useSaveReview(job.id);
@@ -153,22 +147,59 @@ function Review({ job }: { job: ImportJobDetail }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  const onChange = useCallback((p: Proposal) => { dirty.current = true; setDraft(p); setLink((l) => { const parties = syncPartyRows(l.parties, p); return parties === l.parties ? l : { ...l, parties }; }); }, []);
-  const onCheck = useCallback((key: string, v: boolean) => {
+  const check = useCallback((key: string, v: boolean) => {
     setChecked((s) => { const n = new Set(s); if (v) n.add(key); else n.delete(key); desk.mutate({ checked: Array.from(n) }); return n; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
-  const onAnchor = useCallback((page: number | null | undefined) => {
-    if (!page) return;
-    setActivePage(page);
-    document.getElementById(`src-page-${page}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const edit = useCallback((p: Proposal, k?: string) => {
+    dirty.current = true; setDraft(p);
+    setLink((l) => { const parties = syncPartyRows(l.parties, p); return parties === l.parties ? l : { ...l, parties }; });
+    if (k) check(k, true);
+  }, [check]);
 
-  const unresolved = uncertainKeys(draft).filter((k) => !checked.has(k));
+  // the original: which file, and what to mark on which page
+  const files = useMemo<ImportSourceFile[]>(() => job.files?.length ? job.files : job.source_document ? [{ index: 0, name: job.source_document.filename, kind: job.source_document.format === "docx" ? "docx" : job.source_document.format === "pdf" ? "pdf" : "other", main: true, size: null }] : [], [job.files, job.source_document]);
+  const mainFile = files.find((f) => f.main)?.index ?? 0;
+  const [tab, setTab] = useState(mainFile);
+  const [focus, setFocus] = useState<SourceFocus | null>(null);
+  const seq = useRef(0);
+  const show = useCallback((page: number | null | undefined, needles: string[], file?: number) => {
+    const f = file ?? mainFile;
+    setTab(f);
+    setFocus({ file: f, page: page ?? null, needles: needles.filter(Boolean), seq: ++seq.current });
+  }, [mainFile]);
+
+  // the places to look at — one active at a time (demo: the active one is open in the original)
+  const isLease = draft.contract.category === "lease";
+  const needSpace = !isChild && isLease && defaults.properties.length > 0 && link.space_ids.length === 0;
+  const spots = useMemo(() => spotsOf(draft, checked, needSpace), [draft, checked, needSpace]);
+  const [active, setActive] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const cur = spots.find((s) => s.key === active) ?? null;
+  const activate = useCallback((key: string) => {
+    setActive(key); setEditing(null);
+    const s = spots.find((x) => x.key === key);
+    if (s && s.needles.length) show(s.page, s.needles);
+  }, [spots, show]);
+  // keep one place active: after „Õige” the next one opens in the original
+  useEffect(() => {
+    if (active?.startsWith("show:")) return;
+    if (spots.length && !spots.some((s) => s.key === active)) {
+      const nxt = spots[0];
+      setActive(nxt.key);
+      if (nxt.needles.length) show(nxt.page, nxt.needles);
+    }
+  }, [spots, active, show]);
+
+  const ctl: ReviewCtl = { job, draft, original, edit, checked, check, active, activate, editing, setEditing, show };
+
   // a child confirms onto its contract: one already in the registry, or — while the contract still waits — together with it
-  const parentRow = parent.startsWith("job:") ? batch.data?.toimikud?.find((x) => x.row.id === parent.slice(4))?.row : undefined;
+  const parentRow = parent.startsWith("job:") ? toimikud.find((x) => x.row.id === parent.slice(4))?.row : undefined;
   const childWaits = isChild && !!parentRow && parentRow.state !== "kinnitatud";
-  const canCommit = unresolved.length === 0 && !!draft.contract.title && (isChild ? !!parent && !childWaits : partyRowsValid(link.parties));
+  const unresolved = spots.filter((s) => s.kind !== "space");
+  const canCommit = unresolved.length === 0 && !!draft.contract.title && (isChild ? !!parent && !childWaits : partyRowsValid(link.parties) && !needSpace);
+  const open = spots.length + (!isChild && !partyRowsValid(link.parties) ? 1 : 0) + (isChild && !parent ? 1 : 0);
+  const next = nextOf(toimikud, toimik?.row.id);
 
   const doCommit = async () => {
     try {
@@ -181,40 +212,139 @@ function Review({ job }: { job: ImportJobDetail }) {
       });
       toast.success(t("imports.committed"));
       // next in this import (demo: straight to the next toimik), else back to the import
-      const left = (await batch.refetch()).data?.toimikud?.filter((x) => (x.state === "ootab" || x.state === "valmis") && x.row.id !== job.id) ?? [];
-      const nxt = left.find((x) => x.state === "ootab") ?? left[0];
+      const nxt = nextOf((await batch.refetch()).data?.toimikud ?? [], toimik?.row.id ?? job.id);
       router.push(nxt ? `/app/portfell/import/${nxt.row.id}` : job.batch_id ? `/app/portfell/import/p/${job.batch_id}` : `/app/portfell/leping/${r.contract_id}`);
     } catch (e) { toast.error(errorMessage(e)); }
   };
+  const nextSpot = () => {
+    if (!spots.length) return;
+    const i = spots.findIndex((s) => s.key === active);
+    const s = spots[(i + 1) % spots.length] ?? spots[0];
+    activate(s.key);
+    setTimeout(() => document.querySelector(`.ir-paan [data-ak="${CSS.escape(s.key)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
+  };
+  const primary = () => { if (spots.length) nextSpot(); else if (canCommit) void doCommit(); };
 
+  // keyboard (demo `irKlaviatuur`): ↑↓ move · Enter right · E fix · Ctrl+Enter confirm
+  const keyRef = useRef({ spots, cur, canCommit, primary, activate, check, setEditing });
+  keyRef.current = { spots, cur, canCommit, primary, activate, check, setEditing };
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      const k = keyRef.current, el = e.target as HTMLElement | null;
+      if (el?.closest("input, textarea, select, [contenteditable]") || e.metaKey || e.altKey || document.querySelector("[role=dialog]")) return;
+      if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); if (k.canCommit) k.primary(); return; }
+      if (e.ctrlKey || e.shiftKey) return;
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && k.spots.length) {
+        e.preventDefault();
+        const i = k.spots.findIndex((s) => s.key === k.cur?.key), j = (i + (e.key === "ArrowDown" ? 1 : -1) + k.spots.length) % k.spots.length;
+        k.activate(k.spots[j].key);
+        setTimeout(() => document.querySelector(`.ir-paan [data-ak="${CSS.escape(k.spots[j].key)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
+      } else if (e.key === "Enter" && k.cur && k.cur.kind !== "space" && !el?.closest("button, a, summary, label")) {
+        e.preventDefault(); k.check(k.cur.key, true);
+      } else if ((e.key === "e" || e.key === "E") && k.cur && k.cur.kind !== "space") { e.preventDefault(); k.setEditing(k.cur.key); }
+    };
+    document.addEventListener("keydown", on);
+    return () => document.removeEventListener("keydown", on);
+  }, []);
+
+  // header: who · what · how much · when
+  const mainLabel = isChild ? (job.kind === "annex" ? (job.annex_number ? t("imports.desk.annex", { nr: job.annex_number }) : t("imports.desk.annexNoNr")) : t("imports.desk.document")) : t("imports.ir.tabContract");
+  const labelOf = (f: ImportSourceFile) => fileLabel(f, mainLabel, null);
+  const spaceNames = deskRow?.spaces ?? [];
+  const area = num(draft.parameters.find((p) => p.key === "area_m2")?.value) ?? (draft.asset_hint?.area_m2 != null ? Number(draft.asset_hint.area_m2) : null);
+  const monthly = monthlyOf(draft, area);
+  const years = termYears(draft);
+  const kindLabel = isChild ? mainLabel : tEnum("contract.category", draft.contract.category);
+  const who = draft.contract.counterparty_name || draft.contract.title || t("imports.desk.unknownTenant");
+  const sub = [spaceNames.join(" + "), years ? `${String(years).replace(".", ",")} a` : "", monthly != null ? `${fmtFixed(monthly, 2)} € ${t("imports.ir.perMonth")}` : ""].filter(Boolean).join(" · ");
+  const dates = draft.contract.start_date || draft.contract.signed_at ? `${fmtDate(draft.contract.start_date ?? draft.contract.signed_at)} – ${draft.contract.end_date ? fmtDate(draft.contract.end_date) : "…"}` : undefined;
+
+  // the bar: ← import · n / N · ‹ › · file
+  const queue = toimikud.filter((x) => x.state !== "loen");
+  const at = toimik ? queue.findIndex((x) => x.row.id === toimik.row.id) : -1;
+  const prev = at > 0 ? queue[at - 1] : null, nextT = at >= 0 && at < queue.length - 1 ? queue[at + 1] : null;
+  const batchName = batch.data?.batch?.name;
+
+  const commitLabel = isChild ? (job.kind === "annex" ? t("imports.ir.commitAnnex") : t("imports.ir.commitDoc")) : t("imports.ir.commitContract");
   return (
-    <div className="grid gap-5">
-      <Back batchId={job.batch_id} />
-      <PageHead title={t("imports.review")} sub={job.source_document?.filename}
-        actions={
-          <>
-            {excluding === null
-              ? <Button variant="text" onClick={() => setExcluding("")}>{t("imports.desk.exclude")}</Button>
-              : <span className="flex items-center gap-2"><Input aria-label={t("imports.desk.excludeReason")} placeholder={t("imports.desk.excludeReason")} value={excluding} onChange={(e) => setExcluding(e.target.value)} className="!mb-0 w-48" autoFocus />
-                  <Button onClick={async () => { try { await exclude.mutateAsync({ id: job.id, reason: excluding || undefined }); router.push(job.batch_id ? `/app/portfell/import/p/${job.batch_id}` : "/app/portfell/import"); } catch (e) { toast.error(errorMessage(e)); } }} busy={exclude.isPending}>{t("imports.desk.exclude")}</Button>
-                  <Button variant="text" onClick={() => setExcluding(null)}>{t("common.cancel")}</Button></span>}
-            <span className="text-xs text-muted" aria-live="polite">{saveState === "saving" ? t("imports.saving") : saveState === "saved" ? t("imports.savedReview") : saveState === "error" ? t("common.error") : ""}</span>
-            <Button variant="primary" onClick={doCommit} disabled={!canCommit} busy={commit.isPending} title={unresolved.length ? t("imports.commitBlocked", { n: unresolved.length }) : undefined}><IconCheck width={16} height={16} />{isChild ? t("imports.desk.childCommit") : t("imports.commit")}</Button>
-          </>
-        } />
-      {job.duplicate_of_contract_id && (
-        <div className="note warning items-center flex-wrap"><IconAlert width={18} height={18} /><span className="flex-1">{t("imports.duplicate")}</span><Link href={`/app/portfell/leping/${job.duplicate_of_contract_id}`} className="btn btn-ghost btn-sm">{t("imports.duplicateOpen")}</Link></div>
-      )}
-      {unresolved.length > 0 && <div className="note warning"><IconAlert width={18} height={18} />{t("imports.commitBlocked", { n: unresolved.length })}</div>}
-      <div className="grid gap-5 xl:grid-cols-2 items-start">
-        <SourcePane job={job} activePage={activePage} />
-        <div className="grid gap-5 min-w-0 grid-cols-[minmax(0,1fr)]">
-          <ProposalEditor draft={draft} onChange={onChange} checked={checked} onCheck={onCheck} onAnchor={onAnchor} />
-          {isChild ? <ParentPicker job={job} toimikud={batch.data?.toimikud ?? []} value={parent} onChange={pickParent} /> : <LinkSection draft={draft} state={link} onChange={setLink} />}
-          {childWaits && parentRow && <div className="note items-center flex-wrap"><span className="flex-1">{t("imports.desk.childWaits")}</span><Link href={`/app/portfell/import/${parentRow.id}`} className="btn btn-ghost btn-sm">{t("imports.desk.openParent")}</Link></div>}
-          <div className="flex justify-end"><Button variant="primary" size="lg" onClick={doCommit} disabled={!canCommit} busy={commit.isPending}><IconCheck width={16} height={16} />{isChild ? t("imports.desk.childCommit") : t("imports.commit")}</Button></div>
+    <div className="ir-view">
+      <div className="ir-vasak">
+        <div className="ir-riba">
+          <Link className="ir-tagasi" href={job.batch_id ? `/app/portfell/import/p/${job.batch_id}` : "/app/portfell/import"}><IconArrowLeft />{batchName || t("imports.desk.backImport")}</Link>
+          {at >= 0 && <span className="ir-n mono">{at + 1} / {queue.length}</span>}
+          <span className="ir-nav">
+            {prev ? <Link className="ir-nav-b" href={`/app/portfell/import/${prev.row.id}`} aria-label={t("imports.ir.prev")} title={t("imports.ir.prev")}><IconChevronLeft /></Link> : <span className="ir-nav-b off" aria-hidden><IconChevronLeft /></span>}
+            {nextT ? <Link className="ir-nav-b" href={`/app/portfell/import/${nextT.row.id}`} aria-label={t("imports.ir.next")} title={t("imports.ir.next")}><IconChevronRight /></Link> : <span className="ir-nav-b off" aria-hidden><IconChevronRight /></span>}
+          </span>
+          <span className="ir-fail"><span className="ir-fail-ik">{(job.source_document?.format ?? "").toUpperCase().replace("ASICE", "ASiC-E")}</span><span className="mono" title={job.source_document?.filename}>{job.source_document?.filename}</span></span>
         </div>
+        <SourceViewer jobId={job.id} files={files} textPages={job.text_pages ?? []} tab={tab} onTab={(i) => { setTab(i); setFocus(null); }} focus={focus} mainLabel={mainLabel} />
       </div>
+      <aside className="ir-paan" aria-label={t("imports.review")}>
+        <PaneHead overline={`${kindLabel} · ${open ? t("imports.ir.needsReview") : t("imports.ir.readyToCommit")}`} title={who} sub={sub || undefined} mono={dates} />
+        {job.duplicate_of_contract_id && <Note tone="amber"><b>{t("imports.duplicate")}</b><span><Link className="steplink" href={`/app/portfell/leping/${job.duplicate_of_contract_id}`}>{t("imports.duplicateOpen")}</Link></span></Note>}
+        {job.source_document?.has_text_layer === false && <Note tone="amber"><b>{t("imports.noTextLayer")}</b></Note>}
+        <Signatures job={job} />
+        <div className="ir-sammud">
+          {isChild ? (
+            <>
+              <Step nr={1} title={t("imports.ir.q1")} ok>
+                <button type="button" className="ir-q-v" onClick={() => show(1, needlesFor(draft.contract.title))}>{[mainLabel, draft.contract.title].filter(Boolean).join(" · ")}</button>
+                {draft.contract.summary && <div className="ir-q-s">{draft.contract.summary}</div>}
+              </Step>
+              <ParentStep job={job} toimikud={toimikud} value={parent} onChange={pickParent} parentRow={childWaits ? parentRow : undefined} />
+              {(draft.parameters.length > 0 || draft.key_dates.length > 0) && <ValuesStep c={ctl} nr={3} spots={spots} spaceArea={null} />}
+            </>
+          ) : (
+            <>
+              <PartiesStep c={ctl} link={link} onLink={setLink} spots={spots} />
+              <SpaceStep c={ctl} link={link} onLink={setLink} properties={defaults.properties} companies={defaults.companies} spots={spots} />
+              <ValuesStep c={ctl} nr={3} spots={spots} spaceArea={null} />
+              <FilesStep nr={4} rows={toimik && toimik.row.id === job.id ? toimik.children : []} files={files} onTab={(i) => { setTab(i); setFocus(null); }} mainLabel={labelOf} />
+            </>
+          )}
+        </div>
+        <CalendarCard c={ctl} />
+        <ClausesCard c={ctl} />
+        <div className="ir-jalus">
+          {excluding === null ? (
+            <button type="button" className="btn btn-primary ir-pohi" onClick={primary} disabled={!spots.length && !canCommit} aria-busy={commit.isPending}>
+              {commit.isPending ? <Spinner /> : spots.length ? t("imports.ir.lookMore", { n: spots.length }) : <><IconCheck width={16} height={16} />{commitLabel}{next ? ` ${t("imports.ir.andNext")}` : ""}</>}
+            </button>
+          ) : (
+            <div className="ir-jata">
+              <input className="fld fld-sm" aria-label={t("imports.desk.excludeReason")} placeholder={t("imports.ir.excludeReason")} value={excluding} onChange={(e) => setExcluding(e.target.value)} autoFocus
+                onKeyDown={(e) => { if (e.key === "Escape") setExcluding(null); }} />
+              <Button size="sm" onClick={async () => { try { await exclude.mutateAsync({ id: job.id, reason: excluding || undefined }); router.push(job.batch_id ? `/app/portfell/import/p/${job.batch_id}` : "/app/portfell/import"); } catch (e) { toast.error(errorMessage(e)); } }} busy={exclude.isPending}>{t("imports.desk.exclude")}</Button>
+              <button type="button" className="steplink" onClick={() => setExcluding(null)}>{t("common.cancel")}</button>
+            </div>
+          )}
+          {childWaits && <div className="ir-kk-miks">{t("imports.desk.childWaits")}</div>}
+          <div className="ir-jalus-r">
+            {excluding === null && <button type="button" className="steplink" onClick={() => setExcluding("")}>{t("imports.ir.skip")}</button>}
+            <span className="ir-kbd" aria-live="polite">{saveState === "saving" ? t("imports.saving") : saveState === "error" ? t("common.error") : t("imports.ir.keys")}</span>
+          </div>
+        </div>
+      </aside>
     </div>
+  );
+}
+
+/** Annex or supporting document: which contract it belongs to (demo „Millise lepingu juurde?”) — a contract of this import or one in the registry. */
+function ParentStep({ job, toimikud, value, onChange, parentRow }: { job: ImportJobDetail; toimikud: DeskToimik[]; value: string; onChange: (v: string) => void; parentRow?: DeskRow }) {
+  const contracts = useContracts({});
+  const imported = (contracts.data ?? []).filter((c) => c.origin === "imported"); // an external annex goes only onto an imported contract
+  const inBatch = toimikud.map((x) => x.row).filter((r) => r.kind === "contract" && r.id !== job.id && r.state !== "ei" && r.state !== "viga");
+  return (
+    <Step nr={2} title={t("imports.ir.qParent")} ok={!!value} extra={!value ? <em>{t("imports.desk.olek.pickContract")}</em> : undefined}>
+      <div className="ir-pv">
+        <select className="ir-sel" aria-label={t("imports.desk.parentPick")} value={value} onChange={(e) => onChange(e.target.value)}>
+          <option value="">{t("imports.desk.parentPick")}…</option>
+          {inBatch.length > 0 && <optgroup label={t("imports.desk.parentBatch")}>{inBatch.map((r) => <option key={r.id} value={`job:${r.id}`}>{[r.counterparty || r.title || r.filename, r.spaces.join(" + "), r.number].filter(Boolean).join(" · ")}</option>)}</optgroup>}
+          {imported.length > 0 && <optgroup label={t("imports.desk.parentRegistry")}>{imported.map((c) => <option key={c.id} value={`contract:${c.id}`}>{[c.number, c.party?.name || c.title].filter(Boolean).join(" · ")}</option>)}</optgroup>}
+        </select>
+        {parentRow && <div className="ir-q-s">{t("imports.ir.parentWaits")} · <Link className="steplink" href={`/app/portfell/import/${parentRow.id}`}>{t("imports.desk.openParent")}</Link></div>}
+      </div>
+    </Step>
   );
 }

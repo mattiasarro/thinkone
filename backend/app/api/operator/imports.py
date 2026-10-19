@@ -4,8 +4,9 @@ import json
 import uuid
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -60,6 +61,7 @@ class ImportJobOut(BaseModel):
 class ImportJobDetailOut(ImportJobOut):
     source_url: str | None = None
     text_pages: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] = []  # the review's document tabs (GET /imports/{id}/files/{index})
 
 
 class ReviewIn(BaseModel):
@@ -176,7 +178,22 @@ async def get_job(job_id: uuid.UUID, session: AsyncSession = Depends(db)) -> Imp
     doc = await session.get(SourceDocument, job.source_document_id)
     url = await blobstore().presigned_url(doc.s3_key, doc.filename) if doc else None
     pages = await imports_domain.source_pages(job, doc) if doc else None
-    return ImportJobDetailOut(**base.model_dump(), source_url=url, text_pages=pages)
+    files = imports_domain.source_files(doc) if doc else []
+    return ImportJobDetailOut(**base.model_dump(), source_url=url, text_pages=pages, files=files)
+
+
+@router.get("/{job_id}/files/{index}")
+async def source_file(job_id: uuid.UUID, index: int, session: AsyncSession = Depends(db)) -> Response:
+    """One file of the source, same-origin for the review's PDF viewer (pdf.js reads the bytes; a container's datafile
+    is unpacked on the fly — the container itself stays the untouched original)."""
+    job = await imports_domain.get_job(session, job_id)
+    doc = await session.get(SourceDocument, job.source_document_id)
+    if not doc:
+        from app.domain.errors import NotFound
+
+        raise NotFound("Faili ei leitud")
+    name, data, media = await imports_domain.source_file(doc, index)
+    return Response(content=data, media_type=media, headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(name)}", "Cache-Control": "private, max-age=600"})
 
 
 @router.patch("/{job_id}", response_model=ImportJobOut)
