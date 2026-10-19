@@ -4,8 +4,14 @@ export type ISODate = string;
 
 export type Role = "admin" | "operator" | "viewer" | string;
 
-export interface AccountRef { id: UUID; name: string; role: Role }
-export interface Me { user_id: UUID; email: string; name: string; locale: string; account: AccountRef; accounts: AccountRef[] }
+/** via_superadmin: opened by a superadmin who is not a member (acts as admin, absent from Kasutajad). */
+export interface AccountRef { id: UUID; name: string; role: Role; via_superadmin?: boolean }
+export interface Me { user_id: UUID; email: string; name: string; locale: string; account: AccountRef; accounts: AccountRef[]; superadmin?: boolean }
+/** GET /superadmin/overview — every account and user across tenants. */
+export interface SuperadminOverview {
+  accounts: { id: UUID; name: string; created_at: ISODate; members: { user_id: UUID; email: string; name: string; role: Role; status: "active" | "invited" }[] }[];
+  users: { id: UUID; email: string; name: string; is_active: boolean; created_at: ISODate; last_login_at: ISODate | null; accounts: number }[];
+}
 export interface Member { id: UUID; user_id: UUID; email: string; name: string; role: Role; status: "active" | "invited"; notification_prefs: Record<string, unknown> }
 
 export interface Notification { id: UUID; kind: string; title: string; body: string | null; link: string | null; created_at: ISODate; read_at: ISODate | null; email_status: string | null }

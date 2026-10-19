@@ -18,6 +18,8 @@ from app.api.deps import (
 )
 from app.domain import auth as auth_domain
 from app.domain.errors import Forbidden
+from app.domain.events import Actor, emit
+from app.infra.settings import get_settings
 from app.models.core import Account, Membership
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,6 +41,7 @@ class AccountOut(BaseModel):
     id: uuid.UUID
     name: str
     role: str
+    via_superadmin: bool = False  # opened by a superadmin who is not a member
 
 
 class MeOut(BaseModel):
@@ -48,6 +51,7 @@ class MeOut(BaseModel):
     locale: str
     account: AccountOut
     accounts: list[AccountOut]
+    superadmin: bool = False
 
 
 class InviteIn(BaseModel):
@@ -103,7 +107,8 @@ async def login(body: LoginIn, response: Response, session: AsyncSession = Depen
     accounts = await _accounts(session, ms)
     s = await auth_domain.create_session(session, user, ms[0].account_id)
     set_session_cookie(response, s.id)
-    return MeOut(user_id=user.id, email=user.email, name=user.name, locale=user.locale, account=accounts[0], accounts=accounts)
+    return MeOut(user_id=user.id, email=user.email, name=user.name, locale=user.locale, account=accounts[0], accounts=accounts,
+                 superadmin=get_settings().is_superadmin(user.email))
 
 
 @router.post("/logout", status_code=204)
@@ -130,21 +135,20 @@ async def reset_password(body: ResetPasswordIn, session: AsyncSession = Depends(
 
 @router.get("/me", response_model=MeOut)
 async def me(p: Principal = Depends(current_principal), session: AsyncSession = Depends(db_no_tenant)) -> MeOut:
-    ms = await auth_domain.memberships_of(session, p.user.id)
-    accounts = await _accounts(session, ms)
-    current = next(a for a in accounts if a.id == p.account_id)
-    return MeOut(user_id=p.user.id, email=p.user.email, name=p.user.name, locale=p.user.locale, account=current, accounts=accounts)
+    return await _me(session, p, p.account_id)
 
 
 @router.post("/switch/{account_id}", response_model=MeOut)
 async def switch_account(account_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db_no_tenant)) -> MeOut:
     ms = await auth_domain.memberships_of(session, p.user.id)
     if account_id not in {m.account_id for m in ms}:
-        raise Forbidden()
+        if not p.superadmin or not await session.get(Account, account_id):
+            raise Forbidden()
+        # the entry is recorded in the opened account's own audit trail
+        emit(session, Actor(account_id=account_id, user_id=p.user.id, role="admin"), "account", account_id, "account.superadmin_opened",
+             {"email": p.user.email})
     await auth_domain.switch_session_account(session, p.auth_session, account_id)
-    accounts = await _accounts(session, ms)
-    return MeOut(user_id=p.user.id, email=p.user.email, name=p.user.name, locale=p.user.locale,
-                 account=next(a for a in accounts if a.id == account_id), accounts=accounts)
+    return await _me(session, p, account_id)
 
 
 @router.post("/invite", response_model=MemberOut, status_code=201)
@@ -179,6 +183,19 @@ async def update_member(membership_id: uuid.UUID, body: MemberUpdateIn, p: Princ
 def _member_out(m: Membership) -> MemberOut:
     return MemberOut(id=m.id, user_id=m.user_id, email=m.user.email, name=m.user.name, role=m.role,
                      status="active" if m.accepted_at else "invited", notification_prefs=m.notification_prefs or {})
+
+
+async def _me(session: AsyncSession, p: Principal, account_id: uuid.UUID) -> MeOut:
+    accounts = await _accounts(session, await auth_domain.memberships_of(session, p.user.id))
+    current = next((a for a in accounts if a.id == account_id), None)
+    if current is None:  # a superadmin in an account they are not a member of (current_principal checked the rest)
+        acc = await session.get(Account, account_id)
+        if acc is None:
+            raise Forbidden()
+        current = AccountOut(id=acc.id, name=acc.name, role="admin", via_superadmin=True)
+        accounts = [*accounts, current]
+    return MeOut(user_id=p.user.id, email=p.user.email, name=p.user.name, locale=p.user.locale, account=current, accounts=accounts,
+                 superadmin=p.superadmin)
 
 
 async def _accounts(session: AsyncSession, ms: list[Membership]) -> list[AccountOut]:

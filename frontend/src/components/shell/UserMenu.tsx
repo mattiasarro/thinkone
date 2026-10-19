@@ -18,7 +18,7 @@ export function UserMenu({ me }: { me: Me }) {
     setOpen(false);
     try { await logout.mutateAsync(); } finally { router.replace("/login"); }
   };
-  const role = t(`topbar.role.${me.account.role}` as "topbar.role.admin") || me.account.role;
+  const role = me.account.via_superadmin ? t("topbar.superadmin") : t(`topbar.role.${me.account.role}` as "topbar.role.admin") || me.account.role;
   return (
     <Popover open={open} onClose={() => setOpen(false)} align="left" className="user-pop" trigger={
       <button type="button" className="sb-user" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label={t("topbar.userMenu")}>

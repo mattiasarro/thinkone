@@ -31,13 +31,13 @@ export function CompanySwitcher({ me }: { me: Me }) {
         <span className="org truncate">{me.account.name}</span>
         {multi && <span className="chev"><IconChevron width={14} height={14} /></span>}
       </button>
-      <div className="obj">{t(`topbar.role.${me.account.role}` as "topbar.role.admin") || me.account.role}</div>
+      <div className={cx("obj", me.account.via_superadmin && "text-warning-ink")}>{me.account.via_superadmin ? t("topbar.superadmin") : t(`topbar.role.${me.account.role}` as "topbar.role.admin") || me.account.role}</div>
       {open && (
         <ul role="listbox" aria-label={t("nav.switchAccount")} className="co-menu rise m-0 p-1.5 list-none">
           {me.accounts.map((a) => (
             <li key={a.id}>
               <button type="button" role="option" aria-selected={a.id === me.account.id} className="drop-item justify-between" onClick={() => pick(a.id)}>
-                <span className="min-w-0"><span className={cx("block truncate", a.id === me.account.id ? "font-bold text-ink" : "font-semibold")}>{a.name}</span><span className="block text-[11px] text-faint">{a.role}</span></span>
+                <span className="min-w-0"><span className={cx("block truncate", a.id === me.account.id ? "font-bold text-ink" : "font-semibold")}>{a.name}</span><span className="block text-[11px] text-faint">{a.via_superadmin ? t("topbar.superadmin") : a.role}</span></span>
                 {a.id === me.account.id && <IconCheck width={14} height={14} className="text-primary flex-none" />}
               </button>
             </li>

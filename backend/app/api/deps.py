@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.events import Actor
 from app.infra.db import sessionmaker, set_tenant
 from app.infra.settings import get_settings
-from app.models.core import AuthSession, Membership, User
+from app.models.core import Account, AuthSession, Membership, User
 
 COOKIE = "thinkone_session"
 
@@ -49,6 +49,8 @@ class Principal:
     account_id: uuid.UUID
     membership: Membership
     auth_session: AuthSession
+    superadmin: bool = False
+    via_superadmin: bool = False  # not a member here: ``membership`` is an unsaved stand-in with the admin role
 
     @property
     def actor(self) -> Actor:
@@ -56,7 +58,7 @@ class Principal:
 
 
 async def db_no_tenant() -> AsyncIterator[AsyncSession]:
-    """Unscoped session with the RLS bypass — ONLY for auth bootstrap (login, invite)."""
+    """Unscoped session with the RLS bypass — ONLY for auth bootstrap (login, invite) and superadmin views."""
     async with sessionmaker()() as session:
         async with session.begin():
             await session.execute(text("SELECT set_config('app.bypass_rls', 'on', true)"))
@@ -77,9 +79,14 @@ async def current_principal(request: Request, session: AsyncSession = Depends(db
         raise HTTPException(401, "Kasutaja ei ole aktiivne")
     m = (await session.execute(select(Membership).where(Membership.user_id == user.id, Membership.account_id == auth.account_id,
                                                         Membership.accepted_at.is_not(None)))).scalar_one_or_none()
+    superadmin = get_settings().is_superadmin(user.email)
+    via_superadmin = not m and superadmin and await session.get(Account, auth.account_id) is not None
+    if via_superadmin:
+        # never added to the session: a superadmin acts as admin here without becoming a member
+        m = Membership(account_id=auth.account_id, user_id=user.id, role="admin", accepted_at=auth.created_at)
     if not m:
         raise HTTPException(403, "Kontole puudub ligipääs")
-    return Principal(user=user, account_id=auth.account_id, membership=m, auth_session=auth)
+    return Principal(user=user, account_id=auth.account_id, membership=m, auth_session=auth, superadmin=superadmin, via_superadmin=via_superadmin)
 
 
 async def db(principal: Principal = Depends(current_principal)) -> AsyncIterator[AsyncSession]:
@@ -97,4 +104,10 @@ def actor(principal: Principal = Depends(current_principal)) -> Actor:
 def require_admin(principal: Principal = Depends(current_principal)) -> Principal:
     if principal.membership.role != "admin":
         raise HTTPException(403, "Ainult admin")
+    return principal
+
+
+def require_superadmin(principal: Principal = Depends(current_principal)) -> Principal:
+    if not principal.superadmin:
+        raise HTTPException(403, "Ainult superadmin")
     return principal

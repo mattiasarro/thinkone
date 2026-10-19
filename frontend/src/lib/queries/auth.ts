@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Me, Member, Notification } from "@/types/api";
+import type { Me, Member, Notification, SuperadminOverview } from "@/types/api";
 
 export const meKey = ["me"] as const;
 
@@ -48,6 +48,10 @@ export function useSwitchAccount() {
     mutationFn: (accountId: string) => api.post<Me>(`/auth/switch/${accountId}`),
     onSuccess: (me) => { qc.clear(); qc.setQueryData(meKey, me); },
   });
+}
+
+export function useSuperadminOverview(enabled = true) {
+  return useQuery({ queryKey: ["superadmin", "overview"], queryFn: () => api.get<SuperadminOverview>("/superadmin/overview"), enabled });
 }
 
 export function useMembers() {

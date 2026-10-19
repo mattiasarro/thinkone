@@ -27,7 +27,7 @@ const et = {
   topbar: {
     searchPlaceholder: "Otsi või küsi… lepingud · osapooled · pinnad", send: "Küsi AI-lt (Enter)", searchLabel: "Otsi", searching: "Otsin…", noSearchResults: "Vasteid ei leitud", askAi: "Küsi AI-lt: „{q}”",
     notifications: "Teavitused", noNotifications: "Teavitusi pole", markRead: "Märgi loetuks", markAllRead: "Märgi kõik loetuks", unread: "{n} lugemata",
-    userMenu: "Kasutajamenüü", logout: "Logi välja", settings: "Seaded", role: { admin: "Admin", operator: "Operaator", viewer: "Vaataja" },
+    userMenu: "Kasutajamenüü", logout: "Logi välja", settings: "Seaded", role: { admin: "Admin", operator: "Operaator", viewer: "Vaataja" }, superadmin: "Superadmin · pole liige",
   },
   auth: {
     login: "Logi sisse", loginTitle: "Tere tulemast tagasi", loginSub: "Logi sisse oma töökontole.", email: "E-post", password: "Parool", name: "Nimi",
@@ -304,7 +304,12 @@ const et = {
     },
   },
   settings: {
-    title: "Seaded", tabs: { companies: "Ettevõtted", members: "Kasutajad", templates: "Mallid", notifications: "Teavitused" },
+    title: "Seaded", tabs: { companies: "Ettevõtted", members: "Kasutajad", templates: "Mallid", notifications: "Teavitused", superadmin: "Superadmin" },
+    superadmin: {
+      accounts: "Kontod", accountsSub: "Kõik kontod ja nende liikmed. „Ava” viib kontole adminina — liikmeks ei lisata ja sisenemine jääb konto auditisse.",
+      users: "Kasutajad", usersSub: "Kõik kasutajad üle kontode.", account: "Konto", members: "Liikmed", created: "Loodud", open: "Ava", current: "Avatud",
+      name: "Nimi", email: "E-post", accountsCount: "Kontosid", lastLogin: "Viimati sisse logitud", inactive: "Mitteaktiivne", noMembers: "Liikmeid pole", empty: "Kontosid pole",
+    },
     companies: {
       add: "Lisa ettevõte", edit: "Muuda ettevõtet", name: "Nimi", registryCode: "Registrikood", vatNumber: "KMKR nr", address: "Aadress", email: "E-post", phone: "Telefon",
       accentColor: "Dokumendi aktsentvärv", logo: "Logo", uploadLogo: "Laadi logo", searchRegistry: "Otsi äriregistrist", registryHint: "Sisesta nimi või registrikood — andmed täidetakse automaatselt.",

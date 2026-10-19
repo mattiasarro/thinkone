@@ -19,6 +19,7 @@ from app.api.operator import (
     portfolio,
     quotes,
     search,
+    superadmin,
     templates,
 )
 
@@ -42,3 +43,4 @@ router.include_router(quotes.router)
 router.include_router(messages.router)
 router.include_router(leases.router)
 router.include_router(agent.router)
+router.include_router(superadmin.router)

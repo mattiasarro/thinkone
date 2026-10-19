@@ -64,6 +64,11 @@ class Settings(BaseSettings):
 
     upload_max_bytes: int = 25 * 1024 * 1024
 
+    # Superadmins (comma-separated emails) see every account and user and can open any account as an admin
+    # without a membership row. Sign-up does not verify email, so an address here must already be registered
+    # by its owner in every environment.
+    superadmin_emails: str = "mattias.arro@gmail.com"
+
     @field_validator("database_url")
     @classmethod
     def _asyncpg_scheme(cls, v: str) -> str:
@@ -79,6 +84,9 @@ class Settings(BaseSettings):
         return self.database_url.replace("postgresql+asyncpg://", "postgresql://").replace(
             "postgresql+psycopg://", "postgresql://"
         )
+
+    def is_superadmin(self, email: str) -> bool:
+        return email.strip().lower() in {e.strip().lower() for e in self.superadmin_emails.split(",") if e.strip()}
 
     def mode_for(self, adapter: str) -> str:
         return getattr(self, f"{adapter}_mode", None) or self.integrations_mode
