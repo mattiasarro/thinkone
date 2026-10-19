@@ -535,7 +535,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .al-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 22px; margin: 0; font-size: 13px; }
   .al-kv dt { color: var(--muted); }
   .al-kv dd { margin: 0; color: var(--ink); font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
-  .al-kv dd.mono { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .al-kv dd.mono { font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .al-valik-teg { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   .al-hoiatus, .al-viga { display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--r); background: var(--amber-soft); color: var(--amber-ink); font-size: 12.5px; line-height: 1.5; }
   .al-hoiatus svg, .al-viga svg { width: 15px; height: 15px; flex: none; margin-top: 1px; }
@@ -573,7 +573,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .al-eel tr:last-child td { border-bottom: 0; }
   .al-eel td b { color: var(--ink); font-weight: 600; }
   .al-eel .r { text-align: right; }
-  .al-eel td.mono { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .al-eel td.mono { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .al-eel tr.viga td { background: var(--amber-soft); }
   .al-eel tr.viga small { display: block; font-size: 11px; color: var(--amber-ink); font-weight: 600; white-space: normal; }
   .dropzone.al-drop { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 46px 22px 42px; border: 1.5px dashed var(--line-strong); border-radius: var(--r-xl); background: var(--surface-soft); cursor: pointer; transition: .15s; color: var(--muted); }
@@ -640,7 +640,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .al-pick-t b { font-size: 13.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .al-pick-t small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .al-pick-r { flex: none; display: flex; align-items: center; gap: 10px; }
-  .al-pick-r .mono { font: 500 11.5px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .al-pick-r .mono { font: 500 11.5px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums; }
   .al-seis { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
   .al-seis::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .al-seis.green { color: var(--green-ink); } .al-seis.amber { color: var(--amber-ink); } .al-seis.red { color: var(--red); }

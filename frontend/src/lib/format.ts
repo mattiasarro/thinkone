@@ -1,7 +1,8 @@
 const dateFmt = new Intl.DateTimeFormat("et-EE", { day: "2-digit", month: "2-digit", year: "numeric" });
 const dateTimeFmt = new Intl.DateTimeFormat("et-EE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const numFmt = new Intl.NumberFormat("et-EE", { maximumFractionDigits: 2 });
-const eurFmt = new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+// et-EE leaves 4-digit numbers ungrouped (1328); the demo groups every number with a space (1 328 €, 3 215 m²) — demo v567 `eur()`.
+const numFmt = new Intl.NumberFormat("et-EE", { maximumFractionDigits: 2, useGrouping: "always" });
+const eurFmt = new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR", maximumFractionDigits: 2, useGrouping: "always" });
 
 export function fmtDate(v: string | Date | null | undefined): string {
   if (!v) return "—";

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
-import { cx, fmtDate, fmtEur, fmtNum } from "@/lib/format";
+import { cx, fmtDate, fmtNum } from "@/lib/format";
 import { errorMessage, API_BASE } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
 import { useCompanies, useEhr, useSaveCompany } from "@/lib/queries/settings";
@@ -163,7 +163,7 @@ function KV({ rows }: { rows: [string, ReactNode, boolean?][] }) {
 function Picked({ title, sub, pill, children, actions }: { title: string; sub: string; pill?: ReactNode; children: ReactNode; actions: ReactNode }) {
   return (
     <div className="al-valik">
-      <div className="al-valik-pea"><span className="al-valik-ik"><IconBuilding /></span><div className="al-valik-t"><b>{title}</b><small className="font-mono">{sub}</small></div>{pill}</div>
+      <div className="al-valik-pea"><span className="al-valik-ik"><IconBuilding /></span><div className="al-valik-t"><b>{title}</b><small className="tabular-nums">{sub}</small></div>{pill}</div>
       {children}
       <div className="al-valik-teg">{actions}</div>
     </div>
@@ -175,6 +175,8 @@ function Chips({ label, items }: { label?: string; items: { t: string; s?: strin
 function ObjRow({ href, icon, title, sub }: { href: string; icon: ReactNode; title: string; sub: string }) {
   return <Link href={href} className="al-obj-r"><span className="al-valik-ik">{icon}</span><span className="al-pick-t"><b>{title}</b><small>{sub}</small></span><IconChevronRight /></Link>;
 }
+// EHR addresses run county → parish → village → street; the demo reads them street first, without the county.
+const ehrAddress = (a: string) => { const p = a.split(",").map((x) => x.trim()).filter(Boolean); return /maakond/i.test(p[0] ?? "") ? p.slice(1).reverse().join(", ") : a; };
 const REGISTERED = new Set(["R", "registrisse kantud"]);
 
 /* --- 1 · company from äriregister ----------------------------------------------------------------------------- */
@@ -272,7 +274,7 @@ function BuildingForm({ company, existing, goCompany, onDone, later }: { company
   const fill = (v: string) => { setQ(v); setHit(null); input.current?.focus(); };
   const examples = street ? [{ t: street, s: t("setup.building.companyAddress"), on: () => fill(street) }] : [];
   const hits = (ehr.data ?? []).slice(0, 8);
-  const m2 = (v: number | null | undefined) => (v != null ? `${fmtNum(v)} m²` : "—");
+  const m2 = (v: number | null | undefined) => (v != null ? `${nf(v, 0)} m²` : "—");
   return (
     <>
       <Body>
@@ -290,10 +292,10 @@ function BuildingForm({ company, existing, goCompany, onDone, later }: { company
               <span className="al-otsi-src">{ehr.isFetching && <Spinner />}{t("setup.building.source")}</span>
             </div>
             {hit ? (
-              <Picked title={hit.address} sub={`EHR ${hit.ehr_code}`} actions={<button type="button" className="steplink" onClick={() => { setHit(null); input.current?.focus(); }}>{t("setup.pickOther")}</button>}>
+              <Picked title={ehrAddress(hit.address)} sub={`EHR ${hit.ehr_code}`} actions={<button type="button" className="steplink" onClick={() => { setHit(null); input.current?.focus(); }}>{t("setup.pickOther")}</button>}>
                 <div className="overline">{t("setup.building.knows")}</div>
                 <KV rows={[[t("setup.building.useType"), hit.use_type || "—"], [t("setup.building.footprint"), m2(hit.footprint_m2), true], [t("setup.building.netArea"), m2(hit.net_area_m2), true], [t("setup.building.floors"), hit.floors ?? "—", true], [t("setup.building.buildYear"), hit.build_year ?? "—", true]]} />
-                <Input label={t("setup.building.name")} required value={name} onChange={(e) => setName(e.target.value)} />
+                <Input label={t("setup.building.name")} value={name} onChange={(e) => setName(e.target.value)} />
               </Picked>
             ) : (
               <>
@@ -305,7 +307,7 @@ function BuildingForm({ company, existing, goCompany, onDone, later }: { company
                       const own = taken.has(h.ehr_code);
                       return (
                         <button key={h.ehr_code} type="button" className="al-pick" disabled={own} onClick={() => pickHit(h)}>
-                          <span className="al-pick-t"><b>{h.address}</b><small>{[h.use_type, h.build_year, own && t("setup.building.inPortfolio")].filter(Boolean).join(" · ") || "—"}</small></span>
+                          <span className="al-pick-t"><b>{ehrAddress(h.address)}</b><small>{[h.use_type, h.build_year, own && t("setup.building.inPortfolio")].filter(Boolean).join(" · ") || "—"}</small></span>
                           <span className="al-pick-r"><span className="mono">EHR {h.ehr_code}</span></span>
                         </button>
                       );
@@ -326,7 +328,7 @@ function BuildingDone({ properties, footer }: { properties: Asset[]; footer: Rea
     <>
       <Body>
         <DoneLine>{properties.length === 1 ? t("setup.building.doneOne") : t("setup.building.doneMany", { n: properties.length })}</DoneLine>
-        <div className="al-obj">{properties.map((p) => { const a = p.attributes as PropertyAttributes; return <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconBuilding />} title={p.name} sub={`${a.address || "—"}${a.ehr_code ? ` · EHR ${a.ehr_code}` : ""}`} />; })}</div>
+        <div className="al-obj">{properties.map((p) => { const a = p.attributes as PropertyAttributes; return <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconBuilding />} title={p.name} sub={`${a.address ? ehrAddress(a.address) : "—"}${a.ehr_code ? ` · EHR ${a.ehr_code}` : ""}`} />; })}</div>
       </Body>
       <Footer>{footer}</Footer>
     </>
@@ -335,6 +337,9 @@ function BuildingDone({ properties, footer }: { properties: Asset[]; footer: Rea
 
 /* --- 3 · spaces from a table (same backend import as the object wizard; demo v623 `alPindVorm`) ---------------- */
 const spacesN = (n: number) => (n === 1 ? t("setup.spaces.spacesOne") : t("setup.spaces.spacesMany", { n }));
+// demo `eur(n, frac)`: fixed decimals, every number grouped with a space (262,5 · 7,60 · 1 995)
+const nfCache = new Map<number, Intl.NumberFormat>();
+const nf = (n: number, frac = 2) => { let f = nfCache.get(frac); if (!f) { f = new Intl.NumberFormat("et-EE", { minimumFractionDigits: frac, maximumFractionDigits: frac, useGrouping: "always" }); nfCache.set(frac, f); } return f.format(n); };
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Asset[]; goBuilding: () => void; onDone: () => void; later: ReactNode }) {
   const target = properties.find((p) => !p.children_count) ?? properties[0] ?? null;
@@ -400,7 +405,7 @@ function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Ass
           : imp.isPending && !preview ? <p className="al-res-olek flex items-center gap-2"><Spinner />{t("setup.spaces.reading")}</p>
           : rows.length > 0 && (
             <div className="al-eel">
-              <div className="al-eel-pea"><b>{t("setup.spaces.preview")}</b><span>{t("setup.spaces.previewLine", { n: spacesN(rows.length), m2: fmtNum(totalM2), eur: fmtEur(totalRent) })}{source ? ` · ${source}` : ""}</span>
+              <div className="al-eel-pea"><b>{t("setup.spaces.preview")}</b><span>{t("setup.spaces.previewLine", { n: spacesN(rows.length), m2: nf(totalM2, 1), eur: nf(totalRent, 0) })}{source ? ` · ${source}` : ""}</span>
                 {bad > 0 && <span className="al-eel-vead">{bad === 1 ? t("setup.spaces.previewErrorsOne") : t("setup.spaces.previewErrors", { n: bad })}</span>}</div>
               <div className="al-eel-tbl"><table>
                 <thead><tr><th>{t("setup.spaces.colSpace")}</th><th>{t("setup.spaces.colType")}</th><th className="r">{t("setup.spaces.colArea")}</th><th className="r">{t("setup.spaces.colPrice")}</th><th className="r">{t("setup.spaces.colRent")}</th><th className="r">{t("setup.spaces.colParking")}</th><th>{t("setup.spaces.colState")}</th></tr></thead>
@@ -410,7 +415,7 @@ function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Ass
                     <tr key={r.row} className={r.ok ? undefined : "viga"}>
                       <td><b>{String(r.data.name ?? "—")}</b>{!r.ok && <small>{r.errors.join(" · ")}</small>}</td>
                       <td>{String(r.data.type ?? "—")}</td>
-                      <td className="r mono">{m != null ? fmtNum(m) : "—"}</td><td className="r mono">{h != null ? fmtNum(h) : "—"}</td><td className="r mono">{m != null && h != null ? fmtEur(m * h) : "—"}</td>
+                      <td className="r mono">{m != null ? nf(m, 1) : "—"}</td><td className="r mono">{h != null ? nf(h) : "—"}</td><td className="r mono">{m != null && h != null ? nf(m * h, 0) : "—"}</td>
                       <td className="r mono">{p ? (p === 1 ? t("setup.spaces.parkingOne") : t("setup.spaces.parkingMany", { n: p })) : "—"}</td>
                       <td>{t("setup.spaces.stateFree")}</td>
                     </tr>
@@ -429,7 +434,7 @@ function SpacesDone({ properties, footer }: { properties: Asset[]; footer: React
     <>
       <Body>
         <DoneLine>{t("setup.spaces.doneLine")}</DoneLine>
-        <div className="al-obj">{properties.filter((p) => p.children_count).map((p) => <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconGrid />} title={t("setup.spaces.doneRow", { name: p.name, n: spacesN(p.children_count ?? 0) })} sub={(p.attributes as PropertyAttributes).address || "—"} />)}</div>
+        <div className="al-obj">{properties.filter((p) => p.children_count).map((p) => <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconGrid />} title={t("setup.spaces.doneRow", { name: p.name, n: spacesN(p.children_count ?? 0) })} sub={(p.attributes as PropertyAttributes).address ? ehrAddress((p.attributes as PropertyAttributes).address as string) : "—"} />)}</div>
       </Body>
       <Footer>{footer}</Footer>
     </>
