@@ -84,6 +84,8 @@ const et = {
     company: {
       q: "Milline ettevõte?", sub: "Sisesta registrikood või nimi — nimi, aadress ja staatus tulevad e-äriregistrist.",
       knows: "E-äriregister teab juba", address: "Aadress", legalForm: "Õiguslik vorm", status: "Staatus", source: "Allikas", sourceValue: "e-äriregister",
+      placeholder: "Registrikood või nimi", noAddress: "aadress puudub",
+      status_registered: "Registris", status_liquidating: "Likvideerimisel", status_bankrupt: "Pankrotis", status_deleted: "Kustutatud",
       name: "Ettevõtte nimi", registryCode: "Registrikood", confirm: "Kinnita ettevõte", confirmed: "Kinnitatud · {name} on konto ettevõte",
       doneLine: "Kinnitatud — äriregistri andmed on dokumentide päises", company: "Ettevõte", vat: "KMKR", editInSettings: "Muuda seadetes",
     },

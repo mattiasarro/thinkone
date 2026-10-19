@@ -488,6 +488,49 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
     .al-dash-jalus .btn { justify-content: center; }
   }
 
+  /* „Alusta” setup page (demo v623 `.al-*`) */
+  .al-edu { flex: none; width: 240px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 4px; }
+  .al-edu-a { display: flex; align-items: baseline; gap: 6px; }
+  .al-edu-a b { font: 650 30px/1 var(--font-display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .al-edu-a span { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .al-edu-riba { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .al-edu-riba i { height: 5px; border-radius: 99px; background: var(--surface-soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .al-edu-riba i.ok { background: var(--green); box-shadow: none; }
+  .al-edu-riba i.pool { background: var(--amber); box-shadow: none; }
+  .al-edu small { font-size: 11.5px; color: var(--faint); }
+  .al-rada-noot { display: flex; gap: 8px; margin: 8px 6px 4px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--faint); line-height: 1.5; }
+  .al-rada-noot svg { width: 13px; height: 13px; flex: none; margin-top: 2px; }
+  .al-k-pea { padding: 24px 26px 4px; }
+  .al-k-pea h2 { font-family: var(--font-display); font-size: 22px; font-weight: 650; letter-spacing: -.025em; margin: 8px 0 0; }
+  .al-k-pea p { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 6px 0 0; max-width: 64ch; }
+  .al-k-keha { padding: 18px 26px 24px; display: grid; gap: 14px; }
+  .al-k-jalus { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 26px; border-top: 1px solid var(--line); background: var(--surface-soft); }
+  .al-otsi { position: relative; display: flex; align-items: center; }
+  .al-otsi-ik { position: absolute; left: 15px; display: grid; color: var(--muted); pointer-events: none; }
+  .al-otsi-ik svg { width: 17px; height: 17px; }
+  .al-otsi input { width: 100%; height: 50px; padding: 0 128px 0 46px; border: 1.5px solid transparent; border-radius: var(--r-lg); background: var(--surface-soft); font: inherit; font-size: 15px; color: var(--ink); outline: none; transition: .15s; }
+  .al-otsi input::placeholder { color: var(--faint); }
+  .al-otsi input:focus { border-color: var(--accent); background: var(--surface); box-shadow: var(--focus-ring); }
+  .al-otsi-src { position: absolute; right: 14px; display: flex; align-items: center; gap: 8px; font: 600 10.5px/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--faint); pointer-events: none; }
+  .al-res { display: flex; flex-direction: column; gap: 6px; }
+  .al-res-olek { padding: 8px 2px; font-size: 12.5px; color: var(--muted); }
+  .al-pick { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 14px; border: 0; border-radius: var(--r); background: var(--surface-soft); text-align: left; cursor: pointer; color: inherit; font: inherit; transition: background .15s, box-shadow .15s; }
+  .al-pick:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .al-pick-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .al-pick-t b { font-size: 13.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .al-pick-t small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .al-pick-r { flex: none; display: flex; align-items: center; gap: 10px; }
+  .al-pick-r .mono { font: 500 11.5px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .al-seis { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .al-seis::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .al-seis.green { color: var(--green-ink); } .al-seis.amber { color: var(--amber-ink); } .al-seis.red { color: var(--red); }
+  @media (max-width: 760px) {
+    .al-edu { width: auto; }
+    .al-k-pea { padding: 20px 18px 4px; } .al-k-keha { padding: 16px 18px 20px; } .al-k-jalus { padding: 12px 18px; }
+    .al-otsi input { padding-right: 16px; }
+    .al-otsi-src, .al-pick-r .mono { display: none; }
+  }
+
   /* --- overview KPI tiles = tabs (demo v674) --- */
   .yl-k { text-align: left; padding: 16px 18px 14px; cursor: pointer; font: inherit; color: inherit; transition: box-shadow .15s, background .15s; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .yl-k:hover { box-shadow: var(--shadow); }

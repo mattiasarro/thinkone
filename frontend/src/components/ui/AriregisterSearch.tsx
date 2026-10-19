@@ -5,10 +5,23 @@ import { fetchAriregisterDetail, useAriregister } from "@/lib/queries/settings";
 import { useDebounced } from "@/lib/hooks";
 import { Spinner } from "@/components/ui/State";
 import { IconSearch } from "@/components/ui/Icons";
+import { cx } from "@/lib/format";
 import type { AriregisterHit } from "@/types/api";
 
-/** Name/registry-code search over äriregister. `onPick` gets the search hit at once and the full card (VAT, contacts, board) when it arrives. */
-export function AriregisterSearch({ id = "ar-q", onPick }: { id?: string; onPick: (hit: AriregisterHit, detail: AriregisterHit | null) => void }) {
+// Search hits carry the status code (R/L/N/K), the company card its text — both map to one short label and tone (demo `AR_STAATUS`).
+const STATUS: Record<string, [string, string]> = { R: ["registered", "green"], L: ["liquidating", "amber"], N: ["bankrupt", "red"], K: ["deleted", ""] };
+const STATUS_TEXT: Record<string, string> = { "registrisse kantud": "R", "likvideerimisel": "L", "pankrotis": "N", "kustutatud": "K" };
+function statusOf(raw: string | null): [string, string] | null {
+  if (!raw) return null;
+  const code = STATUS[raw] ? raw : STATUS_TEXT[raw.toLowerCase()];
+  return code ? [t(`setup.company.status_${STATUS[code][0]}` as Parameters<typeof t>[0]), STATUS[code][1]] : [raw, ""];
+}
+// Registry addresses run county → parish → village → street; read street first (demo `alAadress`).
+const streetFirst = (a: string | null) => (a && /maakond/i.test(a.split(",")[0] ?? "") ? a.split(",").map((x) => x.trim()).reverse().join(", ") : a);
+
+/** Name/registry-code search over äriregister. `onPick` gets the search hit at once and the full card (VAT, contacts, board) when it arrives.
+ *  `variant="setup"` is the „Alusta” look (demo v623 `.al-otsi`/`.al-pick`): no label, big field with the source tag, filled result rows. */
+export function AriregisterSearch({ id = "ar-q", onPick, variant = "field" }: { id?: string; onPick: (hit: AriregisterHit, detail: AriregisterHit | null) => void; variant?: "field" | "setup" }) {
   const [q, setQ] = useState("");
   const dq = useDebounced(q, 350);
   const reg = useAriregister(dq);
@@ -21,6 +34,30 @@ export function AriregisterSearch({ id = "ar-q", onPick }: { id?: string; onPick
     setEnriching(false);
     if (d) onPick(h, d);
   };
+  const busy = reg.isFetching || enriching;
+  const hits = (reg.data ?? []).slice(0, 6);
+  if (variant === "setup") return (
+    <>
+      <div className="al-otsi">
+        <span className="al-otsi-ik"><IconSearch /></span>
+        <input id={id} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.company.placeholder")} aria-label={t("setup.company.placeholder")} aria-controls={`${id}-res`} autoComplete="off" spellCheck={false} />
+        <span className="al-otsi-src">{busy && <Spinner />}{t("setup.company.sourceValue")}</span>
+      </div>
+      {dq.length >= 2 && !reg.isLoading && (
+        <div id={`${id}-res`} className="al-res" aria-live="polite">
+          {hits.length === 0 ? <p className="al-res-olek">{t("common.noResults")}</p> : hits.map((h) => {
+            const st = statusOf(h.status);
+            return (
+              <button key={h.registry_code} type="button" className="al-pick" onClick={() => pick(h)}>
+                <span className="al-pick-t"><b>{h.name}</b><small>{streetFirst(h.address) || t("setup.company.noAddress")}</small></span>
+                <span className="al-pick-r"><span className="mono">{h.registry_code}</span>{st && <span className={cx("al-seis", st[1])}>{st[0]}</span>}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
   return (
     <div className="field">
       <label htmlFor={id}>{t("settings.companies.searchRegistry")}</label>

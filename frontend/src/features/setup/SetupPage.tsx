@@ -17,7 +17,7 @@ import { Pill } from "@/components/ui/Pill";
 import { Spinner, Loading } from "@/components/ui/State";
 import { AriregisterSearch } from "@/components/ui/AriregisterSearch";
 import { useToast } from "@/components/ui/Toast";
-import { IconArrowRight, IconBuilding, IconCheck, IconChevronLeft, IconChevronRight, IconGrid, IconInfo, IconLock, IconPlus, IconSearch } from "@/components/ui/Icons";
+import { IconArrowLeft, IconArrowRight, IconBuilding, IconCheck, IconChevronRight, IconGrid, IconInfo, IconLock, IconPlus, IconSearch } from "@/components/ui/Icons";
 import { SpacesImport } from "@/features/assets/SpacesImport";
 import { useSetupSteps, type SetupStep } from "./useSetupSteps";
 import type { AriregisterHit, Asset, Company, EhrHit, ImportJob, PropertyAttributes } from "@/types/api";
@@ -79,37 +79,37 @@ export function SetupPage() {
 
   return (
     <div className="grid gap-5 max-w-[1100px]">
-      <LinkButton href="/app" variant="text" size="sm" className="w-fit -ml-3"><IconChevronLeft width={16} height={16} />{t("nav.avaleht")}</LinkButton>
+      <LinkButton href="/app" variant="ghost" size="sm" className="w-fit"><IconArrowLeft width={16} height={16} />{t("nav.avaleht")}</LinkButton>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <div className="overline">{companyName ? t("setup.overline", { name: companyName }) : t("setup.overlineNew")}</div>
           <h1 className="page-h1 mt-1">{complete ? t("setup.titleDone") : t("setup.title")}</h1>
           <p className="page-sub">{complete ? t("setup.subDone") : t("setup.sub")}</p>
         </div>
-        <div className="card px-4 py-3 grid gap-2 min-w-[200px]" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={done} aria-label={t("setup.progress", { n: done })}>
-          <div className="flex items-baseline gap-1.5"><b className="font-heading text-2xl font-[650] tabular-nums">{done}</b><span className="text-sm text-muted">{t("setup.ofSteps")}</span></div>
-          <div className="grid grid-cols-4 gap-1">{steps.map((s) => <i key={s.key} className={cx("h-1.5 rounded-full", s.done ? "bg-ink" : s.pending ? "bg-warning" : "bg-subtle")} />)}</div>
-          <small className="text-xs text-muted">{complete ? t("setup.allDone") : t("setup.leftShort", { min: setup.minutesLeft })}</small>
+        <div className="al-edu" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={done} aria-label={t("setup.progress", { n: done })}>
+          <div className="al-edu-a"><b>{done}</b><span>{t("setup.ofSteps")}</span></div>
+          <div className="al-edu-riba">{steps.map((s) => <i key={s.key} className={s.done ? "ok" : s.pending ? "pool" : undefined} />)}</div>
+          <small>{complete ? t("setup.allDone") : t("setup.leftShort", { min: setup.minutesLeft })}</small>
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)] items-start">
-        <nav className="card p-2 md:sticky md:top-20" aria-label={t("setup.railLabel")}>
+      <div className="grid gap-5 md:grid-cols-[300px_minmax(0,1fr)] items-start">
+        <nav className="card p-2.5 md:sticky md:top-20" aria-label={t("setup.railLabel")}>
           <ol className="grid gap-1">
             {steps.map((s) => {
               const on = s.index === current;
               return (
                 <li key={s.key}>
                   <button type="button" onClick={() => go(s.index)} aria-current={on ? "step" : undefined}
-                    className={cx("w-full flex items-start gap-3 px-3 py-2.5 rounded-control text-left transition-colors", on ? "bg-subtle shadow-[inset_0_0_0_1px_var(--line)]" : "hover:bg-subtle")}>
-                    <span className={cx("w-7 h-7 rounded-[8px] grid place-items-center font-mono text-[12px] font-[650] flex-none mt-0.5", on ? "bg-ink text-onink" : s.done ? "text-success-ink bg-success-subtle" : s.pending ? "text-warning-ink bg-warning-subtle" : "text-ink2 shadow-[inset_0_0_0_1.5px_var(--line-strong)]")}>{s.done && !on ? <IconCheck width={12} height={12} /> : s.index + 1}</span>
-                    <span className="min-w-0"><b className={cx("block text-sm", on ? "font-semibold text-ink" : "font-medium")}>{s.title}</b><small className="block text-xs text-muted truncate">{status(s)}</small></span>
+                    className={cx("w-full flex items-center gap-3 px-3 py-[11px] rounded-control text-left transition-colors", on ? "bg-subtle shadow-[inset_0_0_0_1px_var(--line)]" : "hover:bg-subtle")}>
+                    <span className={cx("w-7 h-7 rounded-[8px] grid place-items-center font-mono text-[12px] font-[650] flex-none", on ? "bg-ink text-onink" : s.done ? "text-success-ink bg-success-subtle" : s.pending ? "text-warning-ink bg-warning-subtle" : "text-ink2 shadow-[inset_0_0_0_1.5px_var(--line-strong)]")}>{s.done && !on ? <IconCheck width={12} height={12} /> : s.index + 1}</span>
+                    <span className="min-w-0 grid gap-0.5"><b className="block text-[13.5px] font-semibold text-ink">{s.title}</b><small className="block text-[11.5px] text-muted truncate">{status(s)}</small></span>
                   </button>
                 </li>
               );
             })}
           </ol>
-          <p className="flex gap-2 items-start text-xs text-muted px-3 pt-3 pb-1"><IconLock width={14} height={14} className="flex-none mt-0.5" /><span>{t("setup.railNote")}</span></p>
+          <p className="al-rada-noot"><IconLock /><span>{t("setup.railNote")}</span></p>
         </nav>
 
         <div className="al-sisu min-w-0">
@@ -148,18 +148,18 @@ export function SetupPage() {
 
 function StepCard({ i, step, title, sub, children }: { i: number; step: SetupStep; title: string; sub: string; children: ReactNode }) {
   return (
-    <section className="card" data-i={i}>
-      <header className="px-[var(--card-padding)] pt-5 pb-4 border-b" style={{ borderColor: "var(--line)" }}>
+    <section className="card overflow-hidden" data-i={i}>
+      <header className="al-k-pea">
         <div className="overline">{t("setup.stepOf", { n: i + 1 })} · {step.done ? t("setup.statusDone") : step.pending ? t("setup.statusPendingShort") : t("setup.minutes", { min: step.min })}</div>
-        <h2 className="font-heading text-xl font-[650] tracking-[-.02em] mt-1">{title}</h2>
-        <p className="text-sm text-muted mt-1 max-w-[60ch]">{sub}</p>
+        <h2>{title}</h2>
+        <p>{sub}</p>
       </header>
       {children}
     </section>
   );
 }
-function Body({ children }: { children: ReactNode }) { return <div className="px-[var(--card-padding)] py-5 grid gap-4">{children}</div>; }
-function Footer({ children }: { children: ReactNode }) { return <footer className="px-[var(--card-padding)] py-4 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--line)" }}>{children}</footer>; }
+function Body({ children }: { children: ReactNode }) { return <div className="al-k-keha">{children}</div>; }
+function Footer({ children }: { children: ReactNode }) { return <footer className="al-k-jalus">{children}</footer>; }
 function DoneLine({ children }: { children: ReactNode }) { return <div className="flex items-center gap-2 text-sm font-semibold text-success-ink"><IconCheck width={16} height={16} className="flex-none" /><span>{children}</span></div>; }
 function KV({ rows }: { rows: [string, ReactNode][] }) {
   return <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">{rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="min-w-0 break-words">{v ?? "—"}</dd></div>)}</dl>;
@@ -204,7 +204,7 @@ function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }
           </Picked>
         ) : (
           <>
-            <AriregisterSearch id="al-reg" onPick={pick} />
+            <AriregisterSearch id="al-reg" variant="setup" onPick={pick} />
             <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
           </>
         )}
