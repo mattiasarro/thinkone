@@ -29,8 +29,9 @@ async def test_regular_admin_is_not_superadmin(client: AsyncClient, admin: dict)
 
 async def test_superadmin_sees_all_and_opens_any_account(client: AsyncClient, admin: dict):
     target = admin["account"]["id"]
-    own = (await _register(client, "Boss OÜ", BOSS))["account"]["id"]
-    assert (await client.get("/api/v1/auth/me")).json()["superadmin"] is True
+    reg = await _register(client, "Boss OÜ", BOSS)
+    own = reg["account"]["id"]
+    assert reg["superadmin"] is True and (await client.get("/api/v1/auth/me")).json()["superadmin"] is True
 
     ov = (await client.get("/api/v1/superadmin/overview")).json()
     by_name = {a["name"]: a for a in ov["accounts"]}

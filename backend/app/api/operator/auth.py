@@ -95,7 +95,8 @@ async def register(body: RegisterIn, response: Response, session: AsyncSession =
     s = await auth_domain.create_session(session, user, account.id)
     set_session_cookie(response, s.id)
     acc = AccountOut(id=account.id, name=account.name, role=m.role)
-    return MeOut(user_id=user.id, email=user.email, name=user.name, locale=user.locale, account=acc, accounts=[acc])
+    return MeOut(user_id=user.id, email=user.email, name=user.name, locale=user.locale, account=acc, accounts=[acc],
+                 superadmin=get_settings().is_superadmin(user.email))
 
 
 @router.post("/login", response_model=MeOut)
@@ -166,7 +167,7 @@ async def accept_invite(body: AcceptInviteIn, response: Response, session: Async
     s = await auth_domain.create_session(session, user, m.account_id)
     set_session_cookie(response, s.id)
     return MeOut(user_id=user.id, email=user.email, name=user.name, locale=user.locale,
-                 account=next(a for a in accounts if a.id == m.account_id), accounts=accounts)
+                 account=next(a for a in accounts if a.id == m.account_id), accounts=accounts, superadmin=get_settings().is_superadmin(user.email))
 
 
 @router.get("/members", response_model=list[MemberOut])
