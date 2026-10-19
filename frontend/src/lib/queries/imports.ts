@@ -34,11 +34,11 @@ const invalidate = (qc: ReturnType<typeof useQueryClient>, id?: string) => {
 };
 export function useImportDesk() {
   return useQuery({ queryKey: ["import-desk"], queryFn: () => api.get<DeskOut>("/imports/desk"),
-    refetchInterval: (q) => (q.state.data?.batches.some((b) => b.reading > 0) ? 2500 : false) });
+    refetchInterval: (q) => (q.state.data?.batches.some((b) => b.reading > 0) ? 2500 : false), refetchIntervalInBackground: true });
 }
 export function useImportBatch(batchId: string | undefined) {
   return useQuery({ queryKey: ["import-desk", batchId], queryFn: () => api.get<DeskOut>(`/imports/desk/${batchId}`), enabled: !!batchId,
-    refetchInterval: (q) => ((q.state.data?.batch?.reading ?? 0) > 0 ? 2500 : false) });
+    refetchInterval: (q) => ((q.state.data?.batch?.reading ?? 0) > 0 ? 2500 : false), refetchIntervalInBackground: true });
 }
 export function useCommitReady(batchId: string) {
   const qc = useQueryClient();

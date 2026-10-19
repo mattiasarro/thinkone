@@ -208,7 +208,7 @@ function Review({ job }: { job: ImportJobDetail }) {
       {unresolved.length > 0 && <div className="note warning"><IconAlert width={18} height={18} />{t("imports.commitBlocked", { n: unresolved.length })}</div>}
       <div className="grid gap-5 xl:grid-cols-2 items-start">
         <SourcePane job={job} activePage={activePage} />
-        <div className="grid gap-5 min-w-0">
+        <div className="grid gap-5 min-w-0 grid-cols-[minmax(0,1fr)]">
           <ProposalEditor draft={draft} onChange={onChange} checked={checked} onCheck={onCheck} onAnchor={onAnchor} />
           {isChild ? <ParentPicker job={job} toimikud={batch.data?.toimikud ?? []} value={parent} onChange={pickParent} /> : <LinkSection draft={draft} state={link} onChange={setLink} />}
           {childWaits && parentRow && <div className="note items-center flex-wrap"><span className="flex-1">{t("imports.desk.childWaits")}</span><Link href={`/app/portfell/import/${parentRow.id}`} className="btn btn-ghost btn-sm">{t("imports.desk.openParent")}</Link></div>}
