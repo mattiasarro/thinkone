@@ -54,6 +54,15 @@ export function useSuperadminOverview(enabled = true) {
   return useQuery({ queryKey: ["superadmin", "overview"], queryFn: () => api.get<SuperadminOverview>("/superadmin/overview"), enabled });
 }
 
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, confirm_name }: { id: string; confirm_name: string }) =>
+      api.post<{ name: string; rows: number; users: number; files: number }>(`/superadmin/accounts/${id}/delete`, { confirm_name }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["superadmin"] }),
+  });
+}
+
 export function useMembers() {
   return useQuery({ queryKey: ["members"], queryFn: () => api.get<Member[]>("/auth/members") });
 }

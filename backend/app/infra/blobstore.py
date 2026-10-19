@@ -14,6 +14,8 @@ class BlobStore(Protocol):
     async def get(self, key: str) -> bytes: ...
     async def exists(self, key: str) -> bool: ...
     async def presigned_url(self, key: str, filename: str | None = None, expires: int = 600) -> str: ...
+    async def delete(self, keys: list[str]) -> None: ...
+    async def delete_prefix(self, prefix: str) -> int: ...
 
 
 def sha256(data: bytes) -> str:
@@ -63,6 +65,20 @@ class S3BlobStore:
             params["ResponseContentDisposition"] = f'inline; filename="{filename}"'
         return await asyncio.to_thread(self._client.generate_presigned_url, "get_object", Params=params, ExpiresIn=expires)
 
+    async def delete(self, keys: list[str]) -> None:
+        for i in range(0, len(keys), 1000):  # DeleteObjects takes at most 1000 keys
+            batch = [{"Key": k} for k in keys[i:i + 1000]]
+            await asyncio.to_thread(self._client.delete_objects, Bucket=self.bucket, Delete={"Objects": batch, "Quiet": True})
+
+    async def delete_prefix(self, prefix: str) -> int:
+        def _keys() -> list[str]:
+            pages = self._client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix)
+            return [o["Key"] for page in pages for o in page.get("Contents", [])]
+
+        keys = await asyncio.to_thread(_keys)
+        await self.delete(keys)
+        return len(keys)
+
 
 class MemoryBlobStore:
     """Deterministic in-process store for tests."""
@@ -82,6 +98,15 @@ class MemoryBlobStore:
 
     async def presigned_url(self, key: str, filename: str | None = None, expires: int = 600) -> str:
         return f"memory://{key}"
+
+    async def delete(self, keys: list[str]) -> None:
+        for k in keys:
+            self.data.pop(k, None)
+
+    async def delete_prefix(self, prefix: str) -> int:
+        keys = [k for k in self.data if k.startswith(prefix)]
+        await self.delete(keys)
+        return len(keys)
 
 
 _store: BlobStore | None = None

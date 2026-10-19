@@ -309,6 +309,9 @@ const et = {
       accounts: "Kontod", accountsSub: "Kõik kontod ja nende liikmed. „Ava” viib kontole adminina — liikmeks ei lisata ja sisenemine jääb konto auditisse.",
       users: "Kasutajad", usersSub: "Kõik kasutajad üle kontode.", account: "Konto", members: "Liikmed", created: "Loodud", open: "Ava", current: "Avatud",
       name: "Nimi", email: "E-post", accountsCount: "Kontosid", lastLogin: "Viimati sisse logitud", inactive: "Mitteaktiivne", noMembers: "Liikmeid pole", empty: "Kontosid pole",
+      delete: "Kustuta", deleteTitle: "Kustuta konto „{name}”",
+      deleteBody: "Kustutatakse konto kõik andmed (ettevõtted, esemed, osapooled, lepingud, pakkumised, failid, audit) ja kasutajad, kellel teist kontot pole. Seda ei saa tagasi võtta.",
+      deleteConfirm: "Kinnituseks sisesta konto nimi", deleted: "Konto „{name}” kustutatud · {users} kasutajat, {files} faili",
     },
     companies: {
       add: "Lisa ettevõte", edit: "Muuda ettevõtet", name: "Nimi", registryCode: "Registrikood", vatNumber: "KMKR nr", address: "Aadress", email: "E-post", phone: "Telefon",

@@ -1,16 +1,17 @@
-"""Superadmin: every account and user across tenants (read-only). Opening an account goes through POST /auth/switch."""
+"""Superadmin: every account and user across tenants, and deleting an account. Opening one goes through POST /auth/switch."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, db_no_tenant, require_superadmin
+from app.domain import superadmin as superadmin_domain
 from app.models.core import Account, AuthSession, Membership, User
 
 router = APIRouter(prefix="/superadmin", tags=["superadmin"])
@@ -63,3 +64,28 @@ async def overview(_: Principal = Depends(require_superadmin), session: AsyncSes
         users=[SuperUserOut(id=u.id, email=u.email, name=u.name, is_active=u.is_active, created_at=u.created_at,
                             last_login_at=last_login.get(u.id), accounts=count.get(u.id, 0)) for u in users],
     )
+
+
+class DeleteAccountIn(BaseModel):
+    confirm_name: str  # must repeat the account's name
+
+
+class DeletedAccountOut(BaseModel):
+    name: str
+    rows: int
+    users: int
+    files: int
+
+
+@router.post("/accounts/{account_id}/delete", response_model=DeletedAccountOut)
+async def delete_account(account_id: uuid.UUID, body: DeleteAccountIn, p: Principal = Depends(require_superadmin),
+                         session: AsyncSession = Depends(db_no_tenant)) -> DeletedAccountOut:
+    account = await session.get(Account, account_id)
+    if account is None:
+        raise HTTPException(404, "Kontot ei leitud")
+    if account_id == p.account_id:
+        raise HTTPException(409, "Avatud kontot ei saa kustutada — ava enne mõni teine konto")
+    if body.confirm_name.strip() != account.name.strip():
+        raise HTTPException(422, "Kinnituseks sisesta konto nimi täpselt")
+    d = await superadmin_domain.delete_account(account_id, by_user_id=p.user.id)
+    return DeletedAccountOut(name=d.name, rows=d.rows, users=d.users, files=d.files)

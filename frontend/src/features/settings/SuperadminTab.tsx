@@ -1,9 +1,12 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
-import { useMe, useSuperadminOverview, useSwitchAccount } from "@/lib/queries/auth";
+import { useDeleteAccount, useMe, useSuperadminOverview, useSwitchAccount } from "@/lib/queries/auth";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { Table, Td } from "@/components/ui/Table";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState, ErrorState, Loading } from "@/components/ui/State";
@@ -11,13 +14,25 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 
-/** Superadmin only: every account (members, „Ava” = open it as admin without membership) and every user. */
+/** Superadmin only: every account (members, „Ava” = open it as admin without membership, „Kustuta”) and every user. */
 export function SuperadminTab() {
   const me = useMe();
   const ov = useSuperadminOverview();
   const sw = useSwitchAccount();
   const toast = useToast();
   const router = useRouter();
+  const del = useDeleteAccount();
+  const [doomed, setDoomed] = useState<{ id: string; name: string } | null>(null);
+  const [typed, setTyped] = useState("");
+  const askDelete = (a: { id: string; name: string }) => { setTyped(""); setDoomed(a); };
+  const onDelete = async () => {
+    if (!doomed) return;
+    try {
+      const r = await del.mutateAsync({ id: doomed.id, confirm_name: typed });
+      toast.success(t("settings.superadmin.deleted", { name: r.name, users: r.users, files: r.files }));
+      setDoomed(null);
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
   const open = async (id: string) => {
     try { await sw.mutateAsync(id); router.push("/app"); router.refresh(); } catch (e) { toast.error(errorMessage(e)); }
   };
@@ -46,8 +61,12 @@ export function SuperadminTab() {
                   </Td>
                   <Td l={t("settings.superadmin.created")}>{fmtDate(a.created_at)}</Td>
                   <Td l="">
-                    {a.id === me.data?.account.id ? <Pill tone="success">{t("settings.superadmin.current")}</Pill>
-                      : <Button size="sm" busy={sw.isPending && sw.variables === a.id} onClick={() => open(a.id)}>{t("settings.superadmin.open")}</Button>}
+                    {a.id === me.data?.account.id ? <Pill tone="success">{t("settings.superadmin.current")}</Pill> : (
+                      <div className="flex gap-1.5 justify-end">
+                        <Button size="sm" busy={sw.isPending && sw.variables === a.id} onClick={() => open(a.id)}>{t("settings.superadmin.open")}</Button>
+                        <Button size="sm" variant="text" className="text-error" onClick={() => askDelete(a)}>{t("settings.superadmin.delete")}</Button>
+                      </div>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -55,6 +74,16 @@ export function SuperadminTab() {
           </Table>
         )}
       </Card>
+      <Modal open={doomed !== null} onClose={() => setDoomed(null)} title={t("settings.superadmin.deleteTitle", { name: doomed?.name ?? "" })} footer={
+        <>
+          <Button onClick={() => setDoomed(null)}>{t("common.cancel")}</Button>
+          <Button variant="destructive" busy={del.isPending} disabled={typed.trim() !== doomed?.name.trim()} onClick={onDelete}>{t("settings.superadmin.delete")}</Button>
+        </>
+      }>
+        <p className="mb-3">{t("settings.superadmin.deleteBody")}</p>
+        <Input label={t("settings.superadmin.deleteConfirm")} placeholder={doomed?.name} value={typed} autoComplete="off" onChange={(e) => setTyped(e.target.value)}
+               onKeyDown={(e) => { if (e.key === "Enter" && typed.trim() === doomed?.name.trim()) onDelete(); }} />
+      </Modal>
       <Card>
         <CardHeader title={t("settings.superadmin.users")}><p className="text-[13px] text-faint">{t("settings.superadmin.usersSub")}</p></CardHeader>
         <Table>
