@@ -17,22 +17,18 @@ export const num = (v: unknown): number | null => {
 export function fmtValue(v: string | number | null | undefined, unit?: string | null): string {
   if (v === null || v === undefined || v === "") return "—";
   const s = String(v).trim();
-  const out = /^-?\d+(\.\d+)?$/.test(s) ? fmtFixed(Number(s), (s.split(".")[1] ?? "").length) : s;
+  const out = /^\d{4}-\d{2}-\d{2}$/.test(s) ? fmtDate(s) : /^-?\d+(\.\d+)?$/.test(s) ? fmtFixed(Number(s), (s.split(".")[1] ?? "").length) : s;
   return unit ? `${out} ${unit}` : out;
 }
 
 /** Strings to mark in the original for a value: the quoted text first, then the value as the contract writes it. */
 export function needlesFor(value: string | number | null | undefined, text?: string | null): string[] {
-  const out: string[] = [];
   const tx = (text ?? "").replace(/\s+/g, " ").trim();
-  if (tx) out.push(tx.length > 48 ? tx.slice(0, 48) : tx);
+  const quote = tx ? [tx.length > 48 ? tx.slice(0, 48) : tx] : [];
   const v = String(value ?? "").trim();
-  if (v) {
-    if (/^\d{4}-\d{2}-\d{2}/.test(v)) out.push(fmtDate(v));
-    else if (/^-?\d+\.\d+$/.test(v)) out.push(v.replace(".", ","), fmtValue(v), v);
-    else out.push(v);
-  }
-  return out;
+  const vals = !v ? [] : /^\d{4}-\d{2}-\d{2}/.test(v) ? [fmtDate(v)] : /^-?\d+\.\d+$/.test(v) ? [v.replace(".", ","), fmtValue(v), v] : [v];
+  // a distinctive value (174,8 · 02.01.2024) is marked itself; a short one („2”, „3”) would hit anywhere — the quote first
+  return vals.some((x) => x.length >= 4) ? [...vals, ...quote] : [...quote, ...vals];
 }
 
 /** pp.kk.aaaa or ISO → ISO (null if not a date). */
