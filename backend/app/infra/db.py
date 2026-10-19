@@ -26,19 +26,20 @@ def engine() -> AsyncEngine:
         s = get_settings()
         _engine = create_async_engine(s.database_url, pool_pre_ping=True, pool_size=5, max_overflow=10)
         if s.db_app_role:
-            from sqlalchemy import event
-
-            role = s.db_app_role
-
-            @event.listens_for(_engine.sync_engine, "connect")
-            def _set_role(dbapi_conn, record):  # noqa: ANN001
-                # asyncpg adapter: run synchronously via the adapted cursor
-                cur = dbapi_conn.cursor()
-                cur.execute(f'SET ROLE "{role}"')
-                cur.close()
-
+            install_app_role(_engine, s.db_app_role)
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
+
+
+def install_app_role(eng: AsyncEngine, role: str) -> None:
+    """Every pooled connection runs as the NOBYPASSRLS app role. The SET ROLE goes straight to asyncpg, outside the
+    adapter's implicit transaction: run through the adapted cursor it was part of that transaction, and a first request
+    that rolled back (any 404) undid it — the connection stayed the superuser and RLS no longer applied on it."""
+    from sqlalchemy import event
+
+    @event.listens_for(eng.sync_engine, "connect")
+    def _set_role(dbapi_conn, record):  # noqa: ANN001
+        dbapi_conn.run_async(lambda conn: conn.execute(f'SET ROLE "{role}"'))
 
 
 def sessionmaker() -> async_sessionmaker[AsyncSession]:
