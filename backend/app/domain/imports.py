@@ -32,13 +32,19 @@ CATEGORY_TITLES = {"lease": "Üürileping", "maintenance": "Hooldusleping", "man
 
 # ---------------------------------------------------------------- upload ----------------------------------
 
-async def create_import(session: AsyncSession, actor: Actor, *, filename: str, content_type: str | None, data: bytes) -> ImportJob:
+async def create_import(session: AsyncSession, actor: Actor, *, filename: str, content_type: str | None, data: bytes, batch_id: uuid.UUID | None = None) -> ImportJob:
     if len(data) > get_settings().upload_max_bytes:
         raise ValidationFailed("Fail on liiga suur")
     fmt = detect_format(filename, content_type, data)
     if fmt not in ALLOWED_FORMATS:
         raise ValidationFailed("Ainult PDF, DOCX või ASiC-E/BDOC konteiner")
     digest = sha256(data)
+    batch_id = batch_id or uuid.uuid4()
+    # the same file twice in one import (demo: „… on juba impordis”)
+    again = (await session.execute(select(ImportJob.id).join(SourceDocument, SourceDocument.id == ImportJob.source_document_id)
+                                   .where(ImportJob.batch_id == batch_id, SourceDocument.sha256 == digest, ImportJob.status != "failed"))).first()
+    if again:
+        raise DomainError(f"{filename} on juba selles impordis")
     doc = SourceDocument(account_id=actor.account_id, filename=filename, content_type=content_type or "application/octet-stream",
                          size=len(data), s3_key="", sha256=digest, format=fmt, role="original")
     session.add(doc)
@@ -51,7 +57,7 @@ async def create_import(session: AsyncSession, actor: Actor, *, filename: str, c
         c = unpack(data)
         doc.container_signatures = [{"signer": s.signer, "personal_code": s.personal_code, "signing_time": s.signing_time, "files": s.signed_files} for s in c.signatures]
         doc.datafiles = [{"name": n, "size": len(b)} for n, b in c.datafiles]
-    job = ImportJob(account_id=actor.account_id, source_document_id=doc.id, status="uploaded", created_by=actor.user_id)
+    job = ImportJob(account_id=actor.account_id, source_document_id=doc.id, status="uploaded", created_by=actor.user_id, batch_id=batch_id)
     session.add(job)
     await session.flush()
     # same file already committed? → flag before spending a model call
@@ -106,6 +112,69 @@ async def save_review(session: AsyncSession, actor: Actor, job_id: uuid.UUID, re
     job.edits_count = edits
     emit(session, actor, "import_job", job.id, "import.reviewed", {"edits": edits})
     return job
+
+
+_UNSET: Any = object()
+
+
+async def save_desk_state(
+    session: AsyncSession, actor: Actor, job_id: uuid.UUID, *, checked: list[str] | None = None, link: Any = _UNSET,
+    parent_job_id: Any = _UNSET, parent_contract_id: Any = _UNSET,
+) -> ImportJob:
+    """What the review decides besides the proposal: checked fields, the link (company/space/parties), the parent contract."""
+    job = await get_job(session, job_id)
+    if job.status != "review":
+        raise DomainError("Import ei ole ülevaatuse seisus")
+    payload: dict[str, Any] = {}
+    if checked is not None:
+        job.checked = sorted(set(checked))
+        payload["checked"] = len(job.checked)
+    if link is not _UNSET:
+        job.link = link
+        payload["link"] = bool(link)
+    if parent_job_id is not _UNSET or parent_contract_id is not _UNSET:
+        pj = parent_job_id if parent_job_id is not _UNSET else None
+        pc = parent_contract_id if parent_contract_id is not _UNSET else None
+        if pj and pj == job.id:
+            raise DomainError("Fail ei saa olla iseenda lisa")
+        if pj and not await session.get(ImportJob, pj):
+            raise NotFound("Lepingu faili ei leitud")
+        if pc and not await session.get(Contract, pc):
+            raise NotFound("Lepingut ei leitud")
+        job.parent_job_id, job.parent_contract_id = pj, pc
+        payload["parent"] = str(pj or pc or "")
+    emit(session, actor, "import_job", job.id, "import.desk_state", payload)
+    return job
+
+
+async def exclude_job(session: AsyncSession, actor: Actor, job_id: uuid.UUID, reason: str | None) -> ImportJob:
+    """„Ei impordi” — always with a reason (demo: topelt, juba registris või jäeti välja)."""
+    job = await get_job(session, job_id)
+    if job.status in ("committed", "manual"):
+        raise DomainError("Kinnitatud faili ei saa välja jätta")
+    job.status, job.excluded_reason = "excluded", (reason or "").strip() or "jäeti välja"
+    emit(session, actor, "import_job", job.id, "import.excluded", {"reason": job.excluded_reason})
+    return job
+
+
+async def restore_job(session: AsyncSession, actor: Actor, job_id: uuid.UUID) -> ImportJob:
+    job = await get_job(session, job_id)
+    if job.status != "excluded":
+        raise DomainError("Fail ei ole välja jäetud")
+    job.status, job.excluded_reason = ("review" if job.proposal else "failed"), None
+    emit(session, actor, "import_job", job.id, "import.restored")
+    return job
+
+
+async def remove_job(session: AsyncSession, actor: Actor, job_id: uuid.UUID) -> None:
+    """„Eemalda importist” — only a failed or left-out file; the original stays in storage, the event log keeps the trail."""
+    job = await get_job(session, job_id)
+    if job.status not in ("failed", "excluded"):
+        raise DomainError("Eemaldada saab ainult ebaõnnestunud või välja jäetud faili")
+    for child in (await session.execute(select(ImportJob).where(ImportJob.parent_job_id == job.id))).scalars():
+        child.parent_job_id = None
+    emit(session, actor, "import_job", job.id, "import.removed", {"source_document_id": job.source_document_id})
+    await session.delete(job)
 
 
 def _count_edits(a: dict[str, Any], b: dict[str, Any]) -> int:
@@ -498,8 +567,6 @@ async def register_amendment(
 
     ``new_party_id`` is the tenant-change case: the current primary row closes the day before ``valid_from`` and the new
     party becomes primary with ``source=amendment``."""
-    from app.domain.keydates import add_key_date
-
     contract = await session.get(Contract, contract_id)
     if not contract or contract.deleted_at:
         raise NotFound("Lepingut ei leitud")
@@ -516,6 +583,23 @@ async def register_amendment(
         from app.ingest.container import unpack
 
         doc.container_signatures = [{"signer": s.signer, "personal_code": s.personal_code, "signing_time": s.signing_time} for s in unpack(data).signatures]
+    await apply_amendment(session, actor, contract, doc, parameters=parameters, key_dates=key_dates, valid_from=valid_from, end_date=end_date,
+                          new_party_id=new_party_id, note=note)
+    return doc
+
+
+async def apply_amendment(
+    session: AsyncSession, actor: Actor, contract: Contract, doc: SourceDocument, *, parameters: list[dict[str, Any]] | None = None,
+    key_dates: list[dict[str, Any]] | None = None, valid_from: date | None = None, end_date: date | None = None,
+    new_party_id: uuid.UUID | None = None, note: str | None = None,
+) -> None:
+    """The amendment itself on a stored original: new fact versions, end date, tenant change, key dates (also the import
+    desk's path for an annex file that hangs under its contract)."""
+    from app.domain.keydates import add_key_date
+
+    if contract.origin != "imported":
+        raise DomainError("Välise muudatuse saab registreerida ainult imporditud lepingule; platvormi lepingud muudetakse lisaga (etapp 08)")
+    doc.contract_id, doc.role = contract.id, "amendment"
     vf = valid_from or date.today()
     values = dict(contract.current_values or {})
     changes = []
@@ -558,4 +642,4 @@ async def register_amendment(
     contract.version += 1
     emit(session, actor, "contract", contract.id, "contract.external_amendment_registered",
          {"source_document_id": doc.id, "changes": changes, "key_dates": len(key_dates or []), "note": note}, reason=note)
-    return doc
+

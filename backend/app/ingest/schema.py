@@ -32,6 +32,12 @@ class ContractHead(BaseModel):
     counterparty_name: str | None = None
     our_company_name: str | None = None
     summary: str | None = None
+    # what kind of document this is in a batch of files (demo v622 „import lepingu kaupa”): a contract of its own, an annex
+    # (lisa / muudatus) amending an earlier contract, or a supporting document (akt, garantiikiri, plaan) that belongs to one
+    document_kind: Literal["contract", "annex", "document"] = "contract"
+    annex_number: str | None = None
+    parent_number: str | None = None  # the number of the contract an annex amends / a document belongs to, if printed
+    parent_signed_at: date | None = None  # „… 25.11.2023 sõlmitud üürilepingu lisa”
 
 
 class PartyProposal(Anchor):

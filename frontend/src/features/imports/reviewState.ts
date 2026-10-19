@@ -10,11 +10,3 @@ export function uncertainKeys(p: Proposal): FieldKey[] {
   p.parties.forEach((x, i) => { if (x.confidence < UNCERTAIN) keys.push(`party:${i}`); });
   return keys;
 }
-
-const storeKey = (jobId: string) => `t1.import.checked.${jobId}`;
-export function loadChecked(jobId: string): Set<string> {
-  try { const raw = sessionStorage.getItem(storeKey(jobId)); return new Set(raw ? (JSON.parse(raw) as string[]) : []); } catch { return new Set(); }
-}
-export function saveChecked(jobId: string, s: Set<string>) {
-  try { sessionStorage.setItem(storeKey(jobId), JSON.stringify([...s])); } catch { /* ignore */ }
-}

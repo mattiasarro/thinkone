@@ -100,7 +100,7 @@ export interface ContractDetail extends ContractSummary { notes?: string | null;
 /** A party's contracts (GET /parties/{id}/contracts): the summary fields plus the party's role in that contract. */
 export interface PartyContractRow { id: UUID; number: string | null; title: string; status: string; type_code: string; category: ContractCategory | null; start_date: ISODate | null; end_date: ISODate | null; role: string | null }
 
-export type ImportStatus = "uploaded" | "extracting" | "structuring" | "review" | "committed" | "failed" | "manual";
+export type ImportStatus = "uploaded" | "extracting" | "structuring" | "review" | "committed" | "failed" | "manual" | "excluded";
 export interface ImportSourceDocument { id: UUID; filename: string; format: "pdf" | "docx" | "asice"; page_count: number | null; has_text_layer: boolean | null; container_signatures: ContainerSignature[] | null }
 export interface ProposalContract { title: string; category: ContractCategory; number?: string | null; signed_at?: ISODate | null; start_date?: ISODate | null; end_date?: ISODate | null; counterparty_name: string; our_company_name?: string | null; summary: string }
 export interface ProposalParty { name: string; role: string; registry_code?: string | null; address?: string | null; confidence: number }
@@ -108,7 +108,22 @@ export interface ProposalParameter { key: string; label: string; value: string |
 export interface ProposalKeyDate { kind: string; date: ISODate; title: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null }
 export interface ProposalClause { number: string; level: number; heading?: string | null; text: string; page?: number | null; char_start?: number | null; char_end?: number | null }
 export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null }
-export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate }
+export type ImportDocKind = "contract" | "annex" | "document";
+export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate;
+  batch_id?: UUID | null; kind?: ImportDocKind; annex_number?: string | null; parent_job_id?: UUID | null; parent_contract_id?: UUID | null; link?: Record<string, unknown> | null; checked?: string[]; excluded_reason?: string | null; uncertain?: string[] }
+/** Import desk (demo v622/v638): one drop = one batch; a toimik = a contract with its annexes and documents. */
+export type ToimikState = "loen" | "viga" | "ei" | "kinnitatud" | "ootab" | "valmis";
+export interface DeskRow {
+  id: UUID; status: ImportStatus | "excluded"; state: ToimikState; kind: ImportDocKind; annex_number: string | null; filename: string; format: string | null;
+  title: string | null; category: string | null; counterparty: string | null; heading: string | null; number: string | null; start_date: ISODate | null; end_date: ISODate | null;
+  monthly: number | null; area_m2: number | null; spaces: string[]; linked: boolean; link_suggested: boolean; changes: { label: string; value: string | null; unit: string | null }[];
+  open: number; needs_link: boolean; needs_parent: boolean; parent: { kind: "job" | "contract"; id: UUID; label: string | null; number: string | null; suggested: boolean } | null;
+  error: string | null; excluded_reason: string | null; committed_contract_id: UUID | null; committed_number: string | null; duplicate_of_contract_id: UUID | null; opened_at: ISODate | null; created_at: ISODate;
+}
+export interface DeskToimik { state: ToimikState; open: number; row: DeskRow; children: DeskRow[] }
+export interface DeskBatch { id: UUID; name: string; date: string; time: string; created_at: ISODate; files: number; contracts: number; records: number; children: number; review: number; ready: number; committed: number; excluded: number; reading: number; opened_at: ISODate | null; state: "reading" | "open" | "done" }
+export interface DeskReady { contracts: number; children: number; key_dates: number; new_parties: number }
+export interface DeskOut { batches: DeskBatch[]; batch?: DeskBatch; toimikud?: DeskToimik[]; ready?: DeskReady }
 export interface ImportJobDetail extends ImportJob { source_url?: string | null; text_pages?: { page: number; text: string }[] | null }
 export interface ImportCommitParty { index: number | null; party_id: string | null; role: string; is_primary: boolean; include: boolean }
 export interface ImportCommitInput { company_id?: UUID | null; asset_id?: UUID | null; asset_ids?: UUID[] | null; allocation_kind?: "exclusive" | "coverage" | null; parties?: ImportCommitParty[]; category: ContractCategory; checked?: string[]; parking_numbers?: string[] | null }

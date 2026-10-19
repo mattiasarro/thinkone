@@ -9,7 +9,8 @@ import { errorMessage, API_BASE } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
 import { useCompanies, useEhr, useSaveCompany } from "@/lib/queries/settings";
 import { useAssets, useCreateAsset, useImportSpaces } from "@/lib/queries/portfolio";
-import { useImports, useUploadImport, IMPORT_PENDING } from "@/lib/queries/imports";
+import { useImports, IMPORT_PENDING } from "@/lib/queries/imports";
+import { useImportFiles } from "@/features/imports/useImportFiles";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Field";
 import { Dropzone } from "@/components/ui/FileInput";
@@ -20,8 +21,6 @@ import { IconAlert, IconArrowLeft, IconArrowRight, IconBuilding, IconCheck, Icon
 import { useSetupSteps, type SetupStep } from "./useSetupSteps";
 import type { AriregisterHit, Asset, Company, EhrHit, ImportJob, PropertyAttributes, SpaceImportResult } from "@/types/api";
 
-const CONTRACT_EXT = new Set(["pdf", "docx", "asice", "bdoc", "sce"]);
-const TABLE_EXT = new Set(["csv", "tsv", "txt", "xlsx", "xls", "ods", "numbers"]);
 const ACCEPT = ".pdf,.docx,.asice,.bdoc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.etsi.asic-e+zip";
 
 /** „Alusta · 10 minutit” (demo v623 `View.alusta`): ONE page — the four-step rail on the left, the active step's form on the right.
@@ -451,18 +450,15 @@ function SpacesDone({ properties, footer }: { properties: Asset[]; footer: React
 
 /* --- 4 · existing contracts → the import desk --------------------------------------------------------------- */
 function ContractsForm({ open, onUploaded, later }: { open: ImportJob[]; onUploaded: () => void; later: ReactNode }) {
-  const upload = useUploadImport();
+  const { send, busy } = useImportFiles();
   const toast = useToast();
+  const router = useRouter();
+  // one drop = one import; its desk opens like the demo's `alLepLisa` → #/import/p/<pid>
   const onFiles = async (files: File[]) => {
-    let n = 0;
-    for (const f of files) {
-      const ext = f.name.toLowerCase().split(".").pop() ?? "";
-      if (TABLE_EXT.has(ext)) { toast.error(t("imports.csvNotHere", { name: f.name })); continue; }
-      if (!CONTRACT_EXT.has(ext)) { toast.error(t("imports.unsupportedType", { name: f.name })); continue; }
-      try { await upload.mutateAsync(f); n++; } catch (e) { toast.error(`${f.name}: ${errorMessage(e)}`); }
-    }
-    if (n) { toast.success(t("setup.contracts.uploaded", { n })); onUploaded(); }
+    const r = await send(files);
+    if (r) { toast.success(t("setup.contracts.uploaded", { n: r.n })); onUploaded(); router.push(`/app/portfell/import/p/${r.batchId}`); }
   };
+  const upload = { isPending: busy };
   if (open.length > 0) {
     const n = (...st: string[]) => open.filter((j) => st.includes(j.status)).length;
     return (

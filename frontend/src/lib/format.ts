@@ -19,6 +19,13 @@ export function fmtNum(v: number | string | null | undefined): string {
   const n = typeof v === "string" ? Number(v) : v;
   return isNaN(n) ? String(v) : numFmt.format(n);
 }
+/** Fixed decimals, every number grouped (demo `eur(n, frac)`: 1 328,48 · 174,8 · 12 733). */
+const fixedFmt = new Map<number, Intl.NumberFormat>();
+export function fmtFixed(n: number, frac = 2): string {
+  let f = fixedFmt.get(frac);
+  if (!f) { f = new Intl.NumberFormat("et-EE", { minimumFractionDigits: frac, maximumFractionDigits: frac, useGrouping: "always" }); fixedFmt.set(frac, f); }
+  return f.format(n);
+}
 export function fmtEur(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === "") return "—";
   const n = typeof v === "string" ? Number(v) : v;

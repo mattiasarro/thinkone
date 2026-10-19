@@ -230,3 +230,73 @@ def test_proposal_schema_has_no_numeric_bounds():
 
     text = json.dumps(proposal_json_schema())
     assert '"minimum"' not in text and '"maximum"' not in text and '"exclusiveMinimum"' not in text
+
+
+ANNEX_PDF = SAMPLES / "MARU_uurileping_P29_lisa3.pdf"
+
+
+async def test_import_desk_batch_toimik_and_bulk_confirm(client: AsyncClient, admin: dict):
+    """Demo v622/v638: one drop = one import; the annex hangs under its lease, the toimik waits until every uncertain
+    value is checked and the lease has its space, then „Kinnita valmis” writes the contract and the annex onto it."""
+    batch = str(uuid.uuid4())
+    jobs = []
+    for path in (LEASE_PDF, ANNEX_PDF, MAINT_DOCX):
+        ct = "application/pdf" if path.suffix == ".pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        r = await client.post("/api/v1/imports", files={"file": (path.name, path.read_bytes(), ct)}, data={"batch_id": batch})
+        assert r.status_code == 201, r.text
+        assert r.json()["batch_id"] == batch
+        jobs.append(r.json())
+    # the same file twice in one import is refused
+    r = await client.post("/api/v1/imports", files={"file": (LEASE_PDF.name, LEASE_PDF.read_bytes(), "application/pdf")}, data={"batch_id": batch})
+    assert r.status_code in (400, 409, 422)
+    d = (await client.get(f"/api/v1/imports/desk/{batch}")).json()
+    assert d["batch"]["reading"] == 3 and d["batch"]["state"] == "reading"
+    for j in jobs:
+        await _run_worker_inline(j["id"])
+    lease, annex, maint = jobs
+    a = (await client.get(f"/api/v1/imports/{annex['id']}")).json()
+    assert a["kind"] == "annex" and a["annex_number"] == "3"
+
+    d = (await client.get(f"/api/v1/imports/desk/{batch}")).json()
+    assert d["batch"]["files"] == 3 and d["batch"]["records"] == 2 and d["batch"]["children"] == 1
+    t = next(x for x in d["toimikud"] if x["row"]["id"] == lease["id"])
+    assert [c["id"] for c in t["children"]] == [annex["id"]] and t["children"][0]["kind"] == "annex"
+    assert t["state"] == "ootab"  # uncertain values, no space yet
+    assert any(b["id"] == batch for b in (await client.get("/api/v1/imports/desk")).json()["batches"])
+
+    # the register: company + building + the space the file names (P29 → Pind 29)
+    co = (await client.post("/api/v1/companies", json={"name": "Taevavärava OÜ", "registry_code": "16333502"})).json()
+    b = (await client.post("/api/v1/assets", json={"type_code": "property", "name": "Hoone T6B", "company_id": co["id"], "attributes": {"address": "Taevavärava tee 6b"}})).json()
+    sp = (await client.post("/api/v1/assets", json={"type_code": "space", "name": "Pind 29", "parent_id": b["id"], "attributes": {"rentable_area_m2": 174.8, "price_per_m2": 7.6}})).json()
+    # check every uncertain value on the lease and the annex; leave the maintenance contract out
+    for j in (lease, annex):
+        unc = (await client.get(f"/api/v1/imports/{j['id']}")).json()["uncertain"]
+        r = await client.patch(f"/api/v1/imports/{j['id']}/desk", json={"checked": unc})
+        assert r.status_code == 200 and set(r.json()["checked"]) == set(unc)
+    r = await client.post(f"/api/v1/imports/{maint['id']}/exclude", json={"reason": "juba registris"})
+    assert r.status_code == 200 and r.json()["status"] == "excluded"
+
+    d = (await client.get(f"/api/v1/imports/desk/{batch}")).json()
+    t = next(x for x in d["toimikud"] if x["row"]["id"] == lease["id"])
+    assert t["state"] == "valmis", t
+    assert t["row"]["spaces"] == ["Pind 29"] and t["row"]["link_suggested"]
+    assert d["ready"]["contracts"] == 1 and d["ready"]["children"] == 1
+    assert next(x for x in d["toimikud"] if x["row"]["id"] == maint["id"])["state"] == "ei"
+
+    r = await client.post(f"/api/v1/imports/batches/{batch}/commit-ready")
+    assert r.status_code == 200, r.text
+    assert r.json()["contracts"] == 1 and r.json()["children"] == 1
+    lj = (await client.get(f"/api/v1/imports/{lease['id']}")).json()
+    aj = (await client.get(f"/api/v1/imports/{annex['id']}")).json()
+    assert lj["status"] == "committed" and aj["status"] == "committed"
+    assert aj["committed_contract_id"] == lj["committed_contract_id"]  # the annex went onto the lease, not a contract of its own
+    c = (await client.get(f"/api/v1/contracts/{lj['committed_contract_id']}")).json()
+    assert c["version"] >= 2
+    d = (await client.get(f"/api/v1/imports/desk/{batch}")).json()
+    assert d["batch"]["committed"] == 1 and d["batch"]["state"] == "done"
+
+    # left out → back → out again → removed from the import
+    assert (await client.post(f"/api/v1/imports/{maint['id']}/restore")).json()["status"] == "review"
+    await client.post(f"/api/v1/imports/{maint['id']}/exclude", json={})
+    assert (await client.delete(f"/api/v1/imports/{maint['id']}")).status_code == 204
+    assert (await client.get(f"/api/v1/imports/{maint['id']}")).status_code == 404

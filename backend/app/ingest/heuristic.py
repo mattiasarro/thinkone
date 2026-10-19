@@ -196,8 +196,14 @@ def heuristic_structure(user: str) -> dict[str, Any]:
     if mh:
         hint_name = mh.group(1)
     addr = re.search(r"aadressil\s+([^,]+(?:,[^,]+){0,3}?(?:küla|linn|vald|Tallinn|maakond)[^,\n]*)", text)
+    from app.ingest.kind import classify
+
+    title = first_line[:120].title() if first_line.isupper() else first_line[:120]
+    heading = " ".join(ln.strip() for ln in text.split("\n")[:6] if ln.strip())[:300]  # „ÄRIRUUMIDE ÜÜRILEPING PIND _29_…_LISA 3”
+    kind, annex_nr = classify({"title": heading})
     return {
-        "contract": {"title": first_line[:120].title() if first_line.isupper() else first_line[:120], "category": category, "number": number,
+        "contract": {"title": title, "category": category, "number": number, "document_kind": kind, "annex_number": annex_nr,
+                     "parent_number": None, "parent_signed_at": None,
                      "signed_at": signed, "start_date": start, "end_date": end, "counterparty_name": counter, "our_company_name": our,
                      "summary": f"{category} · {len(clauses)} punkti · automaatselt struktureeritud (reeglipõhine)"},
         "parties": parties,

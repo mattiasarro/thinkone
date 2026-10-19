@@ -9,7 +9,8 @@ import { useSetupSteps } from "./useSetupSteps";
 export function SetupBar() {
   const pathname = usePathname();
   const { steps, done, next, minutesLeft } = useSetupSteps();
-  if (!steps || !next || pathname === "/app" || pathname.startsWith("/app/alusta")) return null;
+  // the import pages say it in their own overline (demo „Seadistus · samm 4 / 4 · olemasolevad lepingud”)
+  if (!steps || !next || pathname === "/app" || pathname.startsWith("/app/alusta") || pathname.startsWith("/app/portfell/import")) return null;
   return (
     <Link href="/app/alusta" className="card flex items-center gap-3 px-4 py-2.5 mb-5 hover:shadow-floating transition-shadow">
       <span className="font-mono text-[12px] font-[650] tabular-nums text-ink flex-none">{done}/{steps.length}</span>

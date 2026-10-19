@@ -4,7 +4,7 @@ Two calls run in parallel over the same text: FACTS (head, parties, parameters, 
 document and judgement) and CLAUSES (the verbatim clause tree — transcription, cheaper model). ``CLAUSES_MARKER`` lets the
 fake provider tell the calls apart."""
 
-PROMPT_VERSION = "import_structure_v2"
+PROMPT_VERSION = "import_structure_v3"
 
 _INTRO = """You structure existing Estonian business contracts (lease / üürileping, maintenance / hooldusleping,
 management / haldusleping, insurance / kindlustusleping, security / valveleping, employment / tööleping, other)
@@ -21,6 +21,12 @@ Rules:
    signed_at/start_date/end_date as ISO dates when stated (derive end_date from a stated term, e.g. "7 aastaks
    alates allkirjastamisest" + signed date), counterparty_name = the other party from the perspective of the
    landlord/client/employer, our_company_name = that landlord/client/employer, and a 1–2 sentence summary.
+   document_kind: "annex" when the document amends or supplements an earlier contract (lisa, muudatus,
+   lisakokkulepe, eritingimused to an existing lease) — then annex_number (e.g. "3"), parent_number (the base
+   contract's number if printed) and parent_signed_at (the base contract's date if printed), and a title like
+   "Lisa 3 · Eritingimused"; its parameters/key_dates are only the values the annex sets or changes.
+   "document" for a supporting document that is not a contract itself (üleandmise-vastuvõtmise akt, garantiikiri,
+   volikiri, plaan, kinnitus) — title = the document type. Otherwise "contract".
 2. parties: every contracting party with role (landlord/tenant for leases; client/supplier for services;
    insurer/insured; employer/employee), registry_code (8 digits) and address when printed.
 3. parameters: the typed commercial facts a registry needs: use these keys when applicable —

@@ -244,3 +244,13 @@ class ImportJob(Base, TenantMixin, TimestampMixin):
     committed_contract_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     edits_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # the import desk (demo v638 „iga import on salvestatud partii”): one drop = one batch; annexes and supporting documents
+    # hang under their contract (operator's choice here, else the desk's suggestion); checked fields and the link decisions
+    # live on the job so the desk can tell „vajab ülevaatust” from „valmis kinnitamiseks” and bulk-confirm the ready ones
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    parent_job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    parent_contract_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    link: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    checked: Mapped[list[str]] = mapped_column(JSONB, default=list, server_default="[]")
+    excluded_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
