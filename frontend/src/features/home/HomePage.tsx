@@ -1,20 +1,21 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { useMe } from "@/lib/queries/auth";
+import { useCompanies } from "@/lib/queries/settings";
 import { useAttention, usePortfolioSummary } from "@/lib/queries/portfolio";
 import { useThreads } from "@/lib/queries/suhtlus";
 import { daysUntil, fmtDate } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Pill } from "@/components/ui/Pill";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { Popover } from "@/components/ui/Popover";
 import { Loading } from "@/components/ui/State";
-import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconArrowUp, IconCal, IconFile, IconCheck, IconChat, Glyph } from "@/components/ui/Icons";
+import { IconBuilding, IconImport, IconUsers, IconArrowRight, IconArrowUp, IconCal, IconFile, IconCheck, IconChat, IconChevron, IconClip, IconMic, Glyph } from "@/components/ui/Icons";
 import { cx } from "@/lib/format";
 import type { AttentionRow } from "@/types/api";
-import { setupSteps } from "@/features/setup/useSetupSteps";
+import { setupSteps, type SetupStep } from "@/features/setup/useSetupSteps";
 
 const LATER_KEY = "thinkone.home.later";
 const rowKey = (r: AttentionRow) => `${r.kind}:${r.link}:${r.step ?? ""}`;
@@ -44,13 +45,12 @@ function dueLabel(due: string | null): { text: string; late: boolean } | null {
 /** Avaleht = „Fookus” (demo v672 → v770): greeting · ONE compact focus card · „Järgmisena” rows · two links · the composer. */
 export function HomePage() {
   const me = useMe();
-  const router = useRouter();
   const summary = usePortfolioSummary();
+  const companies = useCompanies();
   const attention = useAttention();
   const threads = useThreads({ unanswered: true });
   const [later, setLater] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
-  const [q, setQ] = useState("");
   const firstName = me.data?.name.split(" ")[0] ?? "";
 
   // „Hiljem” moves a row to the end for this browser session (demo `ACT_HILJEM`)
@@ -70,16 +70,25 @@ export function HomePage() {
   const unanswered = threads.data?.length ?? 0;
   const automatic = attention.data?.automatic ?? 0;
 
-  const ask = (e: FormEvent) => { e.preventDefault(); const text = q.trim(); if (!text) return; router.push(`/app/ai?q=${encodeURIComponent(text)}`); };
+  const steps = setupSteps(summary.data);
+  const setupPending = !!steps && steps.some((s) => !s.done);
+
+  // New account: the setup flow is the home page's only content until it is done (demo v623 → `View.dashboard`).
+  if (setupPending) return (
+    <div className="mx-auto w-full max-w-[720px] pt-4">
+      <div className="dm-hi">{t("home.focus.hello", { name: firstName })}</div>
+      <h1 className="dh-h1">{t("home.setup.ask")}</h1>
+      <HomeComposer className="mt-10" placeholder={t("home.setup.composer")} />
+      <SetupCard steps={steps} company={companies.data?.[0]?.name} />
+    </div>
+  );
 
   return (
-    <div className="grid gap-6 max-w-[760px]">
+    <div className="mx-auto w-full max-w-[720px] grid gap-6">
       <div className="pt-4">
-        <h1 className="font-heading text-[clamp(26px,2.5vw,32px)] leading-[1.15] font-[650] tracking-[-.03em] [text-wrap:balance]">{t("home.focus.hello", { name: firstName })}</h1>
-        <p className="page-sub">{attention.isLoading ? t("common.loading") : rows.length === 0 ? t("home.focus.empty") : rows.length === 1 ? t("home.focus.waitingOne") : t("home.focus.waiting", { n: rows.length })}</p>
+        <div className="dm-hi">{t("home.focus.hello", { name: firstName })}</div>
+        <h1 className="dh-h1">{attention.isLoading ? t("common.loading") : rows.length === 0 ? t("home.focus.empty") : rows.length === 1 ? t("home.focus.waitingOne") : t("home.focus.waiting", { n: rows.length })}</h1>
       </div>
-
-      <SetupCard summary={summary.data} />
 
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         <QuickLink href="/app/portfell/pakkumine/uus" icon={<IconFile />} label={t("home.createQuote")} />
@@ -127,15 +136,76 @@ export function HomePage() {
         </div>
       )}
 
-      <form onSubmit={ask} className="composer mt-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("home.focus.composer")} aria-label={t("home.focus.composer")} />
-        <div className="comp-row">
-          <span className="comp-mark" aria-hidden><Glyph /></span>
-          <span className="comp-sp" />
-          <button type="submit" className="send-btn" aria-label={t("home.focus.send")} disabled={!q.trim()}><IconArrowUp /></button>
-        </div>
-      </form>
+      <HomeComposer className="mt-2" />
     </div>
+  );
+}
+
+type PresetId = "quick" | "analysis" | "generator";
+const PRESETS: PresetId[] = ["quick", "analysis", "generator"];
+
+type Recognition = { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
+type RecognitionCtor = new () => Recognition;
+const speechCtor = (): RecognitionCtor | null => {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+};
+
+/** The home composer (demo v672 `dashKomposer`): input on top, control row below — mark · mode chip · attachment · voice · send. Sends to the AI page. */
+function HomeComposer({ placeholder, className }: { placeholder?: string; className?: string }) {
+  const router = useRouter();
+  const [q, setQ] = useState("");
+  const [preset, setPreset] = useState<PresetId>("quick");
+  const [menu, setMenu] = useState(false);
+  const [canTalk, setCanTalk] = useState(false);
+  const [listening, setListening] = useState(false);
+  const rec = useRef<Recognition | null>(null);
+  useEffect(() => { setCanTalk(!!speechCtor()); return () => rec.current?.stop(); }, []);
+
+  const ask = (e: FormEvent) => {
+    e.preventDefault();
+    const text = q.trim(); if (!text) return;
+    router.push(`/app/ai?q=${encodeURIComponent(t(`home.focus.presets.${preset}.prefix`) + text)}`);
+  };
+  const talk = () => {
+    if (listening) { rec.current?.stop(); return; }
+    const Ctor = speechCtor(); if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = "et-EE"; r.interimResults = true; r.continuous = false;
+    const before = q ? q.replace(/\s*$/, " ") : "";
+    r.onresult = (e) => setQ(before + Array.from(e.results).map((x) => x[0].transcript).join(""));
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    rec.current = r; r.start(); setListening(true);
+  };
+
+  const ph = placeholder && preset === "quick" ? placeholder : t(`home.focus.presets.${preset}.ph`);
+  return (
+    <form onSubmit={ask} className={cx("composer", className)}>
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={ph} aria-label={ph} autoComplete="off" />
+      <div className="comp-row">
+        <span className="comp-mark" aria-hidden><Glyph /></span>
+        <Popover open={menu} onClose={() => setMenu(false)} align="left" className="preset-menu" trigger={
+          <button type="button" className="preset-btn" onClick={() => setMenu((o) => !o)} aria-haspopup="menu" aria-expanded={menu} title={t("home.focus.mode")}>
+            {t(`home.focus.presets.${preset}.t`)}<IconChevron />
+          </button>
+        }>
+          <div role="menu">
+            {PRESETS.map((id) => (
+              <button key={id} type="button" role="menuitemradio" aria-checked={id === preset} className="preset-item" onClick={() => { setPreset(id); setMenu(false); }}>
+                <span className="t">{t(`home.focus.presets.${id}.t`)}{id === preset && <IconCheck />}</span>
+                <span className="s">{t(`home.focus.presets.${id}.s`)}</span>
+              </button>
+            ))}
+          </div>
+        </Popover>
+        <span className="comp-sp" />
+        <Link href="/app/portfell/import" className="icon-btn" title={t("home.focus.attach")} aria-label={t("home.focus.attach")}><IconClip /></Link>
+        {canTalk && <button type="button" className={cx("icon-btn", listening && "rec")} onClick={talk} title={listening ? t("home.focus.voiceStop") : t("home.focus.voice")} aria-label={listening ? t("home.focus.voiceStop") : t("home.focus.voice")} aria-pressed={listening}><IconMic /></button>}
+        <button type="submit" className="send-btn" aria-label={t("home.focus.send")}><IconArrowUp /></button>
+      </div>
+    </form>
   );
 }
 
@@ -169,40 +239,37 @@ function QuickLink({ href, icon, label }: { href: string; icon: React.ReactNode;
   );
 }
 
-/** „Alusta · 10 minutit” (demo v623 `alDashHTML`): the four steps with their done-state from the data, every row and the button opening the ONE setup page. */
-function SetupCard({ summary }: { summary: ReturnType<typeof usePortfolioSummary>["data"] }) {
-  const steps = setupSteps(summary);
-  if (!steps) return null;
+/** „Alusta · 10 minutit” (demo v623 `alDashHTML`): progress, the four steps as a rail with their done-state from the data, every step and the button opening the ONE setup page. */
+function SetupCard({ steps, company }: { steps: SetupStep[]; company?: string }) {
   const done = steps.filter((s) => s.done).length;
   const next = steps.find((s) => !s.done);
   if (!next) return null;
   const left = steps.filter((s) => !s.done).reduce((a, s) => a + s.min, 0);
-  const icons = { company: <IconUsers />, building: <IconBuilding />, spaces: <IconFile />, contracts: <IconImport /> };
-  const subs = { company: t("home.setup.companySub"), building: t("home.setup.buildingSub"), spaces: t("home.setup.spacesSub"), contracts: t("home.setup.contractsSub") };
+  const status = (s: SetupStep) => s.done ? t("setup.statusDone") : s.pending ? t("setup.statusPendingShort") : s.key === next.key ? t("setup.statusNext", { min: s.min }) : t("setup.minutes", { min: s.min });
   return (
-    <Card>
-      <CardHeader title={t("home.setup.title")} actions={<Pill tone="primary">{t("home.setup.progress", { done, total: steps.length })}</Pill>}>
-        <p className="text-sm text-muted">{t("home.setup.sub")}</p>
-      </CardHeader>
-      <ol className="px-[var(--card-padding)] divide-y" style={{ borderColor: "var(--line)" }}>
+    <section className="card al-dash mt-[22px]">
+      <div className="al-dash-pea">
+        <div>
+          <div className="overline">{company ? t("setup.overline", { name: company }) : t("setup.overlineNew")}</div>
+          <h2>{t("home.setup.title")}</h2>
+          <p>{t("home.setup.sub")}</p>
+        </div>
+        <div className="al-dash-edu"><b>{done}</b><span>/ {steps.length}</span></div>
+      </div>
+      <ol className="al-dash-rada">
         {steps.map((s) => (
-          <li key={s.key}>
-            <Link href={`/app/alusta?step=${s.index + 1}`} className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-control hover:bg-subtle min-h-[52px]">
-              <span className={cx("w-9 h-9 rounded-control grid place-items-center flex-none", s.done ? "text-success-ink bg-success-subtle" : "text-ink bg-subtle")}>{s.done ? <IconCheck /> : icons[s.key]}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{s.index + 1}. {s.title}</span>
-                <span className="block text-xs text-muted">{subs[s.key]}</span>
-              </span>
-              <Pill tone={s.done ? "success" : s.pending ? "warning" : "neutral"}>{s.done ? t("home.setup.done") : s.pending ? t("setup.statusPendingShort") : t("home.setup.todo")}</Pill>
-              <IconArrowRight width={16} height={16} className="text-muted flex-none" />
+          <li key={s.key} className={s.done ? "ok" : s.key === next.key ? "on" : undefined}>
+            <Link href={`/app/alusta?step=${s.index + 1}`}>
+              <span className="al-dash-o">{s.done ? <IconCheck /> : <i>{s.index + 1}</i>}{status(s)}</span>
+              <b>{s.title}</b>
             </Link>
           </li>
         ))}
       </ol>
-      <div className="px-[var(--card-padding)] py-3 border-t flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: "var(--line)" }}>
-        <span className="text-xs text-muted">{t("home.setup.left", { min: left })}</span>
-        <LinkButton href={`/app/alusta?step=${next.index + 1}`} variant="primary" size="sm">{done ? t("home.setup.resume", { step: next.short }) : t("home.setup.start", { step: next.short })}<IconArrowRight width={14} height={14} /></LinkButton>
+      <div className="al-dash-jalus">
+        <span>{t("home.setup.left", { min: left })}</span>
+        <LinkButton href={`/app/alusta?step=${next.index + 1}`} variant="primary">{done ? t("home.setup.resume", { step: next.short }) : t("home.setup.start", { step: next.short })}<IconArrowRight width={14} height={14} /></LinkButton>
       </div>
-    </Card>
+    </section>
   );
 }

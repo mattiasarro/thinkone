@@ -26,7 +26,8 @@ export function Topbar({ me, onOpenMobile }: { me: Me; onOpenMobile: () => void 
         <div className="crumb">{t("app.name")}{section && <><b>/</b>{t(section.label)}</>}</div>
       </div>
       <div className="omni-center">
-        <SearchBox />
+        {/* on the home page the big composer carries the input role (demo `.dash-shell .omni-wrap { display: none }`) */}
+        {pathname !== "/app" && <SearchBox />}
         <Popover open={newOpen} onClose={() => setNewOpen(false)} className="loo-pop" trigger={
           <button type="button" className={cx("btn btn-primary btn-sm btn-loo", newOpen && "open")} onClick={() => setNewOpen((o) => !o)} aria-haspopup="menu" aria-expanded={newOpen} title={t("nav.newButton")}>
             <IconPlus /><span>{t("nav.newButton")}</span>
