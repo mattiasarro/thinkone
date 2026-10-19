@@ -21,7 +21,7 @@ const streetFirst = (a: string | null) => (a && /maakond/i.test(a.split(",")[0] 
 
 /** Name/registry-code search over äriregister. `onPick` gets the search hit at once and the full card (VAT, contacts, board) when it arrives.
  *  `variant="setup"` is the „Alusta” look (demo v623 `.al-otsi`/`.al-pick`): no label, big field with the source tag, filled result rows. */
-export function AriregisterSearch({ id = "ar-q", onPick, variant = "field" }: { id?: string; onPick: (hit: AriregisterHit, detail: AriregisterHit | null) => void; variant?: "field" | "setup" }) {
+export function AriregisterSearch({ id = "ar-q", onPick, variant = "field", examples, examplesLabel }: { id?: string; onPick: (hit: AriregisterHit, detail: AriregisterHit | null) => void; variant?: "field" | "setup"; examples?: { t: string; q: string }[]; examplesLabel?: string }) {
   const [q, setQ] = useState("");
   const dq = useDebounced(q, 350);
   const reg = useAriregister(dq);
@@ -43,9 +43,10 @@ export function AriregisterSearch({ id = "ar-q", onPick, variant = "field" }: { 
         <input id={id} type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.company.placeholder")} aria-label={t("setup.company.placeholder")} aria-controls={`${id}-res`} autoComplete="off" spellCheck={false} />
         <span className="al-otsi-src">{busy && <Spinner />}{t("setup.company.sourceValue")}</span>
       </div>
+      {dq.length < 2 && examples?.length ? <Examples label={examplesLabel} items={examples} onPick={setQ} /> : null}
       {dq.length >= 2 && !reg.isLoading && (
         <div id={`${id}-res`} className="al-res" aria-live="polite">
-          {hits.length === 0 ? <p className="al-res-olek">{t("common.noResults")}</p> : hits.map((h) => {
+          {hits.length === 0 ? <div className="al-tyhi"><b>{t("setup.company.noResults")}</b>{examples?.length ? <><span>{t("setup.company.noResultsSub")}</span><Examples items={examples} onPick={setQ} /></> : null}</div> : hits.map((h) => {
             const st = statusOf(h.status);
             return (
               <button key={h.registry_code} type="button" className="al-pick" onClick={() => pick(h)}>
@@ -73,4 +74,8 @@ export function AriregisterSearch({ id = "ar-q", onPick, variant = "field" }: { 
       )}
     </div>
   );
+}
+
+function Examples({ label, items, onPick }: { label?: string; items: { t: string; q: string }[]; onPick: (q: string) => void }) {
+  return <div className="al-naited">{label && <span>{label}</span>}{items.map((n) => <button key={n.q} type="button" className="al-naide" onClick={() => onPick(n.q)}>{n.t}<span className="al-naide-s">{n.q}</span></button>)}</div>;
 }

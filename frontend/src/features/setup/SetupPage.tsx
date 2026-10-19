@@ -1,26 +1,24 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
-import { cx, fmtNum } from "@/lib/format";
-import { errorMessage } from "@/lib/api";
+import { cx, fmtDate, fmtEur, fmtNum } from "@/lib/format";
+import { errorMessage, API_BASE } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
 import { useCompanies, useEhr, useSaveCompany } from "@/lib/queries/settings";
-import { useAssets, useCreateAsset } from "@/lib/queries/portfolio";
+import { useAssets, useCreateAsset, useImportSpaces } from "@/lib/queries/portfolio";
 import { useImports, useUploadImport, IMPORT_PENDING } from "@/lib/queries/imports";
 import { Button, LinkButton } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { Input, Textarea } from "@/components/ui/Field";
 import { Dropzone } from "@/components/ui/FileInput";
-import { Pill } from "@/components/ui/Pill";
 import { Spinner, Loading } from "@/components/ui/State";
 import { AriregisterSearch } from "@/components/ui/AriregisterSearch";
 import { useToast } from "@/components/ui/Toast";
-import { IconArrowLeft, IconArrowRight, IconBuilding, IconCheck, IconChevronRight, IconGrid, IconInfo, IconLock, IconPlus, IconSearch } from "@/components/ui/Icons";
-import { SpacesImport } from "@/features/assets/SpacesImport";
+import { IconAlert, IconArrowLeft, IconArrowRight, IconBuilding, IconCheck, IconChevronRight, IconGrid, IconInfo, IconLock, IconPlus, IconSearch, IconUpload } from "@/components/ui/Icons";
 import { useSetupSteps, type SetupStep } from "./useSetupSteps";
-import type { AriregisterHit, Asset, Company, EhrHit, ImportJob, PropertyAttributes } from "@/types/api";
+import type { AriregisterHit, Asset, Company, EhrHit, ImportJob, PropertyAttributes, SpaceImportResult } from "@/types/api";
 
 const CONTRACT_EXT = new Set(["pdf", "docx", "asice", "bdoc", "sce"]);
 const TABLE_EXT = new Set(["csv", "tsv", "txt", "xlsx", "xls", "ods", "numbers"]);
@@ -75,15 +73,15 @@ export function SetupPage() {
       ? <Button variant="primary" onClick={() => go(j)}>{t("setup.next", { step: steps[j].short })}<IconArrowRight width={16} height={16} /></Button>
       : <Button variant="primary" onClick={() => go(-1)}>{t("setup.summary")}<IconArrowRight width={16} height={16} /></Button>;
   };
-  const later = (i: number) => <Button variant="text" size="sm" onClick={() => after(i)}>{t("setup.later")}</Button>;
+  const later = (i: number) => <button type="button" className="steplink" onClick={() => after(i)}>{t("setup.later")}</button>;
 
   return (
-    <div className="grid gap-5 max-w-[1100px]">
-      <LinkButton href="/app" variant="ghost" size="sm" className="w-fit"><IconArrowLeft width={16} height={16} />{t("nav.avaleht")}</LinkButton>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="max-w-[1100px]">
+      <LinkButton href="/app" variant="ghost" size="sm" className="w-fit mb-[18px]"><IconArrowLeft width={16} height={16} />{t("nav.avaleht")}</LinkButton>
+      <div className="al-pea">
         <div className="min-w-0">
           <div className="overline">{companyName ? t("setup.overline", { name: companyName }) : t("setup.overlineNew")}</div>
-          <h1 className="page-h1 mt-1">{complete ? t("setup.titleDone") : t("setup.title")}</h1>
+          <h1 className="page-h1 mt-2">{complete ? t("setup.titleDone") : t("setup.title")}</h1>
           <p className="page-sub">{complete ? t("setup.subDone") : t("setup.sub")}</p>
         </div>
         <div className="al-edu" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={done} aria-label={t("setup.progress", { n: done })}>
@@ -93,21 +91,17 @@ export function SetupPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)] items-start">
-        <nav className="card p-2.5 md:sticky md:top-20" aria-label={t("setup.railLabel")}>
-          <ol className="grid gap-1">
-            {steps.map((s) => {
-              const on = s.index === current;
-              return (
-                <li key={s.key}>
-                  <button type="button" onClick={() => go(s.index)} aria-current={on ? "step" : undefined}
-                    className={cx("w-full flex items-center gap-3 px-3 py-[11px] rounded-control text-left transition-colors", on ? "bg-subtle shadow-[inset_0_0_0_1px_var(--line)]" : "hover:bg-subtle")}>
-                    <span className={cx("w-7 h-7 rounded-[8px] grid place-items-center font-mono text-[12px] font-[650] flex-none", on ? "bg-ink text-onink" : s.done ? "text-success-ink bg-success-subtle" : s.pending ? "text-warning-ink bg-warning-subtle" : "text-ink2 shadow-[inset_0_0_0_1.5px_var(--line-strong)]")}>{s.done && !on ? <IconCheck width={12} height={12} /> : s.index + 1}</span>
-                    <span className="min-w-0 grid gap-0.5"><b className="block text-[13.5px] font-semibold text-ink">{s.title}</b><small className="block text-[11.5px] text-muted truncate">{status(s)}</small></span>
-                  </button>
-                </li>
-              );
-            })}
+      <div className="al-grid">
+        <nav className="card al-rada" aria-label={t("setup.railLabel")}>
+          <ol>
+            {steps.map((s) => (
+              <li key={s.key} className={cx(s.done && "ok", s.index === current && "on", s.pending && "pool")}>
+                <button type="button" onClick={() => go(s.index)} aria-current={s.index === current ? "step" : undefined}>
+                  <span className="al-nr">{s.done ? <IconCheck /> : s.index + 1}</span>
+                  <span className="al-tx"><b>{s.title}</b><small>{status(s)}</small></span>
+                </button>
+              </li>
+            ))}
           </ol>
           <p className="al-rada-noot"><IconLock /><span>{t("setup.railNote")}</span></p>
         </nav>
@@ -118,26 +112,26 @@ export function SetupPage() {
           ) : current === 0 ? (
             <StepCard i={0} step={steps[0]} title={t("setup.company.q")} sub={t("setup.company.sub")}>
               {steps[0].done && redo !== 0
-                ? <CompanyDone companies={companies.data ?? []} footer={<><Link href="/app/seaded?tab=ettevotted" className="steplink">{t("setup.company.editInSettings")}</Link>{nextButton(0)}</>} />
+                ? <CompanyDone companies={companies.data ?? []} footer={<><Link href="/app/seaded?tab=ettevotted" className="steplink">{t("setup.change")}</Link>{nextButton(0)}</>} />
                 : <CompanyForm onDone={() => { refresh(); after(0); }} later={later(0)} />}
             </StepCard>
           ) : current === 1 ? (
             <StepCard i={1} step={steps[1]} title={t("setup.building.q")} sub={t("setup.building.sub")}>
               {steps[1].done && redo !== 1
                 ? <BuildingDone properties={propList} footer={<><button type="button" className="steplink" onClick={() => setRedo(1)}>{t("setup.building.addAnother")}</button>{nextButton(1)}</>} />
-                : <BuildingForm company={companies.data?.[0] ?? null} goCompany={() => go(0)} onDone={() => { refresh(); after(1); }} later={later(1)} />}
+                : <BuildingForm company={companies.data?.[0] ?? null} existing={propList} goCompany={() => go(0)} onDone={() => { refresh(); after(1); }} later={later(1)} />}
             </StepCard>
           ) : current === 2 ? (
             <StepCard i={2} step={steps[2]} title={t("setup.spaces.q")} sub={t("setup.spaces.sub")}>
               {steps[2].done && redo !== 2
-                ? <SpacesDone properties={propList} footer={<><span className="flex gap-4 flex-wrap">{propList[0] && <Link href={`/app/portfell/objekt/${propList[0].id}?edit=1&step=2`} className="steplink">{t("setup.spaces.editor")}</Link>}{propList.some((p) => !p.children_count) && <button type="button" className="steplink" onClick={() => setRedo(2)}>{t("setup.spaces.addOther")}</button>}</span>{nextButton(2)}</>} />
+                ? <SpacesDone properties={propList} footer={<><span className="al-jalus-l">{propList[0] && <Link href={`/app/portfell/objekt/${propList[0].id}?edit=1&step=2`} className="steplink">{t("setup.spaces.editor")}</Link>}{propList.some((p) => !p.children_count) && <button type="button" className="steplink" onClick={() => setRedo(2)}>{t("setup.spaces.addOther")}</button>}</span>{nextButton(2)}</>} />
                 : <SpacesForm properties={propList} goBuilding={() => go(1)} onDone={() => { refresh(); void properties.refetch(); after(2); }} later={later(2)} />}
             </StepCard>
           ) : (
             <StepCard i={3} step={steps[3]} title={t("setup.contracts.q")} sub={t("setup.contracts.sub")}>
               {steps[3].done
-                ? <ContractsDone n={steps[3].count} footer={<><Link href="/app/portfell/import" className="steplink">{t("setup.contracts.desk")}</Link>{nextButton(3)}</>} />
-                : <ContractsForm open={openImports} onUploaded={() => { refresh(); void imports.refetch(); }} later={<Button variant="text" size="sm" onClick={() => router.push("/app")}>{t("setup.later")}</Button>} />}
+                ? <ContractsDone n={steps[3].count} footer={<><Link href="/app/portfell/import" className="steplink">{t("setup.contracts.desk")}</Link>{first < 0 ? <LinkButton href="/app/portfell" variant="primary">{t("setup.done.openPortfolio")}<IconArrowRight width={16} height={16} /></LinkButton> : nextButton(3)}</>} />
+                : <ContractsForm open={openImports} onUploaded={() => { refresh(); void imports.refetch(); }} later={<button type="button" className="steplink" onClick={() => router.push("/app")}>{t("setup.later")}</button>} />}
             </StepCard>
           )}
         </div>
@@ -160,21 +154,34 @@ function StepCard({ i, step, title, sub, children }: { i: number; step: SetupSte
 }
 function Body({ children }: { children: ReactNode }) { return <div className="al-k-keha">{children}</div>; }
 function Footer({ children }: { children: ReactNode }) { return <footer className="al-k-jalus">{children}</footer>; }
-function DoneLine({ children }: { children: ReactNode }) { return <div className="flex items-center gap-2 text-sm font-semibold text-success-ink"><IconCheck width={16} height={16} className="flex-none" /><span>{children}</span></div>; }
-function KV({ rows }: { rows: [string, ReactNode][] }) {
-  return <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">{rows.map(([k, v]) => <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="min-w-0 break-words">{v ?? "—"}</dd></div>)}</dl>;
+function DoneLine({ children }: { children: ReactNode }) { return <div className="al-tehtud"><IconCheck /><span>{children}</span></div>; }
+function Note({ children }: { children: ReactNode }) { return <p className="al-noot"><IconInfo /><span>{children}</span></p>; }
+function Empty({ title, sub, children }: { title: string; sub?: string; children?: ReactNode }) { return <div className="al-tyhi"><b>{title}</b>{sub && <span>{sub}</span>}{children}</div>; }
+function KV({ rows }: { rows: [string, ReactNode, boolean?][] }) {
+  return <dl className="al-kv">{rows.map(([k, v, mono]) => <div key={k} className="contents"><dt>{k}</dt><dd className={mono ? "mono" : undefined}>{v ?? "—"}</dd></div>)}</dl>;
 }
-function Picked({ icon, title, sub, pill, children, onOther }: { icon: ReactNode; title: string; sub: string; pill?: ReactNode; children: ReactNode; onOther: () => void }) {
+function Picked({ title, sub, pill, children, actions }: { title: string; sub: string; pill?: ReactNode; children: ReactNode; actions: ReactNode }) {
   return (
-    <div className="rounded-control border p-4 grid gap-3" style={{ borderColor: "var(--line-strong)", background: "var(--surface-soft)" }}>
-      <div className="flex items-center gap-3"><span className="w-9 h-9 rounded-control grid place-items-center bg-ink text-onink flex-none">{icon}</span><span className="min-w-0 flex-1"><b className="block text-sm font-semibold truncate">{title}</b><small className="block text-xs text-muted font-mono">{sub}</small></span>{pill}</div>
+    <div className="al-valik">
+      <div className="al-valik-pea"><span className="al-valik-ik"><IconBuilding /></span><div className="al-valik-t"><b>{title}</b><small className="font-mono">{sub}</small></div>{pill}</div>
       {children}
-      <div><button type="button" className="steplink" onClick={onOther}>{t("setup.pickOther")}</button></div>
+      <div className="al-valik-teg">{actions}</div>
     </div>
   );
 }
+function Chips({ label, items }: { label?: string; items: { t: string; s?: string; on: () => void }[] }) {
+  return <div className="al-naited">{label && <span>{label}</span>}{items.map((n) => <button key={n.t} type="button" className="al-naide" onClick={n.on}>{n.t}{n.s && <span className="al-naide-s">{n.s}</span>}</button>)}</div>;
+}
+function ObjRow({ href, icon, title, sub }: { href: string; icon: ReactNode; title: string; sub: string }) {
+  return <Link href={href} className="al-obj-r"><span className="al-valik-ik">{icon}</span><span className="al-pick-t"><b>{title}</b><small>{sub}</small></span><IconChevronRight /></Link>;
+}
+// Registry addresses run county → parish → village → street; read street first (demo `alAadress`).
+const streetFirst = (a: string | null | undefined) => (a && /maakond/i.test(a.split(",")[0] ?? "") ? a.split(",").map((x) => x.trim()).reverse().join(", ") : a ?? "");
+const REGISTERED = new Set(["R", "registrisse kantud"]);
 
 /* --- 1 · company from äriregister ----------------------------------------------------------------------------- */
+// The demo's two example companies (`AL_REG_NAITED`) — one click fills the search.
+const REG_EXAMPLES = [{ t: "Taevavärava OÜ", q: "16333502" }, { t: "B11G OÜ", q: "16614862" }];
 function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }) {
   const save = useSaveCompany();
   const toast = useToast();
@@ -185,9 +192,10 @@ function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }
   const ok = manual ? name.trim().length > 0 : !!hit;
   const confirm = async () => {
     const body = manual ? { name: name.trim(), registry_code: code.trim() || null, address: address.trim() || null, vat_number: null, email: null, phone: null, accent_color: null }
-      : { name: hit!.name, registry_code: hit!.registry_code, address: hit!.address, vat_number: hit!.vat_number, email: hit!.email, phone: hit!.phone, accent_color: null };
+      : { name: hit!.name, registry_code: hit!.registry_code, address: streetFirst(hit!.address) || null, vat_number: hit!.vat_number, email: hit!.email, phone: hit!.phone, accent_color: null };
     try { await save.mutateAsync(body); toast.success(t("setup.company.confirmed", { name: body.name })); onDone(); } catch (e) { toast.error(errorMessage(e)); }
   };
+  const registered = !hit?.status || REGISTERED.has(hit.status) || REGISTERED.has(hit.status.toLowerCase());
   return (
     <>
       <Body>
@@ -198,13 +206,15 @@ function CompanyForm({ onDone, later }: { onDone: () => void; later: ReactNode }
             <div><button type="button" className="steplink" onClick={() => setManual(false)}>{t("settings.companies.searchRegistry")}</button></div>
           </div>
         ) : hit ? (
-          <Picked icon={<IconBuilding width={18} height={18} />} title={hit.name} sub={hit.registry_code} pill={hit.status ? <Pill>{hit.status}</Pill> : undefined} onOther={() => setHit(null)}>
+          <Picked title={hit.name} sub={hit.registry_code} pill={hit.status ? <span className={cx("al-seis", registered ? "green" : "amber")}>{registered ? t("setup.company.status_registered") : hit.status}</span> : undefined}
+            actions={<><button type="button" className="steplink" onClick={() => setHit(null)}>{t("setup.pickOther")}</button><a className="steplink" href={`https://ariregister.rik.ee/est/company/${hit.registry_code}`} target="_blank" rel="noopener noreferrer">{t("setup.company.openRegistry")}</a></>}>
             <div className="overline">{t("setup.company.knows")}</div>
-            <KV rows={[[t("setup.company.address"), hit.address || "—"], [t("setup.company.legalForm"), hit.legal_form || "—"], [t("setup.company.vat"), hit.vat_number || "—"], [t("setup.company.source"), t("setup.company.sourceValue")]]} />
+            <KV rows={[[t("setup.company.address"), streetFirst(hit.address) || "—"], ...(hit.legal_form ? [[t("setup.company.legalForm"), hit.legal_form.toLowerCase()] as [string, ReactNode]] : []), ...(hit.vat_number ? [[t("setup.company.vat"), hit.vat_number, true] as [string, ReactNode, boolean]] : []), [t("setup.company.source"), `${t("setup.company.sourceValue")} · ${fmtDate(new Date())}`]]} />
+            {!registered && <div className="al-hoiatus"><IconAlert /><span>{t("setup.company.statusWarn", { status: (hit.status ?? "").toLowerCase() })}</span></div>}
           </Picked>
         ) : (
           <>
-            <AriregisterSearch id="al-reg" variant="setup" onPick={pick} />
+            <AriregisterSearch id="al-reg" variant="setup" onPick={pick} examples={REG_EXAMPLES} examplesLabel={t("setup.company.examples")} />
             <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
           </>
         )}
@@ -219,7 +229,7 @@ function CompanyDone({ companies, footer }: { companies: Company[]; footer: Reac
     <>
       <Body>
         <DoneLine>{t("setup.company.doneLine")}</DoneLine>
-        {c && <KV rows={[[t("setup.company.company"), c.name], [t("setup.company.registryCode"), <span key="r" className="font-mono">{c.registry_code || "—"}</span>], ...(c.vat_number ? [[t("setup.company.vat"), <span key="v" className="font-mono">{c.vat_number}</span>] as [string, ReactNode]] : []), [t("setup.company.address"), c.address || "—"], [t("setup.company.source"), t("setup.company.sourceValue")]]} />}
+        {c && <KV rows={[[t("setup.company.company"), c.name], [t("setup.company.registryCode"), c.registry_code || "—", true], ...(c.vat_number ? [[t("setup.company.vat"), c.vat_number, true] as [string, ReactNode, boolean]] : []), [t("setup.company.address"), c.address || "—"], [t("setup.company.source"), t("setup.company.sourceValue")]]} />}
       </Body>
       <Footer>{footer}</Footer>
     </>
@@ -227,7 +237,7 @@ function CompanyDone({ companies, footer }: { companies: Company[]; footer: Reac
 }
 
 /* --- 2 · building from EHR ------------------------------------------------------------------------------------ */
-function BuildingForm({ company, goCompany, onDone, later }: { company: Company | null; goCompany: () => void; onDone: () => void; later: ReactNode }) {
+function BuildingForm({ company, existing, goCompany, onDone, later }: { company: Company | null; existing: Asset[]; goCompany: () => void; onDone: () => void; later: ReactNode }) {
   const create = useCreateAsset();
   const toast = useToast();
   const [q, setQ] = useState("");
@@ -236,12 +246,14 @@ function BuildingForm({ company, goCompany, onDone, later }: { company: Company 
   const [hit, setHit] = useState<EhrHit | null>(null);
   const [manual, setManual] = useState(false);
   const [name, setName] = useState(""); const [address, setAddress] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const taken = new Set(existing.map((p) => (p.attributes as PropertyAttributes).ehr_code).filter(Boolean));
   // EHR addresses run county → parish → village → street, so the street part (last) is the natural object name
-  const pickHit = (h: EhrHit) => { setHit(h); setName(h.address.split(",").pop()?.trim() || h.address); setQ(""); };
+  const pickHit = (h: EhrHit) => { setHit(h); setName(h.address.split(",").pop()?.trim() || h.address); };
   if (!company) {
     return (
       <>
-        <Body><div className="note"><IconInfo /><span>{t("setup.building.noCompany")}</span></div></Body>
+        <Body><Empty title={t("setup.building.noCompany")} /></Body>
         <Footer><span />
           <Button variant="primary" onClick={goCompany}>{t("home.setup.company")}<IconArrowRight width={16} height={16} /></Button></Footer>
       </>
@@ -257,6 +269,12 @@ function BuildingForm({ company, goCompany, onDone, later }: { company: Company 
       toast.success(t("setup.building.confirmed", { name: name.trim() })); onDone();
     } catch (e) { toast.error(errorMessage(e)); }
   };
+  // „Näiteks”: the company's own street address is the likeliest first building (demo `alEhrResHTML`)
+  const street = (company.address ?? "").split(",")[0]?.trim();
+  const fill = (v: string) => { setQ(v); input.current?.focus(); };
+  const examples = street ? [{ t: street, s: t("setup.building.companyAddress"), on: () => fill(street) }] : [];
+  const hits = (ehr.data ?? []).slice(0, 8);
+  const m2 = (v: number | null | undefined) => (v != null ? `${fmtNum(v)} m²` : "—");
   return (
     <>
       <Body>
@@ -267,30 +285,31 @@ function BuildingForm({ company, goCompany, onDone, later }: { company: Company 
             <div><button type="button" className="steplink" onClick={() => setManual(false)}>{t("assets.ehrSearch")}</button></div>
           </div>
         ) : hit ? (
-          <Picked icon={<IconBuilding width={18} height={18} />} title={hit.address} sub={`EHR ${hit.ehr_code}`} onOther={() => setHit(null)}>
+          <Picked title={hit.address} sub={`EHR ${hit.ehr_code}`} actions={<button type="button" className="steplink" onClick={() => setHit(null)}>{t("setup.pickOther")}</button>}>
             <div className="overline">{t("setup.building.knows")}</div>
-            <KV rows={[[t("setup.building.useType"), hit.use_type || "—"], [t("setup.building.footprint"), hit.footprint_m2 != null ? `${fmtNum(hit.footprint_m2)} m²` : "—"], [t("setup.building.netArea"), hit.net_area_m2 != null ? `${fmtNum(hit.net_area_m2)} m²` : "—"], [t("setup.building.floors"), hit.floors ?? "—"], [t("setup.building.buildYear"), hit.build_year ?? "—"]]} />
-            <Input label={t("setup.building.name")} required value={name} onChange={(e) => setName(e.target.value)} />
+            <KV rows={[[t("setup.building.useType"), hit.use_type || "—"], [t("setup.building.footprint"), m2(hit.footprint_m2), true], [t("setup.building.netArea"), m2(hit.net_area_m2), true], [t("setup.building.floors"), hit.floors ?? "—", true], [t("setup.building.buildYear"), hit.build_year ?? "—", true]]} />
+            <Input label={t("setup.building.name")} required value={name} onChange={(e) => setName(e.target.value)} className="!mb-0" />
           </Picked>
         ) : (
           <>
-            <div className="relative">
-              <label className="flex items-center gap-2 fld h-12">
-                <IconSearch width={16} height={16} className="text-muted flex-none" />
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("assets.ehrSearch")} aria-label={t("assets.ehrSearch")} className="flex-1 min-w-0 bg-transparent outline-none" autoFocus />
-                {ehr.isFetching && <Spinner />}
-              </label>
-              {dq.length >= 2 && !ehr.isLoading && (
-                <div className="mt-2 grid gap-2">
-                  {(ehr.data ?? []).length === 0 ? <p className="text-sm text-muted px-1">{t("assets.ehrNoResults")}</p> : (ehr.data ?? []).slice(0, 8).map((h) => (
-                    <button key={h.ehr_code} type="button" className="flex items-center gap-3 text-left p-3 rounded-control hover:bg-canvas border" style={{ borderColor: "var(--line)" }} onClick={() => pickHit(h)}>
-                      <span className="w-9 h-9 rounded-control grid place-items-center text-muted flex-none bg-subtle"><IconBuilding width={18} height={18} /></span>
-                      <span className="min-w-0 flex-1"><span className="block font-semibold text-sm truncate">{h.address}</span><span className="block text-xs text-muted">EHR {h.ehr_code}{h.use_type ? ` · ${h.use_type}` : ""}{h.build_year ? ` · ${h.build_year}` : ""}</span></span>
-                      <span className="btn btn-ghost btn-sm">{t("assets.useResult")}</span>
+            <div className="al-otsi">
+              <span className="al-otsi-ik"><IconSearch /></span>
+              <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("setup.building.placeholder")} aria-label={t("setup.building.placeholder")} autoComplete="off" spellCheck={false} autoFocus />
+              <span className="al-otsi-src">{ehr.isFetching && <Spinner />}{t("setup.building.source")}</span>
+            </div>
+            <div className="al-res" aria-live="polite">
+              {dq.length < 2 ? (examples.length > 0 && <Chips label={t("setup.building.examples")} items={examples} />)
+                : ehr.isLoading ? null
+                : hits.length === 0 ? <Empty title={t("setup.building.noResults")} sub={examples.length ? t("setup.building.noResultsSub") : undefined}>{examples.length > 0 && <Chips items={examples} />}</Empty>
+                : hits.map((h) => {
+                  const own = taken.has(h.ehr_code);
+                  return (
+                    <button key={h.ehr_code} type="button" className="al-pick" disabled={own} onClick={() => pickHit(h)}>
+                      <span className="al-pick-t"><b>{h.address}</b><small>{[h.use_type, h.build_year, own && t("setup.building.inPortfolio")].filter(Boolean).join(" · ") || "—"}</small></span>
+                      <span className="al-pick-r"><span className="mono">EHR {h.ehr_code}</span></span>
                     </button>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
             </div>
             <div><button type="button" className="steplink" onClick={() => setManual(true)}>{t("setup.manual")}</button></div>
           </>
@@ -300,49 +319,106 @@ function BuildingForm({ company, goCompany, onDone, later }: { company: Company 
     </>
   );
 }
-function PropertyRow({ p, icon, sub }: { p: Asset; icon: ReactNode; sub: string }) {
-  return (
-    <Link href={`/app/portfell/objekt/${p.id}`} className="flex items-center gap-3 px-3 py-2.5 -mx-1 rounded-control hover:bg-subtle">
-      <span className="w-9 h-9 rounded-control grid place-items-center bg-subtle text-ink flex-none">{icon}</span>
-      <span className="min-w-0 flex-1"><b className="block text-sm font-semibold truncate">{p.name}</b><small className="block text-xs text-muted truncate">{sub}</small></span>
-      <IconChevronRight width={16} height={16} className="text-muted flex-none" />
-    </Link>
-  );
-}
 function BuildingDone({ properties, footer }: { properties: Asset[]; footer: ReactNode }) {
   return (
     <>
       <Body>
         <DoneLine>{properties.length === 1 ? t("setup.building.doneOne") : t("setup.building.doneMany", { n: properties.length })}</DoneLine>
-        <div className="grid">{properties.map((p) => { const a = p.attributes as PropertyAttributes; return <PropertyRow key={p.id} p={p} icon={<IconBuilding width={18} height={18} />} sub={`${a.address || "—"}${a.ehr_code ? ` · EHR ${a.ehr_code}` : ""}`} />; })}</div>
+        <div className="al-obj">{properties.map((p) => { const a = p.attributes as PropertyAttributes; return <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconBuilding />} title={p.name} sub={`${a.address || "—"}${a.ehr_code ? ` · EHR ${a.ehr_code}` : ""}`} />; })}</div>
       </Body>
       <Footer>{footer}</Footer>
     </>
   );
 }
 
-/* --- 3 · spaces from a table (the same import as the object wizard) ------------------------------------------- */
+/* --- 3 · spaces from a table (same backend import as the object wizard; demo v623 `alPindVorm`) ---------------- */
+const spacesN = (n: number) => (n === 1 ? t("setup.spaces.spacesOne") : t("setup.spaces.spacesMany", { n }));
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Asset[]; goBuilding: () => void; onDone: () => void; later: ReactNode }) {
   const target = properties.find((p) => !p.children_count) ?? properties[0] ?? null;
+  const imp = useImportSpaces(target?.id ?? "");
+  const toast = useToast();
+  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [source, setSource] = useState("");
+  const [preview, setPreview] = useState<SpaceImportResult | null>(null);
+  const [error, setError] = useState("");
+  const csv = useRef<HTMLInputElement>(null);
+  const run = async (dryRun: boolean, src: { file: File | null; text: string }) => {
+    setError("");
+    try {
+      const r = await imp.mutateAsync({ file: src.file ?? undefined, text: src.file ? undefined : src.text, dryRun });
+      if (dryRun) setPreview(r);
+      else { toast.success(t("setup.spaces.added", { n: r.created + r.updated, name: target?.name ?? "" })); onDone(); }
+    } catch (e) { setPreview(null); if (dryRun) setError(errorMessage(e)); else toast.error(errorMessage(e)); }
+  };
+  const debounced = useDebounced(text, 600);
+  useEffect(() => {
+    if (file || !debounced.trim() || !target) return;
+    void run(true, { file: null, text: debounced });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when the settled text changes
+  }, [debounced, file]);
   if (!target) {
     return (
       <>
-        <Body><div className="note"><IconInfo /><span><b>{t("setup.spaces.noBuilding")}</b> {t("setup.spaces.noBuildingSub")}</span></div></Body>
+        <Body><Empty title={t("setup.spaces.noBuilding")} sub={t("setup.spaces.noBuildingSub")} /></Body>
         <Footer><span /><Button variant="primary" onClick={goBuilding}>{t("home.setup.building")}<IconArrowRight width={16} height={16} /></Button></Footer>
       </>
     );
   }
+  const onFile = (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > 1024 * 1024) { setError(t("setup.spaces.csvTooBig")); setPreview(null); return; }
+    setFile(f); setSource(f.name); setText(""); void run(true, { file: f, text: "" });
+  };
+  const rows = preview?.rows ?? [];
+  const bad = rows.filter((r) => !r.ok).length;
+  const area = (r: (typeof rows)[number]) => num(r.data.rentable_area_m2);
+  const price = (r: (typeof rows)[number]) => num(r.data.price_per_m2);
+  const parking = (r: (typeof rows)[number]) => (Array.isArray(r.data.parking_numbers) ? r.data.parking_numbers.length : num(r.data.parking_spots) ?? 0);
+  const totalM2 = rows.reduce((a, r) => a + (area(r) ?? 0), 0);
+  const totalRent = rows.reduce((a, r) => a + (area(r) ?? 0) * (price(r) ?? 0), 0);
+  const ready = rows.length > 0 && bad === 0;
   return (
     <>
       <Body>
-        <div className="flex items-center gap-2 text-sm"><IconBuilding width={16} height={16} className="text-muted flex-none" /><span>{t("setup.spaces.target")} <b>{target.name}</b></span></div>
-        <SpacesImport propertyId={target.id} onDone={onDone} onCancel={goBuilding} />
-        <Link href={`/app/portfell/objekt/${target.id}?edit=1&step=2`} className="flex items-center gap-3 p-3 rounded-control border hover:bg-subtle w-fit" style={{ borderColor: "var(--line)" }}>
-          <span className="w-8 h-8 rounded-control grid place-items-center bg-subtle text-ink flex-none"><IconPlus width={16} height={16} /></span>
-          <span><b className="block text-sm font-semibold">{t("setup.spaces.manual")}</b><small className="block text-xs text-muted">{t("setup.spaces.manualSub")}</small></span>
-        </Link>
+        <div className="al-siht"><IconBuilding /><span>{t("setup.spaces.target")} <b>{target.name}</b></span></div>
+        <div className="al-allikad">
+          <button type="button" className="al-allikas" onClick={() => csv.current?.click()}><span className="al-allikas-ik"><IconUpload /></span><b>{t("setup.spaces.csv")}</b><small>{file ? file.name : t("setup.spaces.csvSub")}</small></button>
+          <Link href={`/app/portfell/objekt/${target.id}?edit=1&step=2`} className="al-allikas"><span className="al-allikas-ik"><IconPlus /></span><b>{t("setup.spaces.manual")}</b><small>{t("setup.spaces.manualSub")}</small></Link>
+        </div>
+        <input ref={csv} type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
+        <Textarea label={t("setup.spaces.paste")} rows={4} spellCheck={false} className="al-kleebi" value={text} placeholder={t("setup.spaces.pastePlaceholder")}
+          onChange={(e) => { setText(e.target.value); setFile(null); setSource(e.target.value.trim() ? t("setup.spaces.pasted") : ""); setPreview(null); }} />
+        <div className="al-kleebi-abi">
+          <span>{t("setup.spaces.helpRequired")} <b>{t("setup.spaces.helpName")}</b>, <b>{t("setup.spaces.helpArea")}</b>, <b>{t("setup.spaces.helpPrice")}</b>. {t("setup.spaces.helpTail")}</span>
+          <a className="steplink" href={`${API_BASE}/assets/spaces/csv-template`} target="_blank" rel="noopener">{t("setup.spaces.template")}</a>
+        </div>
+        {error ? <div className="al-viga" role="alert"><IconAlert /><span>{error}</span></div>
+          : imp.isPending && !preview ? <p className="al-res-olek flex items-center gap-2"><Spinner />{t("setup.spaces.reading")}</p>
+          : rows.length > 0 && (
+            <div className="al-eel">
+              <div className="al-eel-pea"><b>{t("setup.spaces.preview")}</b><span>{t("setup.spaces.previewLine", { n: spacesN(rows.length), m2: fmtNum(totalM2), eur: fmtEur(totalRent) })}{source ? ` · ${source}` : ""}</span>
+                {bad > 0 && <span className="al-eel-vead">{bad === 1 ? t("setup.spaces.previewErrorsOne") : t("setup.spaces.previewErrors", { n: bad })}</span>}</div>
+              <div className="al-eel-tbl"><table>
+                <thead><tr><th>{t("setup.spaces.colSpace")}</th><th>{t("setup.spaces.colType")}</th><th className="r">{t("setup.spaces.colArea")}</th><th className="r">{t("setup.spaces.colPrice")}</th><th className="r">{t("setup.spaces.colRent")}</th><th className="r">{t("setup.spaces.colParking")}</th><th>{t("setup.spaces.colState")}</th></tr></thead>
+                <tbody>{rows.map((r) => {
+                  const m = area(r), h = price(r), p = parking(r);
+                  return (
+                    <tr key={r.row} className={r.ok ? undefined : "viga"}>
+                      <td><b>{String(r.data.name ?? "—")}</b>{!r.ok && <small>{r.errors.join(" · ")}</small>}</td>
+                      <td>{String(r.data.type ?? "—")}</td>
+                      <td className="r mono">{m != null ? fmtNum(m) : "—"}</td><td className="r mono">{h != null ? fmtNum(h) : "—"}</td><td className="r mono">{m != null && h != null ? fmtEur(m * h) : "—"}</td>
+                      <td className="r mono">{p ? (p === 1 ? t("setup.spaces.parkingOne") : t("setup.spaces.parkingMany", { n: p })) : "—"}</td>
+                      <td>{t("setup.spaces.stateFree")}</td>
+                    </tr>
+                  );
+                })}</tbody>
+              </table></div>
+            </div>
+          )}
       </Body>
-      <Footer>{later}<span /></Footer>
+      <Footer>{later}<Button variant="primary" disabled={!ready} busy={imp.isPending && !!preview} onClick={() => run(false, { file, text })}><IconCheck width={16} height={16} />{rows.length ? t("setup.spaces.add", { n: spacesN(rows.length) }) : t("setup.spaces.addNone")}</Button></Footer>
     </>
   );
 }
@@ -351,7 +427,7 @@ function SpacesDone({ properties, footer }: { properties: Asset[]; footer: React
     <>
       <Body>
         <DoneLine>{t("setup.spaces.doneLine")}</DoneLine>
-        <div className="grid">{properties.filter((p) => p.children_count).map((p) => <PropertyRow key={p.id} p={p} icon={<IconGrid width={18} height={18} />} sub={t("setup.spaces.perBuilding", { n: p.children_count ?? 0 })} />)}</div>
+        <div className="al-obj">{properties.filter((p) => p.children_count).map((p) => <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconGrid />} title={t("setup.spaces.doneRow", { name: p.name, n: spacesN(p.children_count ?? 0) })} sub={(p.attributes as PropertyAttributes).address || "—"} />)}</div>
       </Body>
       <Footer>{footer}</Footer>
     </>
@@ -374,13 +450,15 @@ function ContractsForm({ open, onUploaded, later }: { open: ImportJob[]; onUploa
   };
   if (open.length > 0) {
     const n = (...st: string[]) => open.filter((j) => st.includes(j.status)).length;
-    const stat = (v: number, label: string, warn?: boolean) => <div className={cx("card px-4 py-3", warn && v > 0 && "shadow-[inset_0_0_0_1px_var(--amber)]")}><b className="font-heading text-2xl font-[650] tabular-nums block">{v}</b><span className="text-xs text-muted">{label}</span></div>;
     return (
       <>
         <Body>
-          <div className="grid grid-cols-3 gap-3">{stat(n("review"), t("setup.contracts.needsReview"), true)}{stat(n(...IMPORT_PENDING), t("setup.contracts.reading"))}{stat(n("failed"), t("setup.contracts.failed"))}</div>
-          <div className="note"><IconInfo /><span>{t("setup.contracts.pendingNote", { n: open.length })}</span></div>
-          <Dropzone onFiles={onFiles} multiple accept={ACCEPT} label={upload.isPending ? t("imports.uploading") : t("setup.contracts.drop")} hint={t("setup.contracts.dropHint")} busy={upload.isPending} />
+          <div className="al-laud">
+            <div className="al-laud-a kord"><b>{n("review")}</b><span>{t("setup.contracts.needsReview")}</span></div>
+            <div className="al-laud-a"><b>{n(...IMPORT_PENDING)}</b><span>{t("setup.contracts.reading")}</span></div>
+            <div className="al-laud-a"><b>{n("failed")}</b><span>{t("setup.contracts.failed")}</span></div>
+          </div>
+          <Note>{t("setup.contracts.pendingNote", { n: open.length })}</Note>
         </Body>
         <Footer>{later}<LinkButton href="/app/portfell/import" variant="primary">{t("setup.contracts.continueDesk")}<IconArrowRight width={16} height={16} /></LinkButton></Footer>
       </>
@@ -388,7 +466,7 @@ function ContractsForm({ open, onUploaded, later }: { open: ImportJob[]; onUploa
   }
   return (
     <>
-      <Body><Dropzone onFiles={onFiles} multiple accept={ACCEPT} label={upload.isPending ? t("imports.uploading") : t("setup.contracts.drop")} hint={t("setup.contracts.dropHint")} busy={upload.isPending} /></Body>
+      <Body><Dropzone className="al-drop" onFiles={onFiles} multiple accept={ACCEPT} label={upload.isPending ? t("imports.uploading") : t("setup.contracts.drop")} hint={t("setup.contracts.dropHint")} busy={upload.isPending} /></Body>
       <Footer>{later}<LinkButton href="/app/portfell/import" variant="primary">{t("setup.contracts.openDesk")}<IconArrowRight width={16} height={16} /></LinkButton></Footer>
     </>
   );
@@ -398,26 +476,27 @@ function ContractsDone({ n, footer }: { n: number; footer: ReactNode }) {
     <>
       <Body>
         <DoneLine>{t("setup.contracts.doneLine", { n })}</DoneLine>
-        <div className="note"><IconInfo /><span>{t("setup.contracts.doneNote")}</span></div>
+        <Note>{t("setup.contracts.doneNote")}</Note>
       </Body>
       <Footer>{footer}</Footer>
     </>
   );
 }
 
-/* --- all four done -------------------------------------------------------------------------------------------- */
+/* --- all four done (demo `alValmisHTML`) ---------------------------------------------------------------------- */
 function DoneCard({ steps, companies, properties }: { steps: SetupStep[]; companies: Company[]; properties: Asset[] }) {
   return (
-    <section className="card px-[var(--card-padding)] py-8 grid gap-5 text-center justify-items-center">
-      <span className="w-12 h-12 rounded-full grid place-items-center bg-success-subtle text-success-ink"><IconCheck width={22} height={22} /></span>
-      <div><h2 className="font-heading text-2xl font-[650] tracking-[-.02em]">{t("setup.done.title")}</h2><p className="text-sm text-muted mt-1 max-w-[52ch]">{t("setup.done.sub")}</p></div>
-      <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm text-left w-full max-w-[560px]">
-        <div><dt className="overline">{t("setup.done.company")}</dt><dd className="mt-1 font-semibold">{companies.map((c) => c.name).join(", ") || "—"}</dd></div>
-        <div><dt className="overline">{properties.length === 1 ? t("setup.done.building") : t("setup.done.buildings")}</dt><dd className="mt-1 font-semibold">{properties.map((p) => p.name).join(", ") || "—"}</dd></div>
-        <div><dt className="overline">{t("setup.done.spaces")}</dt><dd className="mt-1 font-semibold">{t("setup.spaces.perBuilding", { n: steps[2].count })}</dd></div>
-        <div><dt className="overline">{t("setup.done.contracts")}</dt><dd className="mt-1 font-semibold">{t("setup.done.contractsValue", { n: steps[3].count })}</dd></div>
+    <section className="card al-valmis">
+      <span className="al-valmis-ik"><IconCheck /></span>
+      <h2>{t("setup.done.title")}</h2>
+      <p>{t("setup.done.sub")}</p>
+      <dl className="al-valmis-kv">
+        <div><dt>{t("setup.done.company")}</dt><dd>{companies.map((c) => c.name).join(", ") || "—"}</dd></div>
+        <div><dt>{properties.length === 1 ? t("setup.done.building") : t("setup.done.buildings")}</dt><dd>{properties.map((p) => p.name).join(", ") || "—"}</dd></div>
+        <div><dt>{t("setup.done.spaces")}</dt><dd>{spacesN(steps[2].count)}</dd></div>
+        <div><dt>{t("setup.done.contracts")}</dt><dd>{t("setup.done.contractsValue", { n: steps[3].count })}</dd></div>
       </dl>
-      <div className="flex gap-2 flex-wrap justify-center"><LinkButton href="/app/portfell" variant="primary">{t("setup.done.openPortfolio")}<IconArrowRight width={16} height={16} /></LinkButton><LinkButton href="/app">{t("setup.done.openHome")}</LinkButton></div>
+      <div className="al-valmis-teg"><LinkButton href="/app/portfell" variant="primary">{t("setup.done.openPortfolio")}<IconArrowRight width={16} height={16} /></LinkButton><LinkButton href="/app" variant="ghost">{t("setup.done.openHome")}</LinkButton></div>
     </section>
   );
 }
