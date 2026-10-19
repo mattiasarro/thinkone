@@ -289,7 +289,16 @@ def _annex_heading(row: Row) -> str | None:
     keep = [p for p in parts if not re.search(r"\blisa\b|lisa\s*nr", p, re.I) and norm_name(p) != row.who and not space_tokens(p)]
     if keep:
         return keep[0]
-    return m.group(1).strip().capitalize() if m else None
+    if m and not space_tokens(m.group(1)):
+        return m.group(1).strip().capitalize()
+    # proposals from before the v3 prompt: read what the annex does from its summary (demo „Lisa 3 · Eritingimused”)
+    text = f"{row.prop.contract.summary or ''} {title}".lower()
+    for keys, label in ((("eritingimus", "üldtingimuste p"), "Eritingimused"), (("parkimis",), "Parkimiskohad"), (("pikend",), "Pikendamine"),
+                        (("lõpeta",), "Lõpetamine"), (("asendu", "üürniku vahetu", "asendab"), "Üürniku vahetus"), (("üürimäär", "üürihin", "üüri "), "Üür"),
+                        (("kontaktisik",), "Kontaktisikud")):
+        if any(k in text for k in keys):
+            return label
+    return None
 
 
 def light(row: Row, ctx: Ctx, by_id: dict[uuid.UUID, Row]) -> dict[str, Any]:
