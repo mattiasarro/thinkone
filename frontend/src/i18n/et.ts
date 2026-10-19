@@ -106,7 +106,7 @@ const et = {
       helpRequired: "Kohustuslik:", helpName: "nimi", helpArea: "üüripind", helpPrice: "hind", helpTail: "Osad (ladu, kontor, müügisaal, olmeala, ühisala) annavad tüübi; parkimiskohad numbritena.",
       template: "Laadi CSV-mall", preview: "Eelvaade", previewLine: "{n} · {m2} m² · {eur} € kuus hinnakirja järgi", previewErrors: "{n} rida vajab parandust", previewErrorsOne: "1 rida vajab parandust", reading: "Loen tabelit…",
       colSpace: "Pind", colType: "Tüüp", colArea: "m²", colPrice: "€/m²", colRent: "Üür / kuu", colParking: "Parkimine", colState: "Seis", stateFree: "Vaba", pasted: "kleebitud tabel", stateUpdate: "uuendab olemasolevat",
-      spacesOne: "1 pind", spacesMany: "{n} pinda", parkingOne: "1 koht", parkingMany: "{n} kohta", add: "Lisa {n}", addNone: "Lisa pinnad", doneRow: "{name} · {n}", added: "Lisatud · {n} pinda · {name}",
+      spacesOne: "1 pind", spacesMany: "{n} pinda", parkingOne: "1 koht", parkingMany: "{n} kohta", add: "Lisa {n}", addNone: "Lisa pinnad", doneRow: "{name} · {n}", doneSub: "{m2} m² · {eur} € kuus hinnakirja järgi", rented: "{n} üüritud", added: "Lisatud · {n} · {m2} m² · {name}",
       doneLine: "Pinnad on registris — iga pind on oma kaardiga esemete all", perBuilding: "{n} pinda", editor: "Ava pindade redaktor", addOther: "Lisa teise hoone pinnad",
     },
     contracts: {

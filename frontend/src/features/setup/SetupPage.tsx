@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { t } from "@/i18n";
-import { cx, fmtDate, fmtNum } from "@/lib/format";
+import { cx, fmtDate } from "@/lib/format";
 import { errorMessage, API_BASE } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
 import { useCompanies, useEhr, useSaveCompany } from "@/lib/queries/settings";
@@ -70,7 +70,7 @@ export function SetupPage() {
     let j = steps.findIndex((s, k) => k > i && !s.done);
     if (j < 0) j = steps.findIndex((s, k) => k !== i && !s.done);
     return j >= 0
-      ? <Button variant="primary" onClick={() => go(j)}>{t("setup.next", { step: steps[j].short })}<IconArrowRight width={16} height={16} /></Button>
+      ? <Button variant="primary" onClick={() => go(j)}>{t("setup.next", { step: steps[j].title.charAt(0).toLowerCase() + steps[j].title.slice(1) })}<IconArrowRight width={16} height={16} /></Button>
       : <Button variant="primary" onClick={() => go(-1)}>{t("setup.summary")}<IconArrowRight width={16} height={16} /></Button>;
   };
   const later = (i: number) => <button type="button" className="steplink" onClick={() => after(i)}>{t("setup.later")}</button>;
@@ -356,7 +356,7 @@ function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Ass
     try {
       const r = await imp.mutateAsync({ file: src.file ?? undefined, text: src.file ? undefined : src.text, dryRun });
       if (dryRun) setPreview(r);
-      else { toast.success(t("setup.spaces.added", { n: r.created + r.updated, name: target?.name ?? "" })); onDone(); }
+      else { toast.success(t("setup.spaces.added", { n: spacesN(r.created + r.updated), m2: nf(r.rows.filter((x) => x.ok).reduce((acc, x) => acc + (num(x.data.rentable_area_m2) ?? 0), 0), 1), name: target?.name ?? "" })); onDone(); }
     } catch (e) { setPreview(null); if (dryRun) setError(errorMessage(e)); else toast.error(errorMessage(e)); }
   };
   const debounced = useDebounced(text, 600);
@@ -430,11 +430,19 @@ function SpacesForm({ properties, goBuilding, onDone, later }: { properties: Ass
   );
 }
 function SpacesDone({ properties, footer }: { properties: Asset[]; footer: ReactNode }) {
+  const spaces = useAssets({ type_code: "space" });
+  const stats = (id: string) => {
+    const sp = (spaces.data ?? []).filter((x) => x.parent_id === id && x.status !== "jagatud");
+    const m2 = sp.reduce((a, x) => a + (num(x.attributes.rentable_area_m2) ?? 0), 0);
+    const rent = sp.reduce((a, x) => a + (num(x.attributes.rentable_area_m2) ?? 0) * (num(x.attributes.price_per_m2) ?? 0), 0);
+    const rented = sp.filter((x) => x.status === "üüritud").length;
+    return t("setup.spaces.doneSub", { m2: nf(m2, 1), eur: nf(rent, 0) }) + (rented ? ` · ${t("setup.spaces.rented", { n: rented })}` : "");
+  };
   return (
     <>
       <Body>
         <DoneLine>{t("setup.spaces.doneLine")}</DoneLine>
-        <div className="al-obj">{properties.filter((p) => p.children_count).map((p) => <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconGrid />} title={t("setup.spaces.doneRow", { name: p.name, n: spacesN(p.children_count ?? 0) })} sub={(p.attributes as PropertyAttributes).address ? ehrAddress((p.attributes as PropertyAttributes).address as string) : "—"} />)}</div>
+        <div className="al-obj">{properties.filter((p) => p.children_count).map((p) => <ObjRow key={p.id} href={`/app/portfell/objekt/${p.id}`} icon={<IconGrid />} title={t("setup.spaces.doneRow", { name: p.name, n: spacesN(p.children_count ?? 0) })} sub={spaces.data ? stats(p.id) : "…"} />)}</div>
       </Body>
       <Footer>{footer}</Footer>
     </>
