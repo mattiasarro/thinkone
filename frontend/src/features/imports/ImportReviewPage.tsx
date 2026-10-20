@@ -321,7 +321,7 @@ function Review({ job }: { job: ImportJobDetail }) {
         <SourceViewer jobId={job.id} files={files} textPages={job.text_pages ?? []} tab={tab} onTab={(i) => { setTab(i); setFocus(null); }} focus={focus} mainLabel={mainLabel} />
       </div>
       <aside className="ir-paan" aria-label={t("imports.review")}>
-        <PaneHead overline={`${kindLabel} · ${open ? t("imports.ir.needsReview") : t("imports.ir.readyToCommit")}`} title={who} sub={sub || undefined} mono={dates} />
+        <PaneHead overline={`${kindLabel} · ${open ? t("imports.ir.needsReview") : childWaits ? t("imports.ir.withContract") : t("imports.ir.readyToCommit")}`} title={who} sub={sub || undefined} mono={dates} />
         {job.duplicate_of_contract_id && <Note tone="amber"><b>{t("imports.duplicate")}</b><span><Link className="steplink" href={`/app/portfell/leping/${job.duplicate_of_contract_id}`}>{t("imports.duplicateOpen")}</Link></span></Note>}
         {job.source_document?.has_text_layer === false && <Note tone="amber"><b>{t("imports.noTextLayer")}</b></Note>}
         <Signatures job={job} />
@@ -352,6 +352,10 @@ function Review({ job }: { job: ImportJobDetail }) {
         <ClausesCard c={ctl} />
         <div className="ir-jalus">
           {excluding === null ? (
+            // an annex whose contract still waits in this import is confirmed together with it: the way forward is the contract
+            childWaits && !spots.length && parentRow ? (
+              <Link className="btn btn-primary ir-pohi" href={`/app/portfell/import/${parentRow.id}`}>{t("imports.ir.openParent", { name: parentRow.counterparty || parentRow.title || "" })}<IconChevronRight width={16} height={16} /></Link>
+            ) :
             <button type="button" className="btn btn-primary ir-pohi" onClick={primary} disabled={!spots.length && !canCommit} aria-busy={commit.isPending}>
               {commit.isPending ? <Spinner /> : spots.length ? t("imports.ir.lookMore", { n: spots.length }) : <><IconCheck width={16} height={16} />{commitLabel}{next ? ` ${t("imports.ir.andNext")}` : ""}</>}
             </button>
@@ -363,7 +367,7 @@ function Review({ job }: { job: ImportJobDetail }) {
               <button type="button" className="steplink" onClick={() => setExcluding(null)}>{t("common.cancel")}</button>
             </div>
           )}
-          {childWaits && <div className="ir-kk-miks">{t("imports.desk.childWaits")}</div>}
+          {childWaits && <div className="ir-kk-miks">{t("imports.ir.childWaitsNote")}</div>}
           <div className="ir-jalus-r">
             {excluding === null && <button type="button" className="steplink" onClick={() => setExcluding("")}>{t("imports.ir.skip")}</button>}
             <span className="ir-kbd" aria-live="polite">{saveState === "saving" ? t("imports.saving") : saveState === "error" ? t("common.error") : t("imports.ir.keys")}</span>
