@@ -340,7 +340,7 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots, park:
         <details className="ir-voldik" open={parkOpen || undefined} onToggle={(e) => setParkOpen((e.target as HTMLDetailsElement).open)}>
           <summary><b>{t("imports.ir.parking", { n: park.length })}</b><span>{park.length ? park.join(", ") : t("imports.ir.parkingNone")}</span>
             {chk && !chk.differs && !chk.problems.length && <em className="ir-park-ok">{t("imports.ir.parkMatches")}</em>}</summary>
-          <div className="ir-park">{spotsAll.map((s) => <SpotChip key={s.id} s={s} on={park.includes(s.number)} other={(!!s.space_id && !link.space_ids.includes(s.space_id)) || (!!s.contract && !(s.space_id && link.space_ids.includes(s.space_id)))} onClick={() => onLink({ ...link, parking_numbers: park.includes(s.number) ? park.filter((x) => x !== s.number) : [...park, s.number] })} title={s.space_id && !link.space_ids.includes(s.space_id) ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}</div>
+          <div className="ir-park">{spotsAll.map((s) => <SpotChip key={s.id} s={s} on={park.includes(s.number)} other={(!!s.contract || s.status === "üüritud") && !(s.space_id && link.space_ids.includes(s.space_id))} onClick={() => onLink({ ...link, parking_numbers: park.includes(s.number) ? park.filter((x) => x !== s.number) : [...park, s.number] })} title={s.space_id && !link.space_ids.includes(s.space_id) ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}</div>
         </details>
       )}
     </Step>

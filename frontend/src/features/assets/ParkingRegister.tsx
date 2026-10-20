@@ -23,8 +23,8 @@ export function spotTone(s: ParkingSpot): Tone {
   return "primary";
 }
 
-/** ``other``: in a picker, a spot that belongs to another space (or is in another contract) — muted gray, not its status
- *  colour, so a green „üüritud” there does not read as available. */
+/** ``other``: in a picker, a spot already rented in another space's contract — muted gray, not its green „üüritud”
+ *  colour (which read as available). Free spots whose default is another space look as usual. */
 export function SpotChip({ s, on, onClick, title, other }: { s: ParkingSpot; on?: boolean; onClick?: () => void; title?: string; other?: boolean }) {
   const cls = cx("pill select-none", on ? "primary" : other ? "spot-other" : spotTone(s) === "primary" ? "" : spotTone(s), onClick && "cursor-pointer");
   const label = `${s.number}${s.zone ? ` · ${s.zone}` : ""}`;
@@ -93,7 +93,7 @@ export function SpaceSpotsDialog({ propertyId, spaceId, spaceName, spots, open, 
     <Modal open={open} onClose={() => { setPicked(null); onClose(); }} title={`${t("assets.parkingReg.spaceSpots")} · ${spaceName}`} sub={t("assets.parkingNumbersHint")}
       footer={<><Button onClick={() => { setPicked(null); onClose(); }}>{t("common.cancel")}</Button><Button variant="primary" busy={assign.isPending} onClick={save}>{t("assets.parkingReg.spaceSpotsSave")}</Button></>}>
       <div className="flex flex-wrap gap-1.5">
-        {spots.map((s) => <SpotChip key={s.id} s={s} on={cur.includes(s.number)} other={(!!s.space_id && s.space_id !== spaceId) || (!!s.contract && s.space_id !== spaceId)} onClick={() => toggle(s.number)} title={s.space_id && s.space_id !== spaceId ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}
+        {spots.map((s) => <SpotChip key={s.id} s={s} on={cur.includes(s.number)} other={(!!s.contract || s.status === "üüritud") && s.space_id !== spaceId} onClick={() => toggle(s.number)} title={s.space_id && s.space_id !== spaceId ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}
       </div>
     </Modal>
   );
