@@ -80,6 +80,16 @@ class ClauseProposal(Anchor):
         return v.strip().rstrip(".")
 
 
+class ParkingProposal(Anchor):
+    """The parking the contract grants, as the model read it: the stated count and every spot number it assigns (ranges
+    expanded — „nr 92-99” → 92 … 99). The review compares it with the parking register."""
+
+    count: int | None = None
+    numbers: list[str] = Field(default_factory=list)
+    text: str | None = None
+    confidence: float = Field(ge=0, le=1, default=1.0)
+
+
 class AssetHint(BaseModel):
     name: str | None = None
     address: str | None = None
@@ -94,6 +104,7 @@ class FactsProposal(BaseModel):
     parameters: list[ParameterProposal] = Field(default_factory=list)
     key_dates: list[KeyDateProposal] = Field(default_factory=list)
     asset_hint: AssetHint | None = None
+    parking: ParkingProposal | None = None
 
 
 class ClausesProposal(BaseModel):

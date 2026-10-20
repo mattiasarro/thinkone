@@ -200,6 +200,8 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     await _run_worker_inline(job["id"])
     j = (await client.get(f"/api/v1/imports/{job['id']}")).json()
     assert j["status"] == "review" and j["proposal"]["contract"]["category"] == "lease"
+    # parking comes structured from the reading (the model expands ranges; annex numbers are not spots)
+    assert (j["proposal"]["parking"]["count"], j["proposal"]["parking"]["numbers"]) == (2, ["65", "101"])
     # the review's document tabs: the signed lease first-class, the plan in the same container as a further tab
     assert [(f["name"], f["kind"], f["main"]) for f in j["files"]] == [("leping.pdf", "pdf", True), ("T6B_Pind_29_plaan.pdf", "pdf", False)]
     r = await client.get(f"/api/v1/imports/{job['id']}/files/0")

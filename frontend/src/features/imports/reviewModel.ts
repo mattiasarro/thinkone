@@ -127,9 +127,15 @@ function expandSpots(item: string): string[] {
 /** Spot numbers compare without leading zeros and case („065” = „65”) — same rule as the backend's spot_key. */
 export const spotKey = (n: string) => n.trim().toUpperCase().replace(/^0+(?=.)/, "");
 
-/** What the contract says about parking: how many spots and which numbers („2 (nr 65, 101) kohta” → 2, [65, 101]);
- *  annex/clause numbers („lisas nr 2”) are not spots. Mirrors backend ``contract_parking``. */
-export function contractParking(d: Proposal): { idx: number; count: number | null; numbers: string[]; page: number | null; text: string } | null {
+/** What the contract says about parking. The model reads it (``parking``: count + every spot number, ranges expanded);
+ *  a proposal read before that existed falls back to parsing the parking parameter's text. */
+export function contractParking(d: Proposal): { count: number | null; numbers: string[]; page: number | null; text: string } | null {
+  if (d.parking !== undefined) return d.parking ? { count: d.parking.count, numbers: d.parking.numbers ?? [], page: d.parking.page ?? null, text: d.parking.text ?? "" } : null;
+  return legacyParking(d);
+}
+
+/** Older proposals only: „2 (nr 65, 101) kohta”, „Kohad nr 92-99” from the parking parameter (annex numbers are not spots). */
+function legacyParking(d: Proposal): { count: number | null; numbers: string[]; page: number | null; text: string } | null {
   let idx = d.parameters.findIndex((x) => x.key === "parking");
   if (idx < 0) idx = d.parameters.findIndex((x) => /parkim/i.test(x.label ?? ""));
   if (idx < 0) return null;
@@ -143,7 +149,7 @@ export function contractParking(d: Proposal): { idx: number; count: number | nul
   }
   const c = src.match(/(\d{1,3})\s*(?:\(|parkimis|koh)/i);
   const count = c ? Number(c[1]) : /^\d+$/.test(String(p.value ?? "").trim()) ? Number(p.value) : null;
-  return { idx, count, numbers, page: p.page ?? null, text: p.text ?? "" };
+  return { count, numbers, page: p.page ?? null, text: p.text ?? "" };
 }
 
 export interface ParkingCheck { count: number | null; named: string[]; register: string[]; spaceDefault: string[]; missing: string[]; problems: string[]; differs: boolean; page: number | null; needles: string[] }

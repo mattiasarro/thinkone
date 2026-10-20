@@ -201,6 +201,15 @@ def heuristic_structure(user: str) -> dict[str, Any]:
     title = first_line[:120].title() if first_line.isupper() else first_line[:120]
     heading = " ".join(ln.strip() for ln in text.split("\n")[:6] if ln.strip())[:300]  # „ÄRIRUUMIDE ÜÜRILEPING PIND _29_…_LISA 3”
     kind, annex_nr = classify({"title": heading})
+    # parking (what the model returns as `parking`): „8 parkimiskohta … Kohad nr 92-99” → 8, 92 … 99
+    parking = None
+    mp = re.search(r"(\d{1,3})\s*parkimiskoht\w*[\s\S]{0,240}?Kohad\s+nr\.?[ \t]*([\d, \t\-–]+(?:ja[ \t]+\d+)?)", text, re.I)
+    if mp:
+        nums: list[str] = []
+        for part in re.split(r"\s*(?:,|\bja\b)\s*", mp.group(2).strip()):
+            r = re.match(r"^(\d+)\s*[-–]\s*(\d+)$", part)
+            nums += [str(n) for n in range(int(r.group(1)), int(r.group(2)) + 1)] if r and int(r.group(2)) - int(r.group(1)) < 200 else [part] if part.isdigit() else []
+        parking = {"count": int(mp.group(1)), "numbers": nums, "text": mp.group(0).strip(), "confidence": 0.9, "page": 1, "char_start": mp.start(), "char_end": mp.end()}
     return {
         "contract": {"title": title, "category": category, "number": number, "document_kind": kind, "annex_number": annex_nr,
                      "parent_number": None, "parent_signed_at": None,
@@ -211,4 +220,5 @@ def heuristic_structure(user: str) -> dict[str, Any]:
         "key_dates": key_dates,
         "clauses": clauses[:600],
         "asset_hint": {"name": hint_name, "address": addr.group(1).strip() if addr else None, "area_m2": None},
+        "parking": parking,
     }

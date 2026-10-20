@@ -4,7 +4,7 @@ Two calls run in parallel over the same text: FACTS (head, parties, parameters, 
 document and judgement) and CLAUSES (the verbatim clause tree — transcription, cheaper model). ``CLAUSES_MARKER`` lets the
 fake provider tell the calls apart."""
 
-PROMPT_VERSION = "import_structure_v3"
+PROMPT_VERSION = "import_structure_v4"
 
 _INTRO = """You structure existing Estonian business contracts (lease / üürileping, maintenance / hooldusleping,
 management / haldusleping, insurance / kindlustusleping, security / valveleping, employment / tööleping, other)
@@ -41,6 +41,12 @@ Rules:
    other. Only dates that can be pinned to a calendar day.
 5. Every element carries page and char_start/char_end anchors into the source text where you found it.
 6. asset_hint: the leased/covered asset (space name like "P_29", building address, area) if present.
+7. parking: when the contract grants parking spots — `count` as stated (e.g. 8) and `numbers`: EVERY spot number it
+   assigns, as strings, ranges expanded ("Kohad nr 92-99" → "92","93",…,"99"; "nr 10–12 ja 15" → "10","11","12","15";
+   "kohad numbritega 5 kuni 7" → "5","6","7"). Numbers of annexes, clauses or plans ("Lepingu lisas nr 2") are not
+   spots. `text` = the verbatim sentence, with page/char anchors; confidence < 0.8 when count and numbers disagree or
+   the numbers are unclear (say why nowhere else — the review shows the difference). null when the contract says
+   nothing about parking; numbers = [] when it gives a count but no numbers.
 Do not transcribe the clauses — a separate step does that.
 Output only the JSON object; Estonian text stays Estonian."""
 
