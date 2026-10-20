@@ -304,7 +304,7 @@ function Review({ job }: { job: ImportJobDetail }) {
             </>
           )}
         </div>
-        <CalendarCard c={ctl} />
+        <CalendarCard c={ctl} contract={!isChild} />
         <ClausesCard c={ctl} />
         <div className="ir-jalus">
           {excluding === null ? (

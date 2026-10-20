@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import structlog
@@ -23,6 +24,16 @@ async def _account_of_job(job_id: uuid.UUID) -> uuid.UUID | None:
             await s0.execute(text("SELECT set_config('app.bypass_rls', 'on', true)"))
             row = (await s0.execute(text("SELECT account_id FROM import_job WHERE id = :id"), {"id": job_id})).first()
     return row[0] if row else None
+
+
+async def _render_pdf(doc: SourceDocument) -> None:
+    """Best effort: a failed or missing conversion only means the review shows the extracted text (and tries again on view)."""
+    from app.domain.imports import rendered_pdf
+
+    try:
+        await rendered_pdf(doc)
+    except Exception:  # noqa: BLE001
+        log.warning("import_render_pdf_failed", doc=str(doc.id), exc_info=True)
 
 
 async def run_structuring(job_id: uuid.UUID) -> None:
@@ -72,16 +83,22 @@ async def run_structuring(job_id: uuid.UUID) -> None:
             log.exception("import_extract_failed", job=str(job_id))
             return
 
-    # 2. structuring (LLM) — outside any DB transaction
+    # 2. structuring (LLM) — outside any DB transaction; a Word original is rendered to PDF meanwhile (the review shows it as pages)
+    render = asyncio.create_task(_render_pdf(doc)) if fmt == "docx" else None
     try:
         prop, result, prompt_version = await structure(ex)
     except Exception as e:  # noqa: BLE001
+        if render:
+            await render
         async with tenant_session(account_id) as session:
             job = await session.get(ImportJob, job_id)
             job.status, job.error = "failed", f"Struktureerimine ebaõnnestus: {e}"[:500]
             emit(session, actor, "import_job", job.id, "import.failed", {"error": job.error})
         log.exception("import_structure_failed", job=str(job_id))
         return
+
+    if render:
+        await render
 
     # 3. proposal → review
     async with tenant_session(account_id) as session:

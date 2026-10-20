@@ -17,7 +17,7 @@ import structlog
 from app.agent.prompts.import_structure import CLAUSES_SYSTEM, FACTS_SYSTEM, PROMPT_VERSION
 from app.agent.providers.base import StructuredResult, chat_model
 from app.ingest.extract import Extraction
-from app.ingest.schema import KeyDateProposal, Proposal, clauses_json_schema, facts_json_schema
+from app.ingest.schema import DateCheck, Proposal, clauses_json_schema, facts_json_schema
 
 log = structlog.get_logger()
 MAX_INPUT_CHARS = 600_000  # ~150k tokens; contracts are far smaller — refuse rather than truncate
@@ -155,7 +155,10 @@ def derive_dates(prop: Proposal, signing_times: list[str] | None = None) -> list
     * start_date ← the proposed start key date, a handover_date parameter, else signed_at (a lease „jõustub allkirjastamisel”);
     * end_date ← the proposed end key date, else start + the ``term`` parameter.
 
-    Start/end key dates are added for the calendar when they are missing. Returns the names of the fields it filled."""
+    Start/end key dates fold into the head first (``Proposal.fold_dates``): the head is the one place for them, and the
+    commit makes the calendar's start/end entries from it. A date filled here is derived — flagged for a look. Returns the
+    names of the fields it filled."""
+    prop.fold_dates()
     c, filled = prop.contract, []
     if c.signed_at is None:
         times = sorted(t for t in (signing_times or []) if t)
@@ -188,7 +191,7 @@ def derive_dates(prop: Proposal, signing_times: list[str] | None = None) -> list
     if c.end_date and c.start_date and c.end_date < c.start_date:
         c.end_date = None
         filled = [f for f in filled if f != "end_date"]
-    for kind, due, title in (("start", c.start_date, "Lepingu algus"), ("end", c.end_date, "Lepingu lõpp")):
-        if due and kind not in kd_by_kind:
-            prop.key_dates.append(KeyDateProposal(kind=kind, date=due, title=title, confidence=0.75, note="Tuletatud (allkirja aeg / tähtaeg) — kontrolli"))
+    for f in filled:
+        if f in ("start_date", "end_date") and f not in prop.date_checks:
+            prop.date_checks[f] = DateCheck(confidence=0.75, note="Tuletatud (allkirja aeg / tähtaeg) — kontrolli")
     return filled

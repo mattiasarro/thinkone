@@ -102,15 +102,56 @@ class ClausesProposal(BaseModel):
     clauses: list[ClauseProposal] = Field(default_factory=list)
 
 
+class DateCheck(BaseModel):
+    """How sure the contract's start or end date is (it lives on the head; this is its review state)."""
+
+    confidence: float = Field(ge=0, le=1, default=1.0)
+    note: str | None = None
+    page: int | None = None
+
+
+HEAD_DATES = {"start": "start_date", "end": "end_date"}
+
+
 class Proposal(FactsProposal):
     """The two halves merged — the shape the review UI edits and the commit path reads."""
 
     clauses: list[ClauseProposal] = Field(default_factory=list)
+    # not model output: the review state of contract.start_date / end_date (filled when start/end key dates fold into the head)
+    date_checks: dict[str, DateCheck] = Field(default_factory=dict)
+
+    def fold_dates(self) -> bool:
+        """A contract's start and end exist once — on the head. Start/end key dates the model returns fold into it (their
+        confidence and page move to ``date_checks``); the commit makes the calendar's start/end entries from the head.
+        Two different dates → the head keeps its own and the date is flagged. An annex keeps its start/end key dates:
+        there they say how it changes the contract (a new end), not when the annex itself runs."""
+        if self.contract.document_kind != "contract":
+            return False
+        kept, folded = [], False
+        for k in self.key_dates:
+            field = HEAD_DATES.get(k.kind)
+            if not field:
+                kept.append(k)
+                continue
+            folded = True
+            cur = getattr(self.contract, field)
+            if cur is None or cur == k.date:
+                setattr(self.contract, field, k.date)
+                check = DateCheck(confidence=k.confidence, note=k.note, page=k.page)
+            else:
+                check = DateCheck(confidence=min(k.confidence, 0.5), page=k.page,
+                                  note=f"Lepingust loetud kaks kuupäeva: {cur:%d.%m.%Y} ja {k.date:%d.%m.%Y} — vali õige")
+            prev = self.date_checks.get(field)
+            if prev is None or check.confidence < prev.confidence:
+                self.date_checks[field] = check
+        self.key_dates = kept
+        return folded
 
     def uncertain(self, threshold: float = 0.8) -> list[str]:
         out = [f"parameter:{i}" for i, p in enumerate(self.parameters) if p.confidence < threshold]
         out += [f"key_date:{i}" for i, k in enumerate(self.key_dates) if k.confidence < threshold]
         out += [f"party:{i}" for i, p in enumerate(self.parties) if p.confidence < threshold]
+        out += [f"contract:{f}" for f in ("start_date", "end_date") if f in self.date_checks and self.date_checks[f].confidence < threshold]
         return out
 
 

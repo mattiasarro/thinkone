@@ -22,7 +22,7 @@ from app.domain.search import index_entity
 from app.infra.blobstore import blobstore, sha256
 from app.infra.settings import get_settings
 from app.ingest.extract import detect_format
-from app.ingest.schema import Proposal
+from app.ingest.schema import HEAD_DATES, Proposal
 from app.models.contracts import Contract, ContractFact, ContractType, ImportJob, SourceDocument
 
 ALLOWED_FORMATS = {"pdf", "docx", "asice"}
@@ -221,51 +221,87 @@ def _ext(name: str) -> str:
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
 
 
+def _main_name(df: list[tuple[str, int]]) -> str | None:
+    """The same pick as Container.main_document: first PDF, then DOCX, else the largest."""
+    return next((n for ext in ("pdf", "docx") for n, _ in df if _ext(n) == ext), max(df, key=lambda x: x[1])[0] if df else None)
+
+
 def source_files(doc: SourceDocument) -> list[dict[str, Any]]:
     """What the review's document tabs show: the file itself, or every datafile of an ASiC-E/BDOC container (the main
-    document first-class, plans and annexes in the same container as further tabs — demo `irDokud`)."""
+    document first-class, plans and annexes in the same container as further tabs — demo `irDokud`). A Word main
+    document is served as its PDF rendering (LibreOffice) wherever this machine can make one."""
+    from app.ingest.convert import converter
+
+    def kind(name: str, main: bool) -> str:
+        k = _FILE_KINDS.get(_ext(name), "other")
+        return "pdf" if k == "docx" and main and converter() else k
+
     if doc.format != "asice":
-        return [{"index": 0, "name": doc.filename, "kind": _FILE_KINDS.get(_ext(doc.filename), "other"), "main": True, "size": doc.size}]
+        return [{"index": 0, "name": doc.filename, "kind": kind(doc.filename, True), "main": True, "size": doc.size}]
     df = [(d.get("name") or "", int(d.get("size") or 0)) for d in (doc.datafiles or [])]
-    # the same pick as Container.main_document: first PDF, then DOCX, else the largest
-    main = next((n for ext in ("pdf", "docx") for n, _ in df if _ext(n) == ext), max(df, key=lambda x: x[1])[0] if df else None)
-    return [{"index": i, "name": n.rsplit("/", 1)[-1], "kind": _FILE_KINDS.get(_ext(n), "other"), "main": n == main, "size": size} for i, (n, size) in enumerate(df)]
+    main = _main_name(df)
+    return [{"index": i, "name": n.rsplit("/", 1)[-1], "kind": kind(n, n == main), "main": n == main, "size": size} for i, (n, size) in enumerate(df)]
 
 
 async def source_file(doc: SourceDocument, index: int) -> tuple[str, bytes, str]:
-    """One file of the source (``index`` from ``source_files``): name, bytes, media type."""
+    """One file of the source (``index`` from ``source_files``): name, bytes, media type. The main document comes as its
+    browser-renderable PDF (a Word file converted once and cached)."""
+    files = source_files(doc)
+    f = next((x for x in files if x["index"] == index), None)
+    if not f:
+        raise NotFound("Faili ei leitud")
+    if f["main"] and f["kind"] == "pdf":
+        r = await rendered_pdf(doc)
+        if r:
+            return r[1], await blobstore().get(r[0]), "application/pdf"
+        if _ext(f["name"]) != "pdf":
+            raise NotFound("Dokumendi PDF-vaadet ei õnnestunud teha")
     data = await blobstore().get(doc.s3_key)
     if doc.format == "asice":
         from app.ingest.container import unpack
 
-        files = unpack(data).datafiles
-        if not 0 <= index < len(files):
-            raise NotFound("Faili ei leitud")
-        name, data = files[index]
-    elif index != 0:
-        raise NotFound("Faili ei leitud")
+        name, data = unpack(data).datafiles[index]
     else:
         name = doc.filename
     return name.rsplit("/", 1)[-1], data, _FILE_TYPES.get(_ext(name), "application/octet-stream")
 
 
-async def source_pdf_url(doc: SourceDocument) -> str | None:
-    """Presigned URL of the PDF a browser can embed at ``#page=N``: the file itself, or for an ASiC-E/BDOC container the
-    signed PDF datafile inside it (unpacked once and cached next to the container in object storage). None for DOCX."""
+async def rendered_pdf(doc: SourceDocument) -> tuple[str, str] | None:
+    """(storage key, filename) of a PDF a browser can render for the main document: the PDF itself, a container's PDF
+    datafile, or a Word document converted with LibreOffice — unpacked/converted once and cached next to the original
+    (which is never changed). None when there is nothing to render (or no converter on this machine)."""
     store = blobstore()
     if doc.format == "pdf":
-        return await store.presigned_url(doc.s3_key, doc.filename)
-    if doc.format != "asice":
+        return doc.s3_key, doc.filename
+    if doc.format not in ("asice", "docx"):
         return None
-    key = f"{doc.s3_key}.main.pdf"
-    if not await store.exists(key):
+    key, name = (f"{doc.s3_key}.main.pdf" if doc.format == "asice" else f"{doc.s3_key}.pdf"), doc.filename.rsplit(".", 1)[0] + ".pdf"
+    if await store.exists(key):
+        return key, name
+    data = await store.get(doc.s3_key)
+    if doc.format == "asice":
         from app.ingest.container import unpack
 
-        main = unpack(await store.get(doc.s3_key)).main_document()
-        if not main or not main[0].lower().endswith(".pdf"):
+        main = unpack(data).main_document()
+        if not main or _ext(main[0]) not in ("pdf", "docx"):
             return None
-        await store.put(key, main[1], "application/pdf")
-    return await store.presigned_url(key, doc.filename.rsplit(".", 1)[0] + ".pdf")
+        fname, data = main
+        if _ext(fname) == "pdf":
+            await store.put(key, data, "application/pdf")
+            return key, name
+    from app.ingest.convert import docx_to_pdf
+
+    pdf = await docx_to_pdf(data)
+    if not pdf:
+        return None
+    await store.put(key, pdf, "application/pdf")
+    return key, name
+
+
+async def source_pdf_url(doc: SourceDocument) -> str | None:
+    """Presigned URL of the PDF a browser can embed at ``#page=N`` (``rendered_pdf``)."""
+    r = await rendered_pdf(doc)
+    return await blobstore().presigned_url(r[0], r[1]) if r else None
 
 
 # ---------------------------------------------------------------- commit ----------------------------------
@@ -282,6 +318,7 @@ async def commit_import(
     if job.status != "review":
         raise DomainError("Import ei ole ülevaatuse seisus")
     prop = Proposal.model_validate(job.reviewed or job.proposal or {})
+    prop.fold_dates()  # (idempotent — proposals are folded when made)
     pending = [u for u in prop.uncertain() if u not in set(checked or [])]
     if pending:
         raise ValidationFailed(f"{len(pending)} välja ootab kontrolli", errors=[{"loc": [p], "msg": "kontrollimata"} for p in pending])
@@ -360,6 +397,12 @@ async def commit_import(
         for i, due in enumerate(dues):
             await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=due, title=kd.title,
                                provenance=prov if i == 0 else {**prov, "recurrence_of": kd.date.isoformat(), "n": i})
+    # the contract's start and end in the calendar come from the head — the one place they live (no second copy to drift)
+    for kind, due, title in (("start", prop.contract.start_date, "Lepingu algus"), ("end", prop.contract.end_date, "Lepingu lõpp")):
+        if due and not any(k.kind == kind for k in prop.key_dates):
+            chk = prop.date_checks.get(HEAD_DATES[kind])
+            await add_key_date(session, actor, contract_id=contract.id, kind_code=kind, due_date=due, title=title,
+                               provenance={"page": chk.page if chk else None, "from": "contract", "import_job_id": str(job.id)})
 
     # allocation (linking): exclusive for a lease on a space, coverage for a whole-building service contract
     parking_linked: list[str] = []

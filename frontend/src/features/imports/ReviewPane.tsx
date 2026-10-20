@@ -8,7 +8,7 @@ import { SpotChip } from "@/features/assets/ParkingRegister";
 import { IconAlert, IconArrowRight, IconCal, IconCheck, IconEdit, IconShield, IconX } from "@/components/ui/Icons";
 import type { Asset, DeskRow, ImportJobDetail, ImportSourceFile, Proposal, SpaceAttributes } from "@/types/api";
 import { ExistingPicker, RegistryRow, contractArea, dropPartyRow, isOurs, pickableSpace, roleOptions, setPartyRow, spaceArea, suggestSpace, type LinkState, type PartyRow } from "./LinkSection";
-import { crossChecks, fmtValue, kdLabel, needlesFor, toIso, type Spot } from "./reviewModel";
+import { HEAD_DATES, crossChecks, fmtValue, headDateLabel, headDateUnsure, kdLabel, needlesFor, toIso, type Spot } from "./reviewModel";
 import { UNCERTAIN } from "./reviewState";
 
 const CATEGORIES = ["lease", "maintenance", "management", "insurance", "security", "employment", "other"];
@@ -59,7 +59,7 @@ function EditField({ initial, placeholder, label, type, options, onSave, onCance
 function fieldOf(draft: Proposal, key: string): { raw: string; placeholder: string; type?: "select"; apply: (raw: string) => Proposal | string } {
   const [kind, rest] = key.split(":");
   const i = Number(rest);
-  if (kind === "c") {
+  if (kind === "c" || kind === "contract") {
     const f = rest as keyof Proposal["contract"];
     const isDate = f === "signed_at" || f === "start_date" || f === "end_date";
     if (f === "category") return { raw: draft.contract.category, placeholder: "", type: "select", apply: (r) => ({ ...draft, contract: { ...draft.contract, category: r as Proposal["contract"]["category"] } }) };
@@ -326,14 +326,16 @@ export function ValuesStep({ c, nr, spots, spaceArea: sa }: { c: ReviewCtl; nr: 
   const mine = spots.filter((s) => s.step === 3);
   const doneP = d.parameters.map((p, i) => ({ p, i })).filter(({ p, i }) => p.confidence < UNCERTAIN && c.checked.has(`parameter:${i}`));
   const doneK = d.key_dates.map((k, i) => ({ k, i })).filter(({ k, i }) => k.confidence < UNCERTAIN && c.checked.has(`key_date:${i}`));
-  const anyUnsure = d.parameters.some((p) => p.confidence < UNCERTAIN) || d.key_dates.some((k) => k.confidence < UNCERTAIN);
-  const head: { k: string; l: string; v: string; needles: string[] }[] = [
+  const doneD = HEAD_DATES.filter((f) => headDateUnsure(d, f) && c.checked.has(`contract:${f}`));
+  const anyUnsure = d.parameters.some((p) => p.confidence < UNCERTAIN) || d.key_dates.some((k) => k.confidence < UNCERTAIN) || HEAD_DATES.some((f) => headDateUnsure(d, f));
+  const datePage = (f: "start_date" | "end_date") => d.date_checks?.[f]?.page;
+  const head: { k: string; l: string; v: string; needles: string[]; page?: number | null }[] = [
     { k: "c:category", l: t("common.category"), v: tEnum("contract.category", d.contract.category), needles: [] },
     { k: "c:title", l: t("portfolio.contracts.title"), v: d.contract.title || "—", needles: needlesFor(d.contract.title) },
     { k: "c:number", l: t("contract.number"), v: d.contract.number || "—", needles: needlesFor(d.contract.number) },
     { k: "c:signed_at", l: t("contract.signedAt"), v: d.contract.signed_at ? fmtDate(d.contract.signed_at) : "—", needles: needlesFor(d.contract.signed_at) },
-    { k: "c:start_date", l: t("contract.startDate"), v: d.contract.start_date ? fmtDate(d.contract.start_date) : "—", needles: needlesFor(d.contract.start_date) },
-    { k: "c:end_date", l: t("contract.endDate"), v: d.contract.end_date ? fmtDate(d.contract.end_date) : "—", needles: needlesFor(d.contract.end_date) },
+    // start and end appear once: here when sure, as a card (then a done row) above when the reading was unsure
+    ...HEAD_DATES.filter((f) => !headDateUnsure(d, f)).map((f) => ({ k: `c:${f}`, l: headDateLabel(f), v: d.contract[f] ? fmtDate(d.contract[f]) : "—", needles: needlesFor(d.contract[f]), page: datePage(f) })),
   ];
   const sureP = d.parameters.map((p, i) => ({ p, i })).filter(({ p }) => p.confidence >= UNCERTAIN);
   const sureK = d.key_dates.map((k, i) => ({ k, i })).filter(({ k }) => k.confidence >= UNCERTAIN);
@@ -342,13 +344,14 @@ export function ValuesStep({ c, nr, spots, spaceArea: sa }: { c: ReviewCtl; nr: 
   return (
     <Step nr={nr} title={t("imports.ir.q3")} ok={!mine.length} extra={mine.length ? <span className="ir-q-arv">{mine.length}</span> : undefined}>
       {doneP.map(({ p, i }) => <DoneRow key={`p${i}`} c={c} k={`parameter:${i}`} label={p.label || p.key} value={fmtValue(p.value, p.unit)} fixed={String(o.parameters[i]?.value ?? "") !== String(p.value ?? "")} />)}
+      {doneD.map((f) => <DoneRow key={f} c={c} k={`contract:${f}`} label={headDateLabel(f)} value={d.contract[f] ? fmtDate(d.contract[f]) : "—"} fixed={(o.contract[f] ?? null) !== (d.contract[f] ?? null)} />)}
       {doneK.map(({ k, i }) => <DoneRow key={`k${i}`} c={c} k={`key_date:${i}`} label={kdLabel(k)} value={fmtDate(k.date)} fixed={o.key_dates[i]?.date !== k.date} />)}
       {mine.map((s) => <SpotCard key={s.key} c={c} s={s} />)}
       {!mine.length && <div className="ir-koik"><IconCheck />{anyUnsure ? t("imports.ir.allChecked") : t("imports.ir.allSure", { n: total })}</div>}
       <details className="ir-voldik" open={!mine.length && !anyUnsure ? true : undefined}>
         <summary><b>{t("imports.ir.sureN", { n: total })}</b><span>{t("imports.ir.clickShows")}</span></summary>
         <div className="ir-kindlad">
-          {head.map((h) => <SureRow key={h.k} c={c} k={h.k} label={h.l} value={h.v} needles={h.needles} />)}
+          {head.map((h) => <SureRow key={h.k} c={c} k={h.k} label={h.l} value={h.v} page={h.page} needles={h.needles} />)}
           {sureP.map(({ p, i }) => <SureRow key={`p${i}`} c={c} k={`parameter:${i}`} label={p.label || p.key} value={fmtValue(p.value, p.unit)} page={p.page} needles={needlesFor(p.value, p.text)} />)}
           {sureK.map(({ k, i }) => <SureRow key={`k${i}`} c={c} k={`key_date:${i}`} label={kdLabel(k)} value={fmtDate(k.date)} page={k.page} needles={needlesFor(k.date)} />)}
         </div>
@@ -393,14 +396,18 @@ export function FilesStep({ nr, rows: children, files, onTab, mainLabel }: { nr:
 
 // ---------------------------------------------------------------- calendar · clauses ----------------------------------
 
-export function CalendarCard({ c }: { c: ReviewCtl }) {
-  const K = c.draft.key_dates;
-  if (!K.length) return null;
+/** What lands in the calendar on commit: the contract's start and end (from the head — one copy) and the key dates. */
+export function CalendarCard({ c, contract }: { c: ReviewCtl; contract: boolean }) {
+  const d = c.draft;
+  const head = contract ? HEAD_DATES.filter((f) => d.contract[f] && !d.key_dates.some((k) => k.kind === (f === "start_date" ? "start" : "end")))
+    .map((f) => ({ id: f, kind: f === "start_date" ? "start" : "end", date: d.contract[f] as string, title: "", page: d.date_checks?.[f]?.page ?? null })) : [];
+  const rows = [...head, ...d.key_dates.map((k, i) => ({ id: `k${i}`, kind: k.kind, date: k.date, title: k.title, page: k.page ?? null }))];
+  if (!rows.length) return null;
   return (
     <div className="ir-kal">
       <div className="ir-kal-pea"><IconCal /><b>{t("imports.ir.calendar")}</b><span>{t("imports.ir.calendarSub")}</span></div>
-      {[...K.map((k, i) => ({ k, i }))].sort((a, b) => a.k.date.localeCompare(b.k.date)).map(({ k, i }) => (
-        <button key={i} type="button" className="ir-kal-r" onClick={() => c.show(k.page, needlesFor(k.date))}>
+      {rows.sort((a, b) => a.date.localeCompare(b.date)).map((k) => (
+        <button key={k.id} type="button" className="ir-kal-r" onClick={() => c.show(k.page, needlesFor(k.date))}>
           <span className="mono">{fmtDate(k.date)}</span><span><b>{tEnum("keyDates.kinds", k.kind)}</b>{k.title && k.title !== tEnum("keyDates.kinds", k.kind) && <small>{k.title}</small>}</span>
         </button>
       ))}

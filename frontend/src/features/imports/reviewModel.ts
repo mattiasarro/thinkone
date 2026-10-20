@@ -5,7 +5,7 @@ import { UNCERTAIN } from "./reviewState";
 
 /** A place the operator looks at (demo `irKohad`): an uncertain value, or a missing link. ``key`` is the checked-key for
  *  values (`parameter:3`), so „Õige” is the same check the commit gate reads. */
-export interface Spot { key: string; step: 1 | 2 | 3; kind: "party" | "parameter" | "key_date" | "space"; idx: number; label: string; value: string; note: string; page: number | null; needles: string[] }
+export interface Spot { key: string; step: 1 | 2 | 3; kind: "party" | "parameter" | "key_date" | "date" | "space"; idx: number; label: string; value: string; note: string; page: number | null; needles: string[] }
 
 export const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -39,6 +39,12 @@ export function toIso(raw: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
+/** The contract's start and end: one copy, on the head (the calendar's start/end entries are made from it at commit). */
+export const HEAD_DATES = ["start_date", "end_date"] as const;
+export type HeadDate = (typeof HEAD_DATES)[number];
+export const headDateLabel = (f: HeadDate) => (f === "start_date" ? t("contract.startDate") : t("contract.endDate"));
+export const headDateUnsure = (d: Proposal, f: HeadDate) => (d.date_checks?.[f]?.confidence ?? 1) < UNCERTAIN;
+
 export const kdLabel = (k: { kind: string; title: string }) => k.title || tEnum("keyDates.kinds", k.kind);
 
 /** The places to look at, in panel order: who (parties) · what it is tied to (space) · values. */
@@ -50,6 +56,11 @@ export function spotsOf(draft: Proposal, checked: Set<string>, needSpace: boolea
       out.push({ key, step: 1, kind: "party", idx: i, label: tEnum("imports.partyRoles", p.role), value: [p.name, p.registry_code].filter(Boolean).join(" · "), note: t("imports.ir.notePartyUnsure"), page: p.page ?? null, needles: needlesFor(p.registry_code, p.name) });
   });
   if (needSpace) out.push({ key: "space", step: 2, kind: "space", idx: -1, label: t("imports.ir.space"), value: "", note: t("imports.ir.noteSpace"), page: null, needles: [] });
+  for (const f of HEAD_DATES) {
+    const key = `contract:${f}`, chk = draft.date_checks?.[f], v = draft.contract[f];
+    if (chk && chk.confidence < UNCERTAIN && !checked.has(key))
+      out.push({ key, step: 3, kind: "date", idx: -1, label: headDateLabel(f), value: v ? fmtDate(v) : "—", note: chk.note || t("imports.ir.noteUnsure"), page: chk.page ?? null, needles: needlesFor(v) });
+  }
   draft.parameters.forEach((p, i) => {
     const key = `parameter:${i}`;
     if (p.confidence < UNCERTAIN && !checked.has(key))

@@ -210,7 +210,9 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     head = j["proposal"]["contract"]
     # (the only printed date is the handover „Hiljemalt 02.01.2024” — that is the start, not the signing)
     assert (head["signed_at"], head["start_date"], head["end_date"]) == ("2023-11-25", "2024-01-02", "2030-11-25")
-    assert {(k["kind"], k["date"]) for k in j["proposal"]["key_dates"]} >= {("start", "2024-01-02"), ("end", "2030-11-25")}
+    # the start and end live once, on the head — no start/end key dates to drift apart; a derived date is flagged for a look
+    assert not {k["kind"] for k in j["proposal"]["key_dates"]} & {"start", "end"}
+    assert j["proposal"]["date_checks"]["end_date"]["confidence"] < 0.8 and "contract:end_date" in j["uncertain"]
     # an indexation date recurs every year of the term in the calendar, not only the first time
     prop = j["proposal"]
     prop["key_dates"].append({"kind": "indexation", "date": "2024-11-01", "title": "Indekseerimine", "confidence": 1.0, "note": None, "page": 1, "char_start": None, "char_end": None})
@@ -220,6 +222,8 @@ async def test_asice_container_import(client: AsyncClient, admin: dict):
     c = (await client.get(f"/api/v1/contracts/{r.json()['contract_id']}")).json()
     assert (c["signed_at"], c["start_date"], c["end_date"]) == ("2023-11-25", "2024-01-02", "2030-11-25")
     assert [k["due_date"] for k in sorted(c["key_dates"], key=lambda k: k["due_date"]) if k["kind_code"] == "indexation"] == [f"{y}-11-01" for y in range(2024, 2031)]
+    # the calendar's start and end come from the contract's own dates
+    assert {(k["kind_code"], k["due_date"]) for k in c["key_dates"]} >= {("start", "2024-01-02"), ("end", "2030-11-25")}
     assert c["source_documents"][0]["container_signatures"][0]["personal_code"] == "37001010000"
     # provenance anchors open the signed PDF inside the container, plus the extracted text pages as fallback
     v = (await client.get(f"/api/v1/contracts/{c['id']}/source-documents/{c['source_documents'][0]['id']}/view")).json()
@@ -306,3 +310,53 @@ async def test_import_desk_batch_toimik_and_bulk_confirm(client: AsyncClient, ad
     await client.post(f"/api/v1/imports/{maint['id']}/exclude", json={})
     assert (await client.delete(f"/api/v1/imports/{maint['id']}")).status_code == 204
     assert (await client.get(f"/api/v1/imports/{maint['id']}")).status_code == 404
+
+
+def test_start_end_key_dates_fold_into_the_head():
+    """A model that returns start/end as key dates: they move onto the head (one copy); two different dates are flagged."""
+    from app.ingest.schema import Proposal
+
+    base = {"contract": {"title": "Üürileping", "category": "lease", "start_date": "2024-01-02"}, "parties": [], "parameters": [], "clauses": []}
+    p = Proposal.model_validate({**base, "key_dates": [
+        {"kind": "start", "date": "2024-01-02", "title": "Algus", "confidence": 0.9, "page": 1},
+        {"kind": "end", "date": "2031-01-02", "title": "Lõpp", "confidence": 0.6, "page": 2, "note": "tähtaeg loetud ebakindlalt"},
+        {"kind": "indexation", "date": "2025-01-02", "title": "Indekseerimine", "confidence": 0.9}]})
+    assert p.fold_dates()
+    assert [k.kind for k in p.key_dates] == ["indexation"]
+    assert str(p.contract.end_date) == "2031-01-02" and p.date_checks["end_date"].page == 2
+    assert p.uncertain() == ["contract:end_date"]
+    assert not p.fold_dates()  # idempotent
+    clash = Proposal.model_validate({**base, "key_dates": [{"kind": "start", "date": "2024-02-01", "title": "Algus", "confidence": 1.0}]})
+    clash.fold_dates()
+    assert str(clash.contract.start_date) == "2024-01-02" and "kaks kuupäeva" in clash.date_checks["start_date"].note
+    assert "contract:start_date" in clash.uncertain()
+    # an annex keeps its end key date: there it is the contract's new end, not the annex's own
+    annex = Proposal.model_validate({**base, "contract": {**base["contract"], "document_kind": "annex"},
+                                     "key_dates": [{"kind": "end", "date": "2033-01-01", "title": "Uus lõpp", "confidence": 1.0}]})
+    assert not annex.fold_dates() and [k.kind for k in annex.key_dates] == ["end"]
+
+
+async def test_docx_original_is_rendered_to_pdf(client: AsyncClient, admin: dict, monkeypatch):
+    """A Word original shows in the review as PDF pages: converted once at import (LibreOffice in the image), cached next
+    to the untouched original. No converter → the file stays docx and the review shows the extracted text."""
+    from app.ingest import convert
+
+    calls: list[int] = []
+
+    async def fake_convert(data: bytes, timeout: int = 90) -> bytes:
+        calls.append(len(data))
+        return LEASE_PDF.read_bytes()
+
+    monkeypatch.setattr(convert, "converter", lambda: None)
+    job = await _upload(client, MAINT_DOCX, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    assert [f["kind"] for f in (await client.get(f"/api/v1/imports/{job['id']}")).json()["files"]] == ["docx"]
+
+    monkeypatch.setattr(convert, "converter", lambda: "/usr/bin/soffice")
+    monkeypatch.setattr(convert, "docx_to_pdf", fake_convert)
+    await _run_worker_inline(job["id"])
+    assert calls == [MAINT_DOCX.stat().st_size]  # converted during the import
+    j = (await client.get(f"/api/v1/imports/{job['id']}")).json()
+    assert [(f["kind"], f["main"]) for f in j["files"]] == [("pdf", True)]
+    r = await client.get(f"/api/v1/imports/{job['id']}/files/0")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content == LEASE_PDF.read_bytes()
+    assert calls == [MAINT_DOCX.stat().st_size]  # served from the cache, not converted again

@@ -107,7 +107,9 @@ export interface ProposalParty { name: string; role: string; registry_code?: str
 export interface ProposalParameter { key: string; label: string; value: string | number | null; unit?: string | null; text: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; source_number?: string | null; note?: string | null }
 export interface ProposalKeyDate { kind: string; date: ISODate; title: string; confidence: number; page?: number | null; char_start?: number | null; char_end?: number | null; note?: string | null }
 export interface ProposalClause { number: string; level: number; heading?: string | null; text: string; page?: number | null; char_start?: number | null; char_end?: number | null }
-export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null }
+/** Review state of the contract's start/end date (they live once, on the head — not as key dates). */
+export interface ProposalDateCheck { confidence: number; note?: string | null; page?: number | null }
+export interface Proposal { contract: ProposalContract; parties: ProposalParty[]; parameters: ProposalParameter[]; key_dates: ProposalKeyDate[]; clauses: ProposalClause[]; asset_hint?: { name?: string | null; address?: string | null; area_m2?: number | null } | null; date_checks?: Partial<Record<"start_date" | "end_date", ProposalDateCheck>> }
 export type ImportDocKind = "contract" | "annex" | "document";
 export interface ImportJob { id: UUID; status: ImportStatus; error: string | null; source_document: ImportSourceDocument | null; proposal: Proposal | null; reviewed: Proposal | null; duplicate_of_contract_id: UUID | null; committed_contract_id: UUID | null; created_at: ISODate;
   batch_id?: UUID | null; kind?: ImportDocKind; annex_number?: string | null; parent_job_id?: UUID | null; parent_contract_id?: UUID | null; link?: Record<string, unknown> | null; checked?: string[]; excluded_reason?: string | null; uncertain?: string[] }
