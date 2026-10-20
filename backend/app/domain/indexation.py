@@ -147,6 +147,17 @@ async def _write_version(session: AsyncSession, actor: Actor, contract: Contract
     return f
 
 
+async def _anchor(session: AsyncSession, f: ContractFact) -> ContractFact:
+    """The last version of this key that an indexation did not write (back along the superseded chain)."""
+    cur = f
+    while cur.reason == "indexation":
+        prev = (await session.execute(select(ContractFact).where(ContractFact.superseded_by == cur.id))).scalars().first()
+        if prev is None:
+            break
+        cur = prev
+    return cur
+
+
 async def _set_rent(session: AsyncSession, actor: Actor, contract: Contract, amount: float, valid_from: date, provenance: dict[str, Any]
                     ) -> tuple[list[uuid.UUID], dict[str, Any] | None]:
     """The primary rent becomes ``amount`` from ``valid_from``; the other rent keys follow by the same factor."""
@@ -162,10 +173,19 @@ async def _set_rent(session: AsyncSession, actor: Actor, contract: Contract, amo
     if _round(amount) == _round(old):
         return [], {"key": primary.key, "old": old, "new": old}
     factor = amount / old
+    # the others follow from where the indexations started (not from last year's rounded value — no drift across a chain)
+    pa = await _anchor(session, primary)
+    pa_v = parse_amount((pa.value or {}).get("value"))
     ids = []
     for f in facts:
         cur = parse_amount((f.value or {}).get("value"))
-        new = amount if f is primary else cur * factor  # type: ignore[operator]
+        if f is primary:
+            new = amount
+        else:
+            fa = await _anchor(session, f)
+            fa_v = parse_amount((fa.value or {}).get("value"))
+            same_start = fa.valid_from == pa.valid_from and pa_v and fa_v is not None
+            new = fa_v * amount / pa_v if same_start else cur * factor  # type: ignore[operator]
         written = await _write_version(session, actor, contract, f, _like((f.value or {}).get("value"), new), valid_from, provenance)
         ids.append(written.id)
     return ids, {"key": primary.key, "old": old, "new": _round(amount), "pct": _round((factor - 1) * 100, 3)}

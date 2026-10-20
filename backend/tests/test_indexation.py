@@ -163,6 +163,18 @@ async def test_only_the_current_rent(client: AsyncClient, admin: dict):
     assert detail["current_values"]["rent_monthly"]["value"] == "1000,00"
 
 
+async def test_the_other_rent_fields_do_not_drift(client: AsyncClient, admin: dict):
+    """12,50 €/m² follows 1250 → 1287,50 → 1325 as 13,25 (from where the indexations started), not 13,26 via last year's rounding."""
+    today = date.today()
+    cid = await _lease(admin, start=today - timedelta(days=765), rent="1250,00", per_m2="12,50", ix_dates=[today - timedelta(days=400), today - timedelta(days=35)])
+    s1, s2 = (await client.get(f"/api/v1/contracts/{cid}/indexation")).json()["steps"]
+    r = await client.post(f"/api/v1/contracts/{cid}/indexation", json={"steps": [{"key_date_id": s1["key_date_id"], "applied": True},
+                                                                                {"key_date_id": s2["key_date_id"], "applied": True, "amount": 1325}]})
+    assert r.status_code == 200, r.text
+    cv = (await client.get(f"/api/v1/contracts/{cid}")).json()["current_values"]
+    assert cv["rent_monthly"]["value"] == "1325,00" and cv["rent_per_m2"]["value"] == "13,25"
+
+
 async def test_a_cpi_rule_needs_the_percentage(client: AsyncClient, admin: dict):
     today = date.today()
     cid = await _lease(admin, start=today - timedelta(days=400), indexation={"value": "THI", "text": "tarbijahinnaindeksi muutuse võrra"},
