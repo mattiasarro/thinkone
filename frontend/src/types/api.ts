@@ -89,9 +89,26 @@ export interface TemplateDetail extends Template { clauses?: Clause[]; body?: { 
 export type ContractOrigin = "platform" | "imported";
 export type ContractCategory = "lease" | "maintenance" | "management" | "insurance" | "security" | "other" | string;
 export interface ContractSummary { id: UUID; number: string | null; title: string; status: string; origin: ContractOrigin; type_code: string; category: ContractCategory | null; party: { id: UUID; name: string } | null; company_id: UUID | null; start_date: ISODate | null; end_date: ISODate | null; signed_at: ISODate | null; current_values: Record<string, unknown>; key_dates_next?: { kind_code: string; due_date: ISODate } | null }
-export interface ContractFact { id?: UUID; key: string; label?: string | null; value: string | number | null; unit?: string | null; text?: string | null; valid_from: ISODate | null; valid_to?: ISODate | null; reason: string | null; provenance?: Record<string, unknown> | null }
-export interface KeyDate { id: UUID; kind_code: string; title: string; due_date: ISODate; notify_days_before: number | null; fired_at: ISODate | null; provenance?: Record<string, unknown> | null; contract: { id: UUID; number: string | null; title: string; type_code: string; party_name: string | null } | null }
-export interface KeyDateKind { code: string; name_et: string; default_notify_days: number }
+export interface ContractFact { id?: UUID; key: string; label?: string | null; value: string | number | null; unit?: string | null; text?: string | null; valid_from: ISODate | null; valid_to?: ISODate | null; reason: string | null; recorded_at?: ISODate; provenance?: Record<string, unknown> | null }
+/** What a passed date means (backend keydates.status_of): milestone → past · window → lapsed · task → overdue/unconfirmed until done/skipped. */
+export type KeyDateBehaviour = "milestone" | "window" | "task";
+export type KeyDateStatus = "upcoming" | "past" | "lapsed" | "overdue" | "unconfirmed" | "done" | "skipped";
+export interface KeyDateRent { key: string; old: number; new: number; proposed?: number | null; pct?: number }
+export interface KeyDate {
+  id: UUID; kind_code: string; title: string; due_date: ISODate; notify_days_before: number | null; fired_at: ISODate | null; provenance?: Record<string, unknown> | null;
+  contract?: { id: UUID; number: string | null; title: string; type_code: string; party_name: string | null } | null;
+  behaviour?: KeyDateBehaviour; status?: KeyDateStatus; resolution?: "done" | "skipped" | null; resolved_at?: ISODate | null;
+  resolution_data?: { fact_ids?: string[]; rent?: KeyDateRent; mode?: string } | null;
+}
+export interface KeyDateKind { code: string; name_et: string; default_notify_days: number; behaviour?: KeyDateBehaviour }
+/** GET /contracts/{id}/indexation — the catch-up card. */
+export interface IndexationProposal {
+  rule: { method: "fixed_pct" | "cpi" | null; rate: number | null; text: string | null };
+  rent: { key: string; label: string; unit: string | null; value: number | null; valid_from: ISODate | null; reason: string } | null;
+  steps: { key_date_id: UUID; due_date: ISODate; title: string; locked: boolean; proposed: number | null }[];
+  applied: { key_date_id: UUID; due_date: ISODate; resolution: string; rent: KeyDateRent | null }[];
+}
+export interface IndexationStepInput { key_date_id: UUID; applied: boolean; amount?: number | null; pct?: number | null }
 export interface SourceDocument { id: UUID; filename: string; content_type: string; role: string; format?: string | null; page_count?: number | null; url?: string | null; container_signatures?: ContainerSignature[] | null }
 export interface ContainerSignature { signer?: string | null; name?: string | null; personal_code?: string | null; signing_time?: ISODate | null; signed_at?: ISODate | null; time?: ISODate | null; valid?: boolean | null; files?: string[] | null }
 export interface ContractParty { id: UUID; party: { id: UUID; name: string; registry_code: string | null }; role: string; is_primary: boolean; valid_from: ISODate | null; valid_to: ISODate | null; source: string }

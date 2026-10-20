@@ -384,7 +384,7 @@ async def commit_import(
         await write_tree(session, actor, _nest(prop.clauses), contract_id=contract.id, source="imported", locked=False)
 
     # key dates
-    from app.domain.keydates import add_key_date, recurrences
+    from app.domain.keydates import add_key_date, recurrences, series_title
 
     for kd in prop.key_dates:
         prov = {"page": kd.page, "char_start": kd.char_start, "confidence": kd.confidence, "import_job_id": str(job.id)}
@@ -395,7 +395,7 @@ async def commit_import(
         else:
             dues = [kd.date]
         for i, due in enumerate(dues):
-            await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=due, title=kd.title,
+            await add_key_date(session, actor, contract_id=contract.id, kind_code=kd.kind, due_date=due, title=kd.title if i == 0 else series_title(kd.title),
                                provenance=prov if i == 0 else {**prov, "recurrence_of": kd.date.isoformat(), "n": i})
     # the contract's start and end in the calendar come from the head — the one place they live (no second copy to drift)
     for kind, due, title in (("start", prop.contract.start_date, "Lepingu algus"), ("end", prop.contract.end_date, "Lepingu lõpp")):

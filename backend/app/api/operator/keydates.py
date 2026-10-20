@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
@@ -31,6 +32,11 @@ class KeyDateOut(BaseModel):
     notify_days_before: int
     fired_at: datetime | None
     contract: KeyDateContractOut | None
+    behaviour: str = "window"
+    status: str = "upcoming"  # upcoming | past | lapsed | overdue | unconfirmed | done | skipped (keydates.status_of)
+    resolution: str | None = None
+    resolved_at: datetime | None = None
+    resolution_data: dict[str, Any] | None = None
 
 
 class KeyDateKindOut(BaseModel):
@@ -39,6 +45,7 @@ class KeyDateKindOut(BaseModel):
     vertical: str | None
     default_notify_days: int
     notify_client: bool
+    behaviour: str = "window"
 
 
 class KeyDateIn(BaseModel):
@@ -47,6 +54,10 @@ class KeyDateIn(BaseModel):
     due_date: date
     title: str | None = Field(default=None, max_length=200)
     notify_days_before: int | None = Field(default=None, ge=0, le=730)
+
+
+class ResolveIn(BaseModel):
+    resolution: Literal["done", "skipped"]
 
 
 class KeyDatePatch(BaseModel):
@@ -58,15 +69,17 @@ class KeyDatePatch(BaseModel):
 @router.get("", response_model=list[KeyDateOut])
 async def list_key_dates(from_: date | None = Query(default=None, alias="from"), to: date | None = Query(default=None),
                          kind: str | None = Query(default=None), contract_id: uuid.UUID | None = Query(default=None),
-                         session: AsyncSession = Depends(db)) -> list[KeyDateOut]:
+                         p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[KeyDateOut]:
     rows = await keydates_domain.calendar(session, start=from_, end=to, kind_code=kind, contract_id=contract_id)
     party_names = await _party_names(session, [c.id for _, c in rows if c])
-    return [_out(kd, c, party_names) for kd, c in rows]
+    beh = await keydates_domain.behaviours(session, p.account_id)
+    return [_out(kd, c, party_names, beh) for kd, c in rows]
 
 
 @router.get("/kinds", response_model=list[KeyDateKindOut])
 async def list_kinds(p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[KeyDateKindOut]:
-    return [KeyDateKindOut(code=k.code, name_et=k.name_et, vertical=k.vertical, default_notify_days=k.default_notify_days, notify_client=k.notify_client)
+    return [KeyDateKindOut(code=k.code, name_et=k.name_et, vertical=k.vertical, default_notify_days=k.default_notify_days, notify_client=k.notify_client,
+                           behaviour=k.behaviour)
             for k in await keydates_domain.kinds(session, p.account_id)]
 
 
@@ -77,14 +90,31 @@ async def create_key_date(body: KeyDateIn, p: Principal = Depends(current_princi
         raise NotFound("Lepingut ei leitud")
     kd = await keydates_domain.add_key_date(session, p.actor, contract_id=body.contract_id, kind_code=body.kind_code, due_date=body.due_date,
                                             title=body.title, notify_days_before=body.notify_days_before)
-    return _out(kd, contract, await _party_names(session, [contract.id]))
+    return _out(kd, contract, await _party_names(session, [contract.id]), await keydates_domain.behaviours(session, p.account_id))
 
 
 @router.patch("/{key_date_id}", response_model=KeyDateOut)
 async def patch_key_date(key_date_id: uuid.UUID, body: KeyDatePatch, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> KeyDateOut:
     kd = await keydates_domain.update_key_date(session, p.actor, key_date_id, due_date=body.due_date, notify_days_before=body.notify_days_before, title=body.title)
+    return await _one(session, p, kd)
+
+
+@router.post("/{key_date_id}/resolve", response_model=KeyDateOut)
+async def resolve_key_date(key_date_id: uuid.UUID, body: ResolveIn, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> KeyDateOut:
+    """A task done or skipped, without changing anything else (an indexation that changes the rent: POST /contracts/{id}/indexation)."""
+    kd = await keydates_domain.resolve_key_date(session, p.actor, key_date_id, body.resolution)
+    return await _one(session, p, kd)
+
+
+@router.post("/{key_date_id}/reopen", response_model=KeyDateOut)
+async def reopen_key_date(key_date_id: uuid.UUID, p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> KeyDateOut:
+    kd = await keydates_domain.reopen_key_date(session, p.actor, key_date_id)
+    return await _one(session, p, kd)
+
+
+async def _one(session: AsyncSession, p: Principal, kd: KeyDate) -> KeyDateOut:
     contract = await session.get(Contract, kd.subject_id)
-    return _out(kd, contract, await _party_names(session, [contract.id] if contract else []))
+    return _out(kd, contract, await _party_names(session, [contract.id] if contract else []), await keydates_domain.behaviours(session, p.account_id))
 
 
 @router.api_route("/{key_date_id}", methods=["DELETE"], status_code=204)
@@ -100,10 +130,12 @@ async def _party_names(session: AsyncSession, contract_ids: list[uuid.UUID]) -> 
     return {cid: p.name for cid, p in (await primary_parties(session, contract_ids)).items()}
 
 
-def _out(kd: KeyDate, c: Contract | None, party_names: dict[uuid.UUID, str]) -> KeyDateOut:
+def _out(kd: KeyDate, c: Contract | None, party_names: dict[uuid.UUID, str], beh: dict[str, str]) -> KeyDateOut:
     contract = None
     if c is not None:
         contract = KeyDateContractOut(id=c.id, number=c.number, title=c.title, type_code=c.type_code,
                                       party_name=party_names.get(c.id))
+    b = beh.get(kd.kind_code, "window")
     return KeyDateOut(id=kd.id, kind_code=kd.kind_code, title=kd.title, due_date=kd.due_date, notify_days_before=kd.notify_days_before,
-                      fired_at=kd.fired_at, contract=contract)
+                      fired_at=kd.fired_at, contract=contract, behaviour=b, status=keydates_domain.status_of(kd, b, c),
+                      resolution=kd.resolution, resolved_at=kd.resolved_at, resolution_data=kd.resolution_data)

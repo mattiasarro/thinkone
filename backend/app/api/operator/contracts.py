@@ -6,12 +6,14 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import Principal, current_principal, db
 from app.domain import contract_parties, portfolio
 from app.domain import imports as imports_domain
+from app.domain import indexation as indexation_domain
+from app.domain import keydates as keydates_domain
 from app.infra.blobstore import blobstore
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -73,6 +75,40 @@ class KeyDateOut(BaseModel):
     notify_days_before: int
     fired_at: datetime | None
     provenance: dict[str, Any] | None
+    behaviour: str = "window"
+    status: str = "upcoming"
+    resolution: str | None = None
+    resolved_at: datetime | None = None
+    resolution_data: dict[str, Any] | None = None
+
+
+class IndexationStepOut(BaseModel):
+    key_date_id: uuid.UUID
+    due_date: date
+    title: str
+    locked: bool
+    proposed: float | None
+
+
+class IndexationOut(BaseModel):
+    """GET /contracts/{id}/indexation — the catch-up card: the rule, the rent in force, the open due indexations."""
+    rule: dict[str, Any]
+    rent: dict[str, Any] | None
+    steps: list[IndexationStepOut]
+    applied: list[dict[str, Any]]
+
+
+class IndexationStepIn(BaseModel):
+    key_date_id: uuid.UUID
+    applied: bool
+    amount: float | None = Field(default=None, gt=0)
+    pct: float | None = Field(default=None, gt=-100, lt=100)
+
+
+class IndexationIn(BaseModel):
+    """Either the row-by-row answer (``steps``) or only today's rent (``current_rent``)."""
+    steps: list[IndexationStepIn] | None = None
+    current_rent: float | None = Field(default=None, gt=0)
 
 
 class SourceViewOut(BaseModel):
@@ -200,7 +236,7 @@ async def get_contract(contract_id: uuid.UUID, session: AsyncSession = Depends(d
         facts=[FactOut(id=f.id, key=f.key, label=(f.value or {}).get("label"), value=(f.value or {}).get("value"), unit=(f.value or {}).get("unit"),
                        text=(f.value or {}).get("text"), valid_from=f.valid_from, valid_to=f.valid_to, reason=f.reason, recorded_at=f.recorded_at,
                        provenance=f.provenance) for f in b["facts"]],
-        key_dates=[KeyDateOut.model_validate(k, from_attributes=True) for k in b["key_dates"]],
+        key_dates=await _key_dates_out(session, c, b["key_dates"]),
         allocations=[AllocationOut(id=a.id, kind=a.kind, quantity=a.quantity, period_start=a.period_start, period_end=a.period_end,
                                    asset={"id": asset.id, "name": asset.name, "type_code": asset.type_code, "parent_id": asset.parent_id}) for a, asset in b["allocations"]],
         source_documents=docs,
@@ -276,6 +312,37 @@ async def _cp_fetch(session: AsyncSession, cp_id: uuid.UUID) -> ContractPartyOut
     await session.flush()
     await session.refresh(cp)
     return _cp_out(cp, await get_party(session, cp.party_id))
+
+
+async def _key_dates_out(session: AsyncSession, c, kds) -> list[KeyDateOut]:
+    beh = await keydates_domain.behaviours(session, c.account_id)
+    out = []
+    for k in kds:
+        b = beh.get(k.kind_code, "window")
+        out.append(KeyDateOut.model_validate(k, from_attributes=True).model_copy(update={"behaviour": b, "status": keydates_domain.status_of(k, b, c)}))
+    return out
+
+
+@router.get("/{contract_id}/indexation", response_model=IndexationOut)
+async def get_indexation(contract_id: uuid.UUID, session: AsyncSession = Depends(db)) -> IndexationOut:
+    c = await portfolio.get_contract(session, contract_id)
+    return IndexationOut(**await indexation_domain.proposal(session, c))
+
+
+@router.post("/{contract_id}/indexation", response_model=IndexationOut)
+async def apply_indexation(contract_id: uuid.UUID, body: IndexationIn, p: Principal = Depends(current_principal),
+                           session: AsyncSession = Depends(db)) -> IndexationOut:
+    """Resolving indexations is what changes the rent: applied → a new rent version from that date; skipped → nothing."""
+    from app.domain.errors import DomainError
+
+    c = await portfolio.get_contract(session, contract_id)
+    if body.current_rent is not None:
+        await indexation_domain.set_current_rent(session, p.actor, c, body.current_rent)
+    elif body.steps:
+        await indexation_domain.apply(session, p.actor, c, [s.model_dump() for s in body.steps])
+    else:
+        raise DomainError("Vali, mis indekseerimistega juhtus, või sisesta praegune üür")
+    return IndexationOut(**await indexation_domain.proposal(session, c))
 
 
 @router.post("/{contract_id}/amendments", response_model=SourceDocOut, status_code=201)

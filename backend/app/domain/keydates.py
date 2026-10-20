@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.errors import NotFound
+from app.domain.errors import DomainError, NotFound
 from app.domain.events import Actor, emit
 from app.models.contracts import Contract, KeyDate, KeyDateKind
 
@@ -42,6 +43,15 @@ def recurrences(first: date, *, until: date | None, every_months: int = 12, toda
 
 TERMINAL_STATUSES = {"ended", "cancelled", "early_terminated", "archived"}
 
+_FIRST = re.compile(r"^(esimene|esmane|first)\s+", re.IGNORECASE)
+
+
+def series_title(title: str) -> str:
+    """A later occurrence of a series: „Esimene üüri tõus 3%” read from the contract is the first one only — the rest are
+    „Üüri tõus 3%”."""
+    rest = _FIRST.sub("", title or "").strip()
+    return rest[:1].upper() + rest[1:] if rest else title
+
 
 async def extend_recurrences(session: AsyncSession, actor: Actor, today: date | None = None) -> int:
     """Heartbeat for recurring series (indexation): on every live contract, keep occurrences generated up to the rolling
@@ -68,11 +78,85 @@ async def extend_recurrences(session: AsyncSession, actor: Actor, today: date | 
             due = add_months(due, every)
             if due > limit:
                 break
-            await add_key_date(session, actor, contract_id=contract_id, kind_code=kind, due_date=due, title=latest.title,
+            await add_key_date(session, actor, contract_id=contract_id, kind_code=kind, due_date=due, title=series_title(latest.title),
                                provenance={"recurs_months": every, "extended": True, **({"generated": True} if prov.get("generated") else {})})
             added += 1
             n += 1
     return added
+
+
+# ---------------------------------------------------------------- what a date means once it has passed ---------------
+
+BEHAVIOURS = ("milestone", "window", "task")
+RESOLUTIONS = ("done", "skipped")
+
+
+async def behaviours(session: AsyncSession, account_id: uuid.UUID) -> dict[str, str]:
+    """kind code → milestone | window | task (an account's own kind overrides the global one)."""
+    out: dict[str, str] = {}
+    for k in sorted(await kinds(session, account_id), key=lambda k: k.account_id is not None):
+        out[k.code] = k.behaviour or "window"
+    return out
+
+
+def status_of(kd: KeyDate, behaviour: str, contract: Contract | None, today: date | None = None) -> str:
+    """The one status every view shows (server-side, so the contract page, calendar, space and home agree):
+    done / skipped — a task's outcome; upcoming — not yet due; past — a milestone that happened; lapsed — a deadline or
+    option that went by (nothing left to do); overdue — a task nobody marked; unconfirmed — an indexation that fell before
+    the contract was imported (we don't know whether it was applied — the catch-up asks once). A task from before the import
+    other than indexation is just history (past)."""
+    today = today or date.today()
+    if kd.resolution:
+        return kd.resolution
+    if kd.due_date >= today:
+        return "upcoming"
+    if behaviour == "milestone":
+        return "past"
+    if behaviour != "task":
+        return "lapsed"
+    imported_on = contract.created_at.date() if contract is not None and contract.origin == "imported" and contract.created_at else None
+    if imported_on and kd.due_date < imported_on:
+        return "unconfirmed" if kd.kind_code == "indexation" else "past"
+    return "overdue"
+
+
+OPEN_STATUSES = {"overdue", "unconfirmed"}
+
+
+async def resolve_key_date(session: AsyncSession, actor: Actor, key_date_id: uuid.UUID, resolution: str, *,
+                           data: dict | None = None) -> KeyDate:
+    """Mark a task done or skipped (an indexation that changes the rent goes through ``indexation.apply`` instead)."""
+    if resolution not in RESOLUTIONS:
+        raise DomainError("Tundmatu tulemus")
+    kd = await session.get(KeyDate, key_date_id)
+    if not kd or kd.deleted_at:
+        raise NotFound()
+    if (await behaviours(session, actor.account_id)).get(kd.kind_code) != "task":
+        raise DomainError("Tehtuks saab märkida ainult tegevust nõudva tähtaja (nt indekseerimine, makse)")
+    if kd.resolution:
+        raise DomainError("See tähtaeg on juba lahendatud — ava see enne uuesti")
+    kd.resolution, kd.resolved_at, kd.resolved_by, kd.resolution_data = resolution, datetime.now(UTC), actor.user_id, data
+    emit(session, actor, "key_date", kd.id, f"key_date.{resolution}", {"contract_id": kd.subject_id, "kind": kd.kind_code, "due_date": kd.due_date,
+                                                                        **({"data": data} if data else {})})
+    return kd
+
+
+async def reopen_key_date(session: AsyncSession, actor: Actor, key_date_id: uuid.UUID) -> KeyDate:
+    """Undo a resolution. An indexation that wrote rent versions takes them back — only while they are still the current
+    ones (a later change has to be undone first)."""
+    from app.domain.indexation import revert_facts
+
+    kd = await session.get(KeyDate, key_date_id)
+    if not kd or kd.deleted_at:
+        raise NotFound()
+    if not kd.resolution:
+        return kd
+    fact_ids = [uuid.UUID(x) for x in (kd.resolution_data or {}).get("fact_ids") or []]
+    if fact_ids:
+        await revert_facts(session, actor, kd.subject_id, fact_ids)
+    emit(session, actor, "key_date", kd.id, "key_date.reopened", {"contract_id": kd.subject_id, "was": kd.resolution, "data": kd.resolution_data})
+    kd.resolution = kd.resolved_at = kd.resolved_by = kd.resolution_data = None
+    return kd
 
 
 async def kinds(session: AsyncSession, account_id: uuid.UUID) -> list[KeyDateKind]:
@@ -151,7 +235,7 @@ async def scan_and_notify(session: AsyncSession, actor: Actor, today: date | Non
     today = today or date.today()
     await extend_recurrences(session, actor, today)
     stmt = select(KeyDate, Contract).outerjoin(Contract, Contract.id == KeyDate.subject_id).where(
-        KeyDate.deleted_at.is_(None), KeyDate.fired_at.is_(None), KeyDate.due_date >= today - timedelta(days=1))
+        KeyDate.deleted_at.is_(None), KeyDate.fired_at.is_(None), KeyDate.resolution.is_(None), KeyDate.due_date >= today - timedelta(days=1))
     fired = 0
     for kd, c in (await session.execute(stmt)).all():
         if kd.due_date - timedelta(days=kd.notify_days_before) <= today:

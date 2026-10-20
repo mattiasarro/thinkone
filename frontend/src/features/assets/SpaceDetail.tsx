@@ -15,8 +15,9 @@ import { Input } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconEdit, IconTrash, IconArrowRight } from "@/components/ui/Icons";
-import { cx, daysUntil, fmtDate, fmtEur, fmtNum } from "@/lib/format";
+import { cx, fmtDate, fmtEur, fmtNum } from "@/lib/format";
 import { SpaceForm } from "./SpaceForm";
+import { KeyDatePill } from "@/features/keydates/KeyDateStatus";
 import { partsLabel } from "./SpacesTable";
 import { SpotChip, SpaceSpotsDialog } from "./ParkingRegister";
 import { AttachmentsList } from "@/features/contracts/AttachmentsList";
@@ -93,8 +94,8 @@ export function SpaceDetail({ id }: { id: string }) {
             <CardHeader title={t("assets.space.upcoming")} />
             <CardBody>
               {dates.length === 0 ? <p className="text-sm text-muted">{t("assets.space.noUpcoming")}</p> : (
-                <ul className="grid gap-2 text-sm">{dates.map((d) => { const n = daysUntil(d.due_date); return (
-                  <li key={d.id} className="flex items-center gap-3"><span className="font-mono text-xs text-muted w-24 flex-none">{fmtDate(d.due_date)}</span><span className="flex-1 min-w-0 truncate">{d.title}{d.contract ? ` · ${d.contract.number}` : ""}</span><Pill tone={n < 0 ? "error" : n <= 30 ? "warning" : "neutral"}>{n < 0 ? t("home.overdue") : t("home.inDays", { n })}</Pill></li>); })}</ul>
+                <ul className="grid gap-2 text-sm">{dates.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3"><span className="font-mono text-xs text-muted w-24 flex-none">{fmtDate(d.due_date)}</span><span className="flex-1 min-w-0 truncate">{d.title}{d.contract ? ` · ${d.contract.number}` : ""}</span><KeyDatePill k={d} /></li>))}</ul>
               )}
             </CardBody>
           </Card>

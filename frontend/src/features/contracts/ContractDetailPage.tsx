@@ -2,7 +2,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
-import { useAudit, useContract, useDeleteAllocation, useDeleteKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
+import { useAudit, useContract, useDeleteAllocation, useDeleteKeyDate, useReopenKeyDate, useResolveKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
 import { api, errorMessage } from "@/lib/api";
 import { Card, CardHeader, CardBody, PageHead } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
@@ -10,9 +10,11 @@ import { Pill, statusTone } from "@/components/ui/Pill";
 import { EmptyState, ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownload } from "@/components/ui/Icons";
-import { fmtDate, fmtDateTime, valueToString, daysUntil } from "@/lib/format";
+import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownload, IconCheck, IconX, IconArrowLeft } from "@/components/ui/Icons";
+import { cx, fmtDate, fmtDateTime, valueToString } from "@/lib/format";
 import { KeyDateDialog } from "@/features/keydates/KeyDateDialog";
+import { KeyDateStatusText, isHistory, isOpen } from "@/features/keydates/KeyDateStatus";
+import { IndexationCard } from "./IndexationCard";
 import { ClauseTree } from "./ClauseTree";
 import { ProvenanceAnchor, SourceViewerContext } from "./ProvenanceAnchor";
 import { SourceViewer } from "./SourceViewer";
@@ -42,6 +44,7 @@ function Detail({ c }: { c: ContractDetail }) {
   const [src, setSrc] = useState<{ docId: string; page: number } | null>(null);
   const openSource = useCallback((docId: string, page: number) => setSrc({ docId, page }), []);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
   const [notes, setNotes] = useState(c.notes ?? "");
   const delKd = useDeleteKeyDate();
   const delAlloc = useDeleteAllocation(c.id);
@@ -64,6 +67,24 @@ function Detail({ c }: { c: ContractDetail }) {
   // current versions only; superseded fact versions stay in the data (and the audit trail) but not in the grid
   const allFacts: ContractFact[] = c.facts?.length ? c.facts : Object.entries(c.current_values ?? {}).map(([key, value]) => ({ key, value: value as string | number | null, valid_from: null, reason: null }));
   const facts = allFacts.filter((f) => !f.valid_to);
+  const versions = new Map<string, ContractFact[]>();
+  for (const f of allFacts) versions.set(f.key, [...(versions.get(f.key) ?? []), f]);
+  for (const [k, vs] of versions) versions.set(k, [...vs].sort((a, b) => (a.valid_from ?? "").localeCompare(b.valid_from ?? "") || (a.recorded_at ?? "").localeCompare(b.recorded_at ?? "")));
+  const rentHistory = RENT_KEYS.map((k) => versions.get(k)).find((vs) => vs && vs.length > 1);
+  const factSub = (f: ContractFact) => {
+    const vs = versions.get(f.key) ?? [];
+    const idx = vs.filter((v) => v.reason === "indexation").length;
+    return [
+      f.reason === "indexation" ? null : f.text,
+      f.reason === "amendment" ? t("contract.amendedFact", { date: fmtDate(f.valid_from) }) : f.reason === "indexation" ? t("contract.indexedFact", { date: fmtDate(f.valid_from) }) : f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null,
+      vs.length > 1 ? t("contract.originalValue", { value: valueToString(vs[0].value) }) : null,
+      idx > 1 ? t("contract.indexCount", { n: idx }) : null,
+    ].filter(Boolean).join(" · ");
+  };
+  // key dates: open tasks first, then what is coming; history (happened, lapsed, resolved) folded away
+  const byDue = [...c.key_dates].sort((a, b) => a.due_date.localeCompare(b.due_date));
+  const kdMain = [...byDue.filter(isOpen), ...byDue.filter((k) => !isOpen(k) && !isHistory(k))];
+  const kdPast = byDue.filter(isHistory);
 
   return (
     <SourceViewerContext.Provider value={openSource}>
@@ -93,11 +114,25 @@ function Detail({ c }: { c: ContractDetail }) {
                 <Fact label={t("contract.signedAt")} value={fmtDate(c.signed_at)} />
                 {facts.map((f) => (
                   <Fact key={f.id ?? f.key} label={f.label ?? f.key} value={`${valueToString(f.value)}${f.unit ? ` ${f.unit}` : ""}`}
-                        sub={[f.text, f.reason === "amendment" ? t("contract.amendedFact", { date: fmtDate(f.valid_from) }) : f.valid_from ? t("contract.validFrom", { date: fmtDate(f.valid_from) }) : null].filter(Boolean).join(" · ")}
+                        sub={factSub(f)}
                         anchor={imported ? <ProvenanceAnchor prov={f.provenance} docs={c.source_documents} /> : null} />
                 ))}
                 {facts.length === 0 && <p className="text-sm text-muted col-span-full">{t("contract.noFacts")}</p>}
               </div>
+              {rentHistory && (
+                <details className="mt-3">
+                  <summary className="text-xs font-semibold text-muted cursor-pointer hover:text-primary">{t("contract.rentHistory")} · {rentHistory.length}</summary>
+                  <ol className="mt-2 grid gap-1 text-sm">
+                    {[...rentHistory].reverse().map((v) => (
+                      <li key={v.id ?? v.valid_from} className="flex items-center gap-3">
+                        <span className="font-mono text-xs text-muted w-24 flex-none">{fmtDate(v.valid_from)}</span>
+                        <span className="font-semibold tabular-nums">{valueToString(v.value)}{v.unit ? ` ${v.unit}` : ""}</span>
+                        <span className="text-xs text-muted">{tEnum("contract.factReason", v.reason)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
             </CardBody>
           </Card>
 
@@ -130,27 +165,30 @@ function Detail({ c }: { c: ContractDetail }) {
         </div>
 
         <div className="grid gap-5 min-w-0">
+          <IndexationCard contractId={c.id} />
           <PartiesCard c={c} />
 
           <Card>
             <CardHeader title={t("contract.keyDates")} actions={<Button size="sm" onClick={() => setKdDialog({ open: true, item: null })}><IconPlus width={14} height={14} />{t("common.add")}</Button>} />
             {c.key_dates.length === 0 ? <EmptyState title={t("contract.noKeyDates")} /> : (
-              <ul className="divide-y" style={{ borderColor: "var(--line)" }}>
-                {[...c.key_dates].sort((a, b) => a.due_date.localeCompare(b.due_date)).map((k) => {
-                  const n = daysUntil(k.due_date);
-                  return (
-                    <li key={k.id} className="flex items-center gap-2 px-[var(--card-padding)] py-2.5">
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium truncate">{k.title}</span>
-                        <span className="block text-xs text-muted">{tEnum("keyDates.kinds", k.kind_code)} · {fmtDate(k.due_date)} · <span className={n < 0 ? "text-error" : n <= 30 ? "text-warning" : ""}>{n < 0 ? t("home.overdue") : t("home.inDays", { n })}</span></span>
-                      </span>
-                      {imported && <ProvenanceAnchor prov={k.provenance} docs={c.source_documents} />}
-                      <button type="button" className="icon-btn !w-8 !h-8" aria-label={t("common.edit")} onClick={() => setKdDialog({ open: true, item: k })}><IconEdit width={14} height={14} /></button>
-                      <button type="button" className="icon-btn !w-8 !h-8 text-error" aria-label={t("common.delete")} onClick={() => setKdDel(k)}><IconTrash width={14} height={14} /></button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <>
+                <ul className="divide-y" style={{ borderColor: "var(--line)" }}>
+                  {kdMain.map((k) => <KdRow key={k.id} k={k} c={c} onEdit={() => setKdDialog({ open: true, item: k })} onDelete={() => setKdDel(k)} />)}
+                </ul>
+                {kdPast.length > 0 && (
+                  <>
+                    <button type="button" className="w-full text-left text-xs font-semibold text-muted px-[var(--card-padding)] py-2.5 border-t hover:text-primary" style={{ borderColor: "var(--line)" }}
+                            aria-expanded={pastOpen} onClick={() => setPastOpen(!pastOpen)}>
+                      {pastOpen ? t("keyDates.hidePast") : t("keyDates.showPast", { n: kdPast.length })}
+                    </button>
+                    {pastOpen && (
+                      <ul className="divide-y border-t" style={{ borderColor: "var(--line)" }}>
+                        {kdPast.map((k) => <KdRow key={k.id} k={k} c={c} muted onEdit={() => setKdDialog({ open: true, item: k })} onDelete={() => setKdDel(k)} />)}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </Card>
 
@@ -205,6 +243,39 @@ function Detail({ c }: { c: ContractDetail }) {
       <SourceViewer contractId={c.id} docId={src?.docId ?? null} page={src?.page ?? null} onClose={() => setSrc(null)} />
     </div>
     </SourceViewerContext.Provider>
+  );
+}
+
+const RENT_KEYS = ["rent_monthly", "rent_per_m2", "fee_monthly"];
+
+/** One key date: what it means now (status), and — for a task — what happened (done / skipped, undo). An open indexation is
+ *  answered on the indexation card, where the rent changes with it. */
+function KdRow({ k, c, muted, onEdit, onDelete }: { k: KeyDate; c: ContractDetail; muted?: boolean; onEdit: () => void; onDelete: () => void }) {
+  const resolve = useResolveKeyDate();
+  const reopen = useReopenKeyDate();
+  const toast = useToast();
+  const run = async (fn: () => Promise<unknown>, msg: string) => { try { await fn(); toast.success(msg); } catch (e) { toast.error(errorMessage(e)); } };
+  const open = isOpen(k);
+  return (
+    <li className={cx("flex items-center gap-2 px-[var(--card-padding)] py-2.5", muted && "opacity-75")}>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium truncate">{k.title}</span>
+        <span className="block text-xs text-muted">{tEnum("keyDates.kinds", k.kind_code)} · {fmtDate(k.due_date)} · <KeyDateStatusText k={k} />{open && k.kind_code === "indexation" ? ` · ${t("keyDates.confirmOnCard")}` : ""}</span>
+      </span>
+      {c.origin === "imported" && <ProvenanceAnchor prov={k.provenance} docs={c.source_documents} />}
+      {open && k.kind_code !== "indexation" && (
+        <>
+          <Button size="sm" busy={resolve.isPending} onClick={() => run(() => resolve.mutateAsync({ id: k.id, resolution: "done" }), t("keyDates.resolved"))}><IconCheck width={14} height={14} />{t("keyDates.markDone")}</Button>
+          <button type="button" className="icon-btn !w-8 !h-8" title={t("keyDates.markSkipped")} aria-label={t("keyDates.markSkipped")} onClick={() => run(() => resolve.mutateAsync({ id: k.id, resolution: "skipped" }), t("keyDates.resolved"))}><IconX width={14} height={14} /></button>
+        </>
+      )}
+      {k.resolution && (
+        <button type="button" className="icon-btn !w-8 !h-8" title={t("keyDates.reopen")} aria-label={t("keyDates.reopen")} disabled={reopen.isPending}
+                onClick={() => run(() => reopen.mutateAsync(k.id), t("keyDates.reopened"))}><IconArrowLeft width={14} height={14} /></button>
+      )}
+      <button type="button" className="icon-btn !w-8 !h-8" aria-label={t("common.edit")} onClick={onEdit}><IconEdit width={14} height={14} /></button>
+      <button type="button" className="icon-btn !w-8 !h-8 text-error" aria-label={t("common.delete")} onClick={onDelete}><IconTrash width={14} height={14} /></button>
+    </li>
   );
 }
 

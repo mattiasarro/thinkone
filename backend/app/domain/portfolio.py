@@ -58,8 +58,8 @@ async def next_key_dates(session: AsyncSession, contract_ids: list[uuid.UUID]) -
     if not contract_ids:
         return {}
     today = date.today()
-    rows = (await session.execute(select(KeyDate).where(KeyDate.subject_id.in_(contract_ids), KeyDate.deleted_at.is_(None), KeyDate.due_date >= today)
-                                  .order_by(KeyDate.due_date))).scalars()
+    rows = (await session.execute(select(KeyDate).where(KeyDate.subject_id.in_(contract_ids), KeyDate.deleted_at.is_(None), KeyDate.due_date >= today,
+                                                        KeyDate.resolution.is_(None)).order_by(KeyDate.due_date))).scalars()
     out: dict[uuid.UUID, KeyDate] = {}
     for kd in rows:
         out.setdefault(kd.subject_id, kd)
@@ -230,7 +230,8 @@ async def attention(session: AsyncSession, today: date | None = None) -> list[di
     """ONE next step per document, rule-based (architecture §6 smart dashboard: rules first; the LLM never selects).
 
     Rows: open quotes and platform drafts whose next step is the operator's, imports in review, decision-type key dates
-    within 90 days, contract ends within 6 months. Sorted red → amber → green, then by date. Green (automatic) rows are counted, not listed.
+    within 90 days, contract ends within 6 months, due tasks nobody marked (indexation: one row per contract). Sorted red → amber,
+    then by date.
     """
     from app.domain import negotiation
     from app.domain import quotes as quotes_domain
@@ -256,16 +257,38 @@ async def attention(session: AsyncSession, today: date | None = None) -> list[di
     for j in (await session.execute(select(ImportJob).where(ImportJob.status == "review"))).scalars():
         title = ((j.reviewed or j.proposal or {}).get("contract") or {}).get("title") or "Import"
         row("import", "amber", title, "Import ootab ülevaatamist", f"/app/portfell/import/{j.id}", None, step="review")
+    # tasks that are due and nobody has marked (keydates.status_of): an indexation asks whether the rent went up — one row per
+    # contract however many are open; another overdue task (payment, salary review) one row each
+    from app.domain.keydates import TERMINAL_STATUSES, status_of
+    from app.models.contracts import KeyDateKind
+
+    open_tasks = (await session.execute(select(KeyDate, Contract).join(Contract, Contract.id == KeyDate.subject_id).join(KeyDateKind, KeyDateKind.id == KeyDate.kind_id)
+                                        .where(KeyDate.deleted_at.is_(None), KeyDate.resolution.is_(None), KeyDate.due_date <= today, KeyDateKind.behaviour == "task",
+                                               Contract.deleted_at.is_(None), Contract.status.not_in(TERMINAL_STATUSES))
+                                        .order_by(KeyDate.due_date))).all()
+    ix: dict[uuid.UUID, tuple[Contract, list[KeyDate], bool]] = {}
+    for kd, c in open_tasks:
+        st = status_of(kd, "task", c, today) if kd.due_date < today else "overdue"
+        if st not in ("overdue", "unconfirmed"):
+            continue
+        if kd.kind_code == "indexation":
+            _, lst, late = ix.get(c.id, (c, [], False))
+            ix[c.id] = (c, [*lst, kd], late or st == "overdue")
+        elif kd.due_date < today - timedelta(days=1):  # yesterday/today are listed below with the upcoming ones
+            row("key_date", "red", f"{c.number} · {c.title}", f"{kd.title} · {kd.due_date.strftime('%d.%m.%Y')} — märgi tehtuks", f"/app/portfell/leping/{c.id}", kd.due_date, step=kd.kind_code)
+    for c, lst, late in ix.values():
+        text = (f"Indekseerimine {lst[0].due_date.strftime('%d.%m.%Y')} — kas üür tõsteti?" if len(lst) == 1
+                else f"{len(lst)} indekseerimist kinnitamata — mis on praegune üür?")
+        row("key_date", "red" if late else "amber", f"{c.number} · {c.title}", text, f"/app/portfell/leping/{c.id}", lst[0].due_date, step="indexation")
+
     kds = (await session.execute(select(KeyDate, Contract).join(Contract, Contract.id == KeyDate.subject_id)
-                                 .where(KeyDate.deleted_at.is_(None), KeyDate.due_date >= today - timedelta(days=1), KeyDate.due_date <= today + timedelta(days=183))
+                                 .where(KeyDate.deleted_at.is_(None), KeyDate.resolution.is_(None), KeyDate.due_date >= today - timedelta(days=1),
+                                        KeyDate.due_date <= today + timedelta(days=183))
                                  .order_by(KeyDate.due_date))).all()
-    green = 0
     for kd, c in kds:
         days = (kd.due_date - today).days
         if kd.kind_code == "indexation":
-            if days <= 30:
-                green += 1  # applies by itself (Phase 4 automation) — counted, not listed
-            continue
+            continue  # asked for once it is due (above), not before
         if kd.kind_code == "end":
             if days <= 183:
                 row("key_date", "amber" if days > 30 else "red", f"{c.number} · {c.title}", f"Leping lõpeb {kd.due_date.strftime('%d.%m.%Y')} — otsusta pikendamine", f"/app/portfell/leping/{c.id}", kd.due_date, step="end")
@@ -274,7 +297,7 @@ async def attention(session: AsyncSession, today: date | None = None) -> list[di
             row("key_date", "amber" if days > 7 else "red", f"{c.number} · {c.title}", f"{kd.title} · {kd.due_date.strftime('%d.%m.%Y')}", f"/app/portfell/leping/{c.id}", kd.due_date, step=kd.kind_code)
     order = {"red": 0, "amber": 1, "green": 2}
     rows.sort(key=lambda r: (order[r["tone"]], r["due"] or date.max))
-    return [{"_green": green}] + rows if green else rows
+    return rows
 
 
 async def contract_parties_primary(session: AsyncSession, contract_id: uuid.UUID) -> str:

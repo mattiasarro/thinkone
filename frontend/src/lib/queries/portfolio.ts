@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { api, type Query } from "@/lib/api";
-import type { Allocation, Asset, AssetDetail, AssetInput, AttentionOut, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SourceView, SpaceImportResult, SplitUnitInput } from "@/types/api";
+import type { Allocation, Asset, AssetDetail, AssetInput, AttentionOut, AuditEvent, AuditStats, ContractDetail, ContractParty, ContractSummary, IndexationProposal, IndexationStepInput, PartyContractRow, KeyDate, KeyDateKind, ParkingImportResult, ParkingPlan, ParkingPlanSave, ParkingSpot, Party, PartyInput, PlanRow, PortfolioHealth, PortfolioSummary, SearchHit, SourceView, SpaceImportResult, SplitUnitInput } from "@/types/api";
 
 // ---- contracts ----
 export function useContracts(params: Query) {
@@ -215,6 +215,28 @@ export function useSaveKeyDate() {
 export function useDeleteKeyDate() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.delete(`/key-dates/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ["key-dates"] }); qc.invalidateQueries({ queryKey: ["contract"] }); } });
+}
+/** A task's outcome changes the key date, maybe the rent (contract facts), the catch-up card and the home queue. */
+function invalidateKeyDateOutcome(qc: ReturnType<typeof useQueryClient>) {
+  for (const key of [["key-dates"], ["contract"], ["indexation"], ["portfolio"], ["contracts"]]) qc.invalidateQueries({ queryKey: key });
+}
+export function useResolveKeyDate() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: ({ id, resolution }: { id: string; resolution: "done" | "skipped" }) => api.post<KeyDate>(`/key-dates/${id}/resolve`, { resolution }), onSuccess: () => invalidateKeyDateOutcome(qc) });
+}
+export function useReopenKeyDate() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => api.post<KeyDate>(`/key-dates/${id}/reopen`), onSuccess: () => invalidateKeyDateOutcome(qc) });
+}
+export function useIndexation(contractId: string, enabled = true) {
+  return useQuery({ queryKey: ["indexation", contractId], queryFn: () => api.get<IndexationProposal>(`/contracts/${contractId}/indexation`), enabled });
+}
+export function useApplyIndexation(contractId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { steps: IndexationStepInput[] } | { current_rent: number }) => api.post<IndexationProposal>(`/contracts/${contractId}/indexation`, body),
+    onSuccess: () => invalidateKeyDateOutcome(qc),
+  });
 }
 
 // ---- overview ----

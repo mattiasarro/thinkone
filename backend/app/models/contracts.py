@@ -189,6 +189,9 @@ class KeyDateKind(Base):
     vertical: Mapped[str | None] = mapped_column(String(40), nullable=True)
     default_notify_days: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     notify_client: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # what a passed date means: milestone (a fact — history), window (a deadline/option — lapses), task (someone has to
+    # do it — open until marked done or skipped; only an undone task is ever overdue)
+    behaviour: Mapped[str] = mapped_column(String(12), default="window", server_default="window")
 
 
 class KeyDate(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
@@ -204,6 +207,12 @@ class KeyDate(Base, TenantMixin, TimestampMixin, SoftDeleteMixin):
     notify_days_before: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     provenance: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # a task's outcome: done | skipped (NULL = open). resolution_data: what resolving it changed — an indexation's
+    # {"fact_ids": [...], "rent": {key, old, new, proposed}} so it can be undone while those versions are still current
+    resolution: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    resolution_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class SourceDocument(Base, TenantMixin, TimestampMixin):

@@ -12,8 +12,9 @@ import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { IconChevronLeft, IconChevronRight, IconEdit, IconPlus, IconTrash } from "@/components/ui/Icons";
-import { cx, daysUntil, fmtDate, isoDay } from "@/lib/format";
+import { cx, fmtDate, isoDay } from "@/lib/format";
 import { KeyDateDialog } from "./KeyDateDialog";
+import { KeyDatePill } from "./KeyDateStatus";
 import type { KeyDate } from "@/types/api";
 
 const MONTHS = ["jaanuar", "veebruar", "märts", "aprill", "mai", "juuni", "juuli", "august", "september", "oktoober", "november", "detsember"];
@@ -102,11 +103,10 @@ function ListView({ items, onEdit, onDelete }: { items: KeyDate[]; onEdit: (k: K
 }
 
 function Row({ it, onEdit, onDelete }: { it: KeyDate; onEdit: (k: KeyDate) => void; onDelete: (k: KeyDate) => void }) {
-  const n = daysUntil(it.due_date);
   return (
     <li className="flex items-center gap-3 px-[var(--card-padding)] py-3 flex-wrap">
       <span className="font-mono text-sm tabular-nums w-24 flex-none">{fmtDate(it.due_date)}</span>
-      <Pill tone={n < 0 ? "error" : n <= 30 ? "warning" : "neutral"}>{n < 0 ? t("home.overdue") : t("home.inDays", { n })}</Pill>
+      <KeyDatePill k={it} />
       <span className="pill info">{tEnum("keyDates.kinds", it.kind_code)}</span>
       <span className="min-w-0 flex-1 basis-[200px]">
         <span className="block font-semibold text-sm truncate">{it.title}</span>
