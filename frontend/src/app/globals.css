@@ -921,12 +921,15 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .ir-voldik > summary span { font-size: 11.5px; color: var(--faint); }
   .ir-kindlad { display: grid; gap: 1px; margin-top: 4px; }
   .ir-kr-w { position: relative; }
-  .ir-kr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; width: calc(100% + 16px); text-align: left; background: none; border: 0; font: inherit; color: inherit; padding: 6px 30px 6px 8px; margin: 0 -8px; border-radius: var(--r-sm); cursor: pointer; }
+  .ir-kr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; width: calc(100% + 16px); text-align: left; background: none; border: 0; font: inherit; color: inherit; padding: 6px 58px 6px 8px; margin: 0 -8px; border-radius: var(--r-sm); cursor: pointer; }
   .ir-kr:hover, .ir-kr.ir-on { background: var(--accent-soft); }
   .ir-kr span { font-size: 11.5px; color: var(--muted); }
   .ir-kr b { font-size: 12.5px; font-weight: 600; overflow-wrap: anywhere; }
-  .ir-kr-ed-b { position: absolute; right: -4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; display: grid; place-items: center; border: 0; background: none; color: var(--faint); border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+  .ir-kr-ed-w { position: absolute; right: -4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
+  .ir-kr-ed-b { width: 26px; height: 26px; display: grid; place-items: center; border: 0; background: none; color: var(--faint); border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity .15s; }
   .ir-kr-w:hover .ir-kr-ed-b, .ir-kr-ed-b:focus-visible { opacity: 1; }
+  .ir-tr-x { background: var(--surface-soft); margin-top: 10px; }
+  .ir-tr-x .ir-tr-ic svg { color: var(--muted); }
   .ir-kr-ed-b:hover { color: var(--ink); background: var(--surface-soft); }
   .ir-kr-ed { padding: 6px 0; }
   .ir-kr-ed > span { font-size: 11.5px; color: var(--muted); }

@@ -14,9 +14,9 @@ import { errorMessage } from "@/lib/api";
 import { fmtDate, fmtFixed } from "@/lib/format";
 import { IconArrowLeft, IconCheck, IconAlert, IconX, IconChevronLeft, IconChevronRight } from "@/components/ui/Icons";
 import { SourceViewer, fileLabel, type SourceFocus } from "./SourceViewer";
-import { CalendarCard, ClausesCard, FilesStep, Note, PaneHead, PartiesStep, Signatures, SpaceStep, Step, ValuesStep, type ReviewCtl } from "./ReviewPane";
+import { CalendarCard, ClausesCard, FilesStep, Note, PaneHead, PartiesStep, RemovedNote, Signatures, SpaceStep, Step, ValuesStep, type ReviewCtl } from "./ReviewPane";
 import { initialPartyRows, partyRowsValid, syncPartyRows, useLinkDefaults, type LinkState } from "./LinkSection";
-import { monthlyOf, needlesFor, num, spotsOf, termYears } from "./reviewModel";
+import { fmtValue, kdLabel, monthlyOf, needlesFor, num, spotsOf, termYears } from "./reviewModel";
 import type { DeskRow, DeskToimik, ImportJobDetail, ImportSourceFile, Proposal } from "@/types/api";
 
 const SUPPORTING = ["maintenance", "management", "insurance", "security"];
@@ -191,7 +191,44 @@ function Review({ job }: { job: ImportJobDetail }) {
     }
   }, [spots, active, show]);
 
-  const ctl: ReviewCtl = { job, draft, original, edit, checked, check, active, activate, editing, setEditing, show };
+  // removing a value shifts the indexes after it: the checks follow (parameter:5 → parameter:4), the removed one's goes
+  const [removed, setRemoved] = useState<{ kind: "parameter" | "key_date"; i: number; item: Proposal["parameters"][number] | Proposal["key_dates"][number]; wasChecked: boolean } | null>(null);
+  const shiftChecks = useCallback((kind: string, i: number, by: 1 | -1, add?: boolean) => {
+    setChecked((s) => {
+      const n = new Set<string>();
+      s.forEach((k) => {
+        const [kk, v] = k.split(":"), j = Number(v);
+        if (kk !== kind) n.add(k);
+        else if (by < 0) { if (j < i) n.add(k); else if (j > i) n.add(`${kind}:${j - 1}`); }
+        else n.add(j < i ? k : `${kind}:${j + 1}`);
+      });
+      if (add) n.add(`${kind}:${i}`);
+      desk.mutate({ checked: Array.from(n) });
+      return n;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.id]);
+  const remove = useCallback((kind: "parameter" | "key_date", i: number) => {
+    const list = kind === "parameter" ? draft.parameters : draft.key_dates;
+    if (!list[i]) return;
+    setRemoved({ kind, i, item: list[i], wasChecked: checked.has(`${kind}:${i}`) });
+    setEditing(null); setActive(null);
+    shiftChecks(kind, i, -1);
+    dirty.current = true;
+    setDraft(kind === "parameter" ? { ...draft, parameters: draft.parameters.filter((_, j) => j !== i) } : { ...draft, key_dates: draft.key_dates.filter((_, j) => j !== i) });
+  }, [draft, checked, shiftChecks]);
+  const undoRemove = () => {
+    if (!removed) return;
+    const { kind, i, item, wasChecked } = removed;
+    shiftChecks(kind, i, 1, wasChecked);
+    dirty.current = true;
+    setDraft(kind === "parameter"
+      ? { ...draft, parameters: [...draft.parameters.slice(0, i), item as Proposal["parameters"][number], ...draft.parameters.slice(i)] }
+      : { ...draft, key_dates: [...draft.key_dates.slice(0, i), item as Proposal["key_dates"][number], ...draft.key_dates.slice(i)] });
+    setRemoved(null);
+  };
+
+  const ctl: ReviewCtl = { job, draft, original, edit, checked, check, active, activate, editing, setEditing, show, remove };
 
   // a child confirms onto its contract: one already in the registry, or — while the contract still waits — together with it
   const parentRow = parent.startsWith("job:") ? toimikud.find((x) => x.row.id === parent.slice(4))?.row : undefined;
@@ -304,6 +341,10 @@ function Review({ job }: { job: ImportJobDetail }) {
             </>
           )}
         </div>
+        {removed && (
+          <RemovedNote label={removed.kind === "parameter" ? ((removed.item as Proposal["parameters"][number]).label || (removed.item as Proposal["parameters"][number]).key) : kdLabel(removed.item as Proposal["key_dates"][number])}
+            value={removed.kind === "parameter" ? fmtValue((removed.item as Proposal["parameters"][number]).value, (removed.item as Proposal["parameters"][number]).unit) : fmtDate((removed.item as Proposal["key_dates"][number]).date)} onUndo={undoRemove} />
+        )}
         <CalendarCard c={ctl} contract={!isChild} />
         <ClausesCard c={ctl} />
         <div className="ir-jalus">

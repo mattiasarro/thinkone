@@ -377,6 +377,7 @@ const et = {
       fileOne: "1 fail", fileMany: "{n} faili", sameContainer: "samas konteineris", ownFile: "eraldi fail",
       calendar: "Kalendrisse", calendarSub: "tekib kinnitamisel", clausesN: "{n} lepingupunkti", clausesSub: "originaali indeks · ülevaatus pole kohustuslik",
       parentWaits: "Kinnitub koos lepinguga — kinnita kõigepealt leping",
+      remove: "Eemalda", removed: "Eemaldatud — ei lähe registrisse", undo: "Võta tagasi",
     },
     manual: {
       title: "Käsitsi registreerimine", sub: "Skaneeritud või tekstikihita dokumendi registreerimine ilma tingimuste struktuurita.", file: "Dokumendi fail", titleField: "Lepingu pealkiri",

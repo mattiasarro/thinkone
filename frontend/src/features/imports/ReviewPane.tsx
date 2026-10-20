@@ -5,7 +5,7 @@ import { t, tEnum } from "@/i18n";
 import { cx, fmtDate, fmtDateTime, fmtFixed, initials } from "@/lib/format";
 import { useAssets, useParking, useParties } from "@/lib/queries/portfolio";
 import { SpotChip } from "@/features/assets/ParkingRegister";
-import { IconAlert, IconArrowRight, IconCal, IconCheck, IconEdit, IconShield, IconX } from "@/components/ui/Icons";
+import { IconAlert, IconArrowRight, IconCal, IconCheck, IconEdit, IconShield, IconTrash, IconX } from "@/components/ui/Icons";
 import type { Asset, DeskRow, ImportJobDetail, ImportSourceFile, Proposal, SpaceAttributes } from "@/types/api";
 import { ExistingPicker, RegistryRow, contractArea, dropPartyRow, isOurs, pickableSpace, roleOptions, setPartyRow, spaceArea, suggestSpace, type LinkState, type PartyRow } from "./LinkSection";
 import { HEAD_DATES, crossChecks, fmtValue, headDateLabel, headDateUnsure, kdLabel, needlesFor, toIso, type Spot } from "./reviewModel";
@@ -21,6 +21,8 @@ export interface ReviewCtl {
   active: string | null; activate: (key: string) => void;
   editing: string | null; setEditing: (key: string | null) => void;
   show: (page: number | null | undefined, needles: string[], file?: number) => void;
+  /** Drop an extracted value (a parameter or a calendar date) — the operator decides it is wrong or not material. */
+  remove: (kind: "parameter" | "key_date", i: number) => void;
 }
 
 // ---------------------------------------------------------------- building blocks ---------------------------------
@@ -103,6 +105,7 @@ function SpotCard({ c, s }: { c: ReviewCtl; s: Spot }) {
         <div className="ir-kk-teg" onClick={(e) => e.stopPropagation()}>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => c.check(s.key, true)}><IconCheck width={14} height={14} />{t("imports.ir.right")}</button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => c.setEditing(s.key)}><IconEdit width={14} height={14} />{t("imports.ir.fix")}</button>
+          {(s.kind === "parameter" || s.kind === "key_date") && <button type="button" className="btn btn-ghost btn-sm" onClick={() => c.remove(s.kind as "parameter" | "key_date", s.idx)}><IconTrash width={14} height={14} />{t("imports.ir.remove")}</button>}
           {s.page ? <button type="button" className="ir-kk-lk mono" onClick={() => c.show(s.page, s.needles)}>{t("imports.pageAnchor", { n: s.page })}</button> : null}
         </div>
       )}
@@ -121,11 +124,16 @@ function DoneRow({ c, k, label, value, fixed }: { c: ReviewCtl; k: string; label
 
 /** A sure value: click shows it in the original; the pencil edits it in place. */
 function SureRow({ c, k, label, value, page, needles }: { c: ReviewCtl; k: string; label: string; value: string; page?: number | null; needles: string[] }) {
+  const [kind, idx] = k.split(":");
+  const removable = kind === "parameter" || kind === "key_date";
   if (c.editing === k) return <div className="ir-kr-ed"><span>{label}</span><Editor c={c} k={k} label={label} /></div>;
   return (
     <div className="ir-kr-w">
       <button type="button" className={cx("ir-kr", c.active === `show:${k}` && "ir-on")} onClick={() => { c.activate(`show:${k}`); c.show(page, needles); }}><span>{label}</span><b>{value}</b></button>
-      <button type="button" className="ir-kr-ed-b" aria-label={`${t("imports.ir.fix")}: ${label}`} title={t("imports.ir.fix")} onClick={() => c.setEditing(k)}><IconEdit width={13} height={13} /></button>
+      <span className="ir-kr-ed-w">
+        <button type="button" className="ir-kr-ed-b" aria-label={`${t("imports.ir.fix")}: ${label}`} title={t("imports.ir.fix")} onClick={() => c.setEditing(k)}><IconEdit width={13} height={13} /></button>
+        {removable && <button type="button" className="ir-kr-ed-b" aria-label={`${t("imports.ir.remove")}: ${label}`} title={t("imports.ir.remove")} onClick={() => c.remove(kind as "parameter" | "key_date", Number(idx))}><IconTrash width={13} height={13} /></button>}
+      </span>
     </div>
   );
 }
@@ -343,9 +351,9 @@ export function ValuesStep({ c, nr, spots, spaceArea: sa }: { c: ReviewCtl; nr: 
   const R = crossChecks(d, sa);
   return (
     <Step nr={nr} title={t("imports.ir.q3")} ok={!mine.length} extra={mine.length ? <span className="ir-q-arv">{mine.length}</span> : undefined}>
-      {doneP.map(({ p, i }) => <DoneRow key={`p${i}`} c={c} k={`parameter:${i}`} label={p.label || p.key} value={fmtValue(p.value, p.unit)} fixed={String(o.parameters[i]?.value ?? "") !== String(p.value ?? "")} />)}
+      {doneP.map(({ p, i }) => <DoneRow key={`p${i}`} c={c} k={`parameter:${i}`} label={p.label || p.key} value={fmtValue(p.value, p.unit)} fixed={String(o.parameters.find((x) => x.key === p.key && x.label === p.label)?.value ?? p.value ?? "") !== String(p.value ?? "")} />)}
       {doneD.map((f) => <DoneRow key={f} c={c} k={`contract:${f}`} label={headDateLabel(f)} value={d.contract[f] ? fmtDate(d.contract[f]) : "—"} fixed={(o.contract[f] ?? null) !== (d.contract[f] ?? null)} />)}
-      {doneK.map(({ k, i }) => <DoneRow key={`k${i}`} c={c} k={`key_date:${i}`} label={kdLabel(k)} value={fmtDate(k.date)} fixed={o.key_dates[i]?.date !== k.date} />)}
+      {doneK.map(({ k, i }) => <DoneRow key={`k${i}`} c={c} k={`key_date:${i}`} label={kdLabel(k)} value={fmtDate(k.date)} fixed={(o.key_dates.find((x) => x.kind === k.kind && x.title === k.title)?.date ?? k.date) !== k.date} />)}
       {mine.map((s) => <SpotCard key={s.key} c={c} s={s} />)}
       {!mine.length && <div className="ir-koik"><IconCheck />{anyUnsure ? t("imports.ir.allChecked") : t("imports.ir.allSure", { n: total })}</div>}
       <details className="ir-voldik" open={!mine.length && !anyUnsure ? true : undefined}>
@@ -434,4 +442,12 @@ export function ClausesCard({ c }: { c: ReviewCtl }) {
 
 export function Note({ children, tone }: { children: ReactNode; tone?: "amber" }) {
   return <div className={cx("ir-ocr", tone !== "amber" && "neutral")}>{tone === "amber" ? <IconAlert /> : <IconX />}<div>{children}</div></div>;
+}
+
+/** The last removed value, with the way back (the removal is saved like any edit). */
+export function RemovedNote({ label, value, onUndo }: { label: string; value: string; onUndo: () => void }) {
+  return (
+    <div className="ir-tr ir-tr-x" role="status"><span className="ir-tr-ic"><IconTrash /></span><span className="ir-tr-t"><span className="ir-tr-k">{t("imports.ir.removed")}</span><b>{label} · {value}</b></span>
+      <span /><button type="button" className="steplink" onClick={onUndo}>{t("imports.ir.undo")}</button></div>
+  );
 }
