@@ -1,11 +1,11 @@
 import { t, tEnum } from "@/i18n";
 import { fmtDate, fmtFixed } from "@/lib/format";
-import type { Proposal } from "@/types/api";
+import type { ParkingSpot, Proposal } from "@/types/api";
 import { UNCERTAIN } from "./reviewState";
 
 /** A place the operator looks at (demo `irKohad`): an uncertain value, or a missing link. ``key`` is the checked-key for
  *  values (`parameter:3`), so „Õige” is the same check the commit gate reads. */
-export interface Spot { key: string; step: 1 | 2 | 3; kind: "party" | "parameter" | "key_date" | "date" | "space"; idx: number; label: string; value: string; note: string; page: number | null; needles: string[] }
+export interface Spot { key: string; step: 1 | 2 | 3; kind: "party" | "parameter" | "key_date" | "date" | "space" | "parking"; idx: number; label: string; value: string; note: string; page: number | null; needles: string[] }
 
 export const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -48,7 +48,7 @@ export const headDateUnsure = (d: Proposal, f: HeadDate) => (d.date_checks?.[f]?
 export const kdLabel = (k: { kind: string; title: string }) => k.title || tEnum("keyDates.kinds", k.kind);
 
 /** The places to look at, in panel order: who (parties) · what it is tied to (space) · values. */
-export function spotsOf(draft: Proposal, checked: Set<string>, needSpace: boolean): Spot[] {
+export function spotsOf(draft: Proposal, checked: Set<string>, needSpace: boolean, parking?: Spot | null): Spot[] {
   const out: Spot[] = [];
   draft.parties.forEach((p, i) => {
     const key = `party:${i}`;
@@ -56,6 +56,7 @@ export function spotsOf(draft: Proposal, checked: Set<string>, needSpace: boolea
       out.push({ key, step: 1, kind: "party", idx: i, label: tEnum("imports.partyRoles", p.role), value: [p.name, p.registry_code].filter(Boolean).join(" · "), note: t("imports.ir.notePartyUnsure"), page: p.page ?? null, needles: needlesFor(p.registry_code, p.name) });
   });
   if (needSpace) out.push({ key: "space", step: 2, kind: "space", idx: -1, label: t("imports.ir.space"), value: "", note: t("imports.ir.noteSpace"), page: null, needles: [] });
+  if (parking) out.push(parking);
   for (const f of HEAD_DATES) {
     const key = `contract:${f}`, chk = draft.date_checks?.[f], v = draft.contract[f];
     if (chk && chk.confidence < UNCERTAIN && !checked.has(key))
@@ -108,4 +109,51 @@ export function termYears(draft: Proposal): number | null {
   if (!s || !e) return null;
   const y = (new Date(e).getTime() - new Date(s).getTime()) / (365.25 * 86400000);
   return y > 0 ? Math.round(y * 10) / 10 : null;
+}
+
+// ---------------------------------------------------------------- parking (demo `impKahtlused` „parkimine”) ----------
+
+const NOT_SPOT = /\b(?:lisa\w*|punkt\w*|p\.|lepingu|leping|akt\w*|arve\w*|registrikood\w*)\s*$/i;
+const SPOT_LIST = /(?:\bnr\.?|\bnumbri(?:te)?ga|\bnumbrid)\s*:?\s*((?:\d{1,4}[A-Za-z]?(?:\s*(?:,|;|&|\+|\bja\b)\s*|\s+))*\d{1,4}[A-Za-z]?)/gi;
+/** Spot numbers compare without leading zeros and case („065” = „65”) — same rule as the backend's spot_key. */
+export const spotKey = (n: string) => n.trim().toUpperCase().replace(/^0+(?=.)/, "");
+
+/** What the contract says about parking: how many spots and which numbers („2 (nr 65, 101) kohta” → 2, [65, 101]);
+ *  annex/clause numbers („lisas nr 2”) are not spots. Mirrors backend ``contract_parking``. */
+export function contractParking(d: Proposal): { idx: number; count: number | null; numbers: string[]; page: number | null; text: string } | null {
+  let idx = d.parameters.findIndex((x) => x.key === "parking");
+  if (idx < 0) idx = d.parameters.findIndex((x) => /parkim/i.test(x.label ?? ""));
+  if (idx < 0) return null;
+  const p = d.parameters[idx], src = `${p.value ?? ""} ${p.text ?? ""}`;
+  const numbers: string[] = [];
+  for (const m of src.matchAll(SPOT_LIST)) {
+    if (NOT_SPOT.test(src.slice(Math.max(0, (m.index ?? 0) - 16), m.index))) continue;
+    for (const n of m[1].split(/\s*(?:,|;|&|\+|\bja\b|\s)\s*/)) if (n && !numbers.some((x) => spotKey(x) === spotKey(n))) numbers.push(n);
+  }
+  const c = src.match(/(\d{1,3})\s*(?:\(|parkimis|koh)/i);
+  const count = c ? Number(c[1]) : /^\d+$/.test(String(p.value ?? "").trim()) ? Number(p.value) : null;
+  return { idx, count, numbers, page: p.page ?? null, text: p.text ?? "" };
+}
+
+export interface ParkingCheck { count: number | null; named: string[]; register: string[]; spaceDefault: string[]; missing: string[]; issue: string | null; page: number | null; needles: string[] }
+
+/** The contract's parking against the register (demo): numbers that do not exist, a count that does not match the list,
+ *  spots already in another contract, or numbers that differ from the space's own spots. */
+export function parkingCheck(d: Proposal, spots: ParkingSpot[], spaceIds: string[]): ParkingCheck | null {
+  const cp = contractParking(d);
+  if (!cp || !spaceIds.length || !spots.length) return null;
+  const by = new Map(spots.map((s) => [spotKey(s.number), s]));
+  const spaceDefault = spots.filter((s) => s.space_id && spaceIds.includes(s.space_id) && !s.out_of_service).map((s) => s.number);
+  const named = cp.numbers, missing = named.filter((n) => !by.has(spotKey(n)));
+  const register = named.filter((n) => by.has(spotKey(n))).map((n) => by.get(spotKey(n))!.number);
+  const taken = register.map((n) => by.get(spotKey(n))!).filter((s) => s.contract);
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.some((y) => spotKey(y) === spotKey(x)));
+  const list = (a: string[]) => a.join(", ");
+  const issue = missing.length ? t("imports.ir.parkMissing", { list: list(missing) })
+    : cp.count != null && named.length && cp.count !== named.length ? t("imports.ir.parkCountList", { n: cp.count, m: named.length })
+    : taken.length ? t("imports.ir.parkTaken", { list: list(taken.map((s) => s.number)), by: list(Array.from(new Set(taken.map((s) => s.contract!.number || s.contract!.title)))) })
+    : named.length && !same(named, spaceDefault) ? t("imports.ir.parkDiffers", { a: list(register), b: spaceDefault.length ? `nr ${list(spaceDefault)}` : t("imports.ir.parkingNone") })
+    : !named.length && cp.count != null && cp.count !== spaceDefault.length ? t("imports.ir.parkCountDiffers", { n: cp.count, m: spaceDefault.length, list: spaceDefault.length ? ` (nr ${list(spaceDefault)})` : "" })
+    : null;
+  return { count: cp.count, named, register, spaceDefault, missing, issue, page: cp.page, needles: needlesFor(named[0] ? `nr ${named[0]}` : "", cp.text) };
 }

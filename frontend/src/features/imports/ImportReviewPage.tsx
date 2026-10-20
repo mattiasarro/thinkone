@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { t, tEnum } from "@/i18n";
 import { markOpened, useCommitImport, useExcludeImport, useImport, useImportBatch, useRestoreImport, useSaveDeskState, useSaveReview, IMPORT_PENDING } from "@/lib/queries/imports";
-import { useContracts } from "@/lib/queries/portfolio";
+import { useContracts, useParking } from "@/lib/queries/portfolio";
 import { Card } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
@@ -16,7 +16,7 @@ import { IconArrowLeft, IconCheck, IconAlert, IconX, IconChevronLeft, IconChevro
 import { SourceViewer, fileLabel, type SourceFocus } from "./SourceViewer";
 import { CalendarCard, ClausesCard, FilesStep, Note, PaneHead, PartiesStep, RemovedNote, Signatures, SpaceStep, Step, ValuesStep, type ReviewCtl } from "./ReviewPane";
 import { initialPartyRows, partyRowsValid, syncPartyRows, useLinkDefaults, type LinkState } from "./LinkSection";
-import { fmtValue, kdLabel, monthlyOf, needlesFor, num, spotsOf, termYears } from "./reviewModel";
+import { fmtValue, kdLabel, monthlyOf, needlesFor, num, parkingCheck, spotsOf, termYears, type Spot } from "./reviewModel";
 import type { DeskRow, DeskToimik, ImportJobDetail, ImportSourceFile, Proposal } from "@/types/api";
 
 const SUPPORTING = ["maintenance", "management", "insurance", "security"];
@@ -172,7 +172,15 @@ function Review({ job }: { job: ImportJobDetail }) {
   // the places to look at — one active at a time (demo: the active one is open in the original)
   const isLease = draft.contract.category === "lease";
   const needSpace = !isChild && isLease && defaults.properties.length > 0 && link.space_ids.length === 0;
-  const spots = useMemo(() => spotsOf(draft, checked, needSpace), [draft, checked, needSpace]);
+  // parking: the numbers the contract names, checked against the register (preselected when they all exist)
+  const parkingReg = useParking(!isChild && isLease && link.space_ids.length ? link.asset_id || undefined : undefined);
+  const park = useMemo(() => (!isChild && isLease ? parkingCheck(draft, parkingReg.data ?? [], link.space_ids) : null), [draft, parkingReg.data, link.space_ids, isChild, isLease]);
+  useEffect(() => {
+    if (park && link.parking_numbers === null && park.register.length && !park.missing.length) setLink((l) => (l.parking_numbers === null ? { ...l, parking_numbers: park.register } : l));
+  }, [park, link.parking_numbers]);
+  const parkSpot = useMemo<Spot | null>(() => park?.issue && !checked.has("parking")
+    ? { key: "parking", step: 2, kind: "parking", idx: -1, label: t("imports.ir.parkLabel"), value: "", note: park.issue, page: park.page, needles: park.needles } : null, [park, checked]);
+  const spots = useMemo(() => spotsOf(draft, checked, needSpace, parkSpot), [draft, checked, needSpace, parkSpot]);
   const [active, setActive] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const cur = spots.find((s) => s.key === active) ?? null;
@@ -276,9 +284,9 @@ function Review({ job }: { job: ImportJobDetail }) {
         const i = k.spots.findIndex((s) => s.key === k.cur?.key), j = (i + (e.key === "ArrowDown" ? 1 : -1) + k.spots.length) % k.spots.length;
         k.activate(k.spots[j].key);
         setTimeout(() => document.querySelector(`.ir-paan [data-ak="${CSS.escape(k.spots[j].key)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
-      } else if (e.key === "Enter" && k.cur && k.cur.kind !== "space" && !el?.closest("button, a, summary, label")) {
+      } else if (e.key === "Enter" && k.cur && k.cur.kind !== "space" && k.cur.kind !== "parking" && !el?.closest("button, a, summary, label")) {
         e.preventDefault(); k.check(k.cur.key, true);
-      } else if ((e.key === "e" || e.key === "E") && k.cur && k.cur.kind !== "space") { e.preventDefault(); k.setEditing(k.cur.key); }
+      } else if ((e.key === "e" || e.key === "E") && k.cur && k.cur.kind !== "space" && k.cur.kind !== "parking") { e.preventDefault(); k.setEditing(k.cur.key); }
     };
     document.addEventListener("keydown", on);
     return () => document.removeEventListener("keydown", on);
@@ -335,7 +343,7 @@ function Review({ job }: { job: ImportJobDetail }) {
           ) : (
             <>
               <PartiesStep c={ctl} link={link} onLink={setLink} spots={spots} />
-              <SpaceStep c={ctl} link={link} onLink={setLink} properties={defaults.properties} companies={defaults.companies} spots={spots} />
+              <SpaceStep c={ctl} link={link} onLink={setLink} properties={defaults.properties} companies={defaults.companies} spots={spots} park={park} />
               <ValuesStep c={ctl} nr={3} spots={spots} spaceArea={null} />
               <FilesStep nr={4} rows={toimik && toimik.row.id === job.id ? toimik.children : []} files={files} onTab={(i) => { setTab(i); setFocus(null); }} mainLabel={labelOf} />
             </>

@@ -378,6 +378,11 @@ const et = {
       calendar: "Kalendrisse", calendarSub: "tekib kinnitamisel", clausesN: "{n} lepingupunkti", clausesSub: "originaali indeks · ülevaatus pole kohustuslik",
       parentWaits: "Kinnitub koos lepinguga — kinnita kõigepealt leping",
       remove: "Eemalda", removed: "Eemaldatud — ei lähe registrisse", undo: "Võta tagasi",
+      parkLabel: "Parkimine", parkInContract: "Lepingus: {what}", spotOne: "koht", spotMany: "kohta",
+      parkRight: "Lepingus õige", parkSpace: "Pinna kohad (nr {list})", parkPick: "Vali kohad", parkConfirm: "Kinnita valik · {n}",
+      parkMissing: "Lepingus nr {list} — registris selliseid kohti pole", parkCountList: "Lepingus {n} kohta, numbreid loetletud {m}",
+      parkTaken: "Nr {list} on juba teises lepingus ({by})", parkDiffers: "Lepingus nr {a} · pinna kohad registris {b}",
+      parkCountDiffers: "Lepingus {n} kohta · pinnal registris {m}{list}",
     },
     manual: {
       title: "Käsitsi registreerimine", sub: "Skaneeritud või tekstikihita dokumendi registreerimine ilma tingimuste struktuurita.", file: "Dokumendi fail", titleField: "Lepingu pealkiri",

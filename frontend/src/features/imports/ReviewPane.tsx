@@ -8,7 +8,7 @@ import { SpotChip } from "@/features/assets/ParkingRegister";
 import { IconAlert, IconArrowRight, IconCal, IconCheck, IconEdit, IconShield, IconTrash, IconX } from "@/components/ui/Icons";
 import type { Asset, DeskRow, ImportJobDetail, ImportSourceFile, Proposal, SpaceAttributes } from "@/types/api";
 import { ExistingPicker, RegistryRow, contractArea, dropPartyRow, isOurs, pickableSpace, roleOptions, setPartyRow, spaceArea, suggestSpace, type LinkState, type PartyRow } from "./LinkSection";
-import { HEAD_DATES, crossChecks, fmtValue, headDateLabel, headDateUnsure, kdLabel, needlesFor, toIso, type Spot } from "./reviewModel";
+import { HEAD_DATES, crossChecks, fmtValue, headDateLabel, headDateUnsure, kdLabel, needlesFor, toIso, type ParkingCheck, type Spot } from "./reviewModel";
 import { UNCERTAIN } from "./reviewState";
 
 const CATEGORIES = ["lease", "maintenance", "management", "insurance", "security", "employment", "other"];
@@ -239,7 +239,8 @@ export function PartiesStep({ c, link, onLink, spots }: { c: ReviewCtl; link: Li
 
 // ---------------------------------------------------------------- step 2 · space --------------------------------------
 
-export function SpaceStep({ c, link, onLink, properties, companies, spots }: { c: ReviewCtl; link: LinkState; onLink: (s: LinkState) => void; properties: Asset[]; companies: { id: string; name: string }[]; spots: Spot[] }) {
+export function SpaceStep({ c, link, onLink, properties, companies, spots, park: chk }: { c: ReviewCtl; link: LinkState; onLink: (s: LinkState) => void; properties: Asset[]; companies: { id: string; name: string }[]; spots: Spot[]; park: ParkingCheck | null }) {
+  const [parkOpen, setParkOpen] = useState(false);
   const d = c.draft;
   const spaces = useAssets({ type_code: "space", parent_id: link.asset_id || undefined });
   const parking = useParking(link.asset_id || undefined);
@@ -251,7 +252,9 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots }: { c
   const property = properties.find((p) => p.id === link.asset_id);
   const sum = picked.reduce((a, s) => a + spaceArea(s), 0);
   const lease = d.contract.category === "lease";
-  const missing = spots.some((s) => s.kind === "space");
+  const missing = spots.some((s) => s.kind === "space" || s.kind === "parking");
+  const parkSpot = spots.find((s) => s.kind === "parking");
+  const setPark = (nums: string[] | null, done: boolean) => { onLink({ ...link, parking_numbers: nums }); if (done) { c.check("parking", true); setParkOpen(false); } };
   const ok = !missing && (!!picked.length || (link.allocation_kind === "coverage" && !!link.asset_id) || !properties.length);
   const showPicker = picking || (!picked.length && !suggestion);
   const same = (s: Asset) => area != null && Math.abs(spaceArea(s) - area) <= 0.15;
@@ -317,10 +320,27 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots }: { c
           {!properties.length && <div className="ir-pv-s">{t("imports.ir.noBuildings")} <Link className="steplink" href="/app/portfell/objekt/uus">{t("imports.ir.addBuilding")}</Link></div>}
         </div>
       )}
+      {parkSpot && chk && (
+        <div className={cx("ir-kk", c.active === "parking" && "akt")} data-ak="parking" tabIndex={0} onClick={() => c.active !== "parking" && c.activate("parking")}>
+          <div className="ir-kk-pea"><span className="ir-kk-k">{t("imports.ir.parkLabel")}</span><span className="ir-kk-t">{t("imports.ir.look")}</span></div>
+          <div className="ir-kk-v">{t("imports.ir.parkInContract", { what: [chk.count != null ? `${chk.count} ${chk.count === 1 ? t("imports.ir.spotOne") : t("imports.ir.spotMany")}` : "", chk.named.length ? `nr ${chk.named.join(", ")}` : ""].filter(Boolean).join(" · ") })}</div>
+          <div className="ir-kk-miks">{parkSpot.note}</div>
+          {c.active === "parking" && (
+            <div className="ir-kk-teg" onClick={(e) => e.stopPropagation()}>
+              {chk.register.length > 0 && !chk.missing.length && <button type="button" className="btn btn-primary btn-sm" onClick={() => setPark(chk.register, true)}><IconCheck width={14} height={14} />{t("imports.ir.parkRight")}</button>}
+              {chk.spaceDefault.length > 0 && <button type="button" className={cx("btn btn-sm", chk.missing.length ? "btn-primary" : "btn-ghost")} onClick={() => setPark(chk.spaceDefault, true)}>{t("imports.ir.parkSpace", { list: chk.spaceDefault.join(", ") })}</button>}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setParkOpen(true)}>{t("imports.ir.parkPick")}</button>
+              {chk.page ? <button type="button" className="ir-kk-lk mono" onClick={() => c.show(chk.page, chk.needles)}>{t("imports.pageAnchor", { n: chk.page })}</button> : null}
+            </div>
+          )}
+        </div>
+      )}
       {picked.length > 0 && lease && spotsAll.length > 0 && (
-        <details className="ir-voldik">
-          <summary><b>{t("imports.ir.parking", { n: park.length })}</b><span>{park.length ? park.join(", ") : t("imports.ir.parkingNone")}</span></summary>
+        <details className="ir-voldik" open={parkOpen || undefined} onToggle={(e) => setParkOpen((e.target as HTMLDetailsElement).open)}>
+          <summary><b>{t("imports.ir.parking", { n: park.length })}</b><span>{park.length ? park.join(", ") : t("imports.ir.parkingNone")}</span>
+            {!parkSpot && c.checked.has("parking") && <em className="ir-park-ok">{t("imports.ir.rightDone")}</em>}</summary>
           <div className="ir-park">{spotsAll.map((s) => <SpotChip key={s.id} s={s} on={park.includes(s.number)} onClick={() => onLink({ ...link, parking_numbers: park.includes(s.number) ? park.filter((x) => x !== s.number) : [...park, s.number] })} title={s.space_id && !link.space_ids.includes(s.space_id) ? `${t("assets.parkingPickTaken")}: ${s.space_name}` : tEnum("assets.parkingReg.statuses", s.status)} />)}</div>
+          {parkSpot && <div className="ir-kk-teg"><button type="button" className="btn btn-primary btn-sm" onClick={() => setPark(park, true)}><IconCheck width={14} height={14} />{t("imports.ir.parkConfirm", { n: park.length })}</button></div>}
         </details>
       )}
     </Step>

@@ -949,6 +949,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .ir-pv-r.sobib small { color: var(--green); }
   .ir-seg { display: flex; gap: 6px; flex-wrap: wrap; }
   .ir-park { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
+  .ir-park-ok { font-style: normal; font-size: 11px; font-weight: 600; color: var(--green); margin-left: auto; }
   .ir-pooled { display: grid; gap: 2px; margin-top: 10px; font-size: 13px; }
   .ir-pool { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 5px 8px; margin: 0 -8px; width: calc(100% + 16px); border-radius: var(--r-sm); cursor: pointer; }
   .ir-pool:hover, .ir-pool[aria-expanded="true"] { background: var(--accent-soft); }

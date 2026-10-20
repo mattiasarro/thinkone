@@ -6,6 +6,7 @@ the way back, (3) edited by the operator in the review UI, and (4) committed to 
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any, Literal
 
@@ -100,6 +101,35 @@ class ClausesProposal(BaseModel):
     """What the clause call returns: the verbatim clause tree (transcription, run on a cheaper model in parallel)."""
 
     clauses: list[ClauseProposal] = Field(default_factory=list)
+
+
+_SPOT_COUNT = re.compile(r"(\d{1,3})\s*(?:\(|parkimis|koh)", re.I)
+_NOT_SPOT = re.compile(r"\b(?:lisa\w*|punkt\w*|p\.|lepingu|leping|akt\w*|arve\w*|registrikood\w*)\s*$", re.I)
+_SPOT_LIST = re.compile(r"(?:\bnr\.?|\bnumbri(?:te)?ga|\bnumbrid)\s*:?\s*((?:\d{1,4}[A-Za-z]?(?:\s*(?:,|;|&|\+|\bja\b)\s*|\s+))*\d{1,4}[A-Za-z]?)", re.I)
+
+
+def spot_key(n: str) -> str:
+    """Parking spot numbers compare without leading zeros and case: „065” = „65”, „12a” = „12A”."""
+    return n.strip().upper().lstrip("0") or "0"
+
+
+def contract_parking(prop: FactsProposal) -> tuple[int | None, list[str]] | None:
+    """What the contract says about parking (the ``parking`` parameter, else one labelled „parkim…”): how many spots and
+    which numbers — „2 (nr 65, 101) kohta” → (2, ["65", "101"]). None when the contract says nothing about parking."""
+    p = next((x for x in prop.parameters if x.key == "parking"), None) or next((x for x in prop.parameters if "parkim" in (x.label or "").lower()), None)
+    if not p:
+        return None
+    src = f"{p.value or ''} {p.text or ''}"
+    nums: list[str] = []
+    for m in _SPOT_LIST.finditer(src):
+        if _NOT_SPOT.search(src[max(0, m.start() - 16):m.start()]):  # „lisas nr 2”, „punkt nr 5” — not a spot
+            continue
+        for n in re.split(r"\s*(?:,|;|&|\+|\bja\b|\s)\s*", m.group(1)):
+            if n and spot_key(n) not in {spot_key(x) for x in nums}:
+                nums.append(n)
+    c = _SPOT_COUNT.search(src)
+    count = int(c.group(1)) if c else int(p.value) if (p.value or "").strip().isdigit() else None
+    return count, nums
 
 
 class DateCheck(BaseModel):
