@@ -22,7 +22,7 @@ from app.domain.search import index_entity
 from app.infra.blobstore import blobstore, sha256
 from app.infra.settings import get_settings
 from app.ingest.extract import detect_format
-from app.ingest.schema import HEAD_DATES, Proposal, contract_parking, spot_key
+from app.ingest.schema import HEAD_DATES, Proposal, spot_key
 from app.models.contracts import Contract, ContractFact, ContractType, ImportJob, SourceDocument
 
 ALLOWED_FORMATS = {"pdf", "docx", "asice"}
@@ -422,14 +422,10 @@ async def commit_import(
             asset = await get_asset(session, aid)
             if kind == "exclusive" and asset.type_code == "space" and asset.parent_id:
                 spaces.append(asset)
-        # a lease on spaces takes the numbers the operator picked, else the numbers the contract names when the register
-        # has them all, else the spaces' default spots (demo v586)
+        # a lease on spaces takes the spaces' default spots (demo v586), or the numbers the operator picked in the review
+        # (e.g. the ones the contract names). Either way the spot is rented to this contract for its period — the spot's
+        # own space in the register (its default) does not change.
         spots: dict[uuid.UUID, Any] = {}
-        named = (contract_parking(prop) or (None, []))[1] if spaces and parking_numbers is None else []
-        if named:
-            have = {spot_key((s.attributes or {}).get("number", "")) for pid in {sp.parent_id for sp in spaces} for s in await list_spots(session, pid)}
-            if all(spot_key(n) in have for n in named):
-                parking_numbers = named
         if parking_numbers is not None:
             wanted = {spot_key(n) for n in parking_numbers}
             for pid in {sp.parent_id for sp in spaces}:

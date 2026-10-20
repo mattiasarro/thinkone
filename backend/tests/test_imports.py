@@ -362,23 +362,19 @@ async def test_docx_original_is_rendered_to_pdf(client: AsyncClient, admin: dict
     assert calls == [MAINT_DOCX.stat().st_size]  # served from the cache, not converted again
 
 
-async def test_lease_takes_the_spot_numbers_the_contract_names(client: AsyncClient, admin: dict):
-    """No spots picked by hand: the numbers the contract names win when the register has them all (else the space's own)."""
+async def test_lease_takes_the_spaces_spots_unless_picked(client: AsyncClient, admin: dict):
+    """The contract names other spots (nr 65, 101) than the space has (41): the default stays the space's own — the review
+    only shows the difference; the operator's pick wins and does not move the spot to another space."""
     job = await _upload(client, LEASE_PDF, "application/pdf")
     await _run_worker_inline(job["id"])
-    j = (await client.get(f"/api/v1/imports/{job['id']}")).json()
-    prop = j["proposal"]
-    prop["parameters"] = [p for p in prop["parameters"] if p["key"] != "parking"] + [
-        {"key": "parking", "label": "Parkimiskohad", "value": "2", "unit": "kohta", "confidence": 1.0, "page": 1, "char_start": None, "char_end": None, "source_number": "2.2", "note": None,
-         "text": "2 parkimiskohta, mille asukoht on näidatud Lepingu lisas nr 2 oleval plaanil. Kohad nr 65, 101"}]
-    assert (await client.patch(f"/api/v1/imports/{job['id']}", json={"reviewed": prop})).status_code == 200
     co = (await client.post("/api/v1/companies", json={"name": "Taevavärava OÜ", "registry_code": "16333502"})).json()
     b = (await client.post("/api/v1/assets", json={"type_code": "property", "name": "Hoone T6B", "company_id": co["id"], "attributes": {}})).json()
     sp = (await client.post("/api/v1/assets", json={"type_code": "space", "name": "P_29", "parent_id": b["id"], "attributes": {"rentable_area_m2": 174.8}})).json()
-    r = await client.post(f"/api/v1/assets/{b['id']}/parking/import", params={"dry_run": "false"}, json={"text": "41;;;P_29\n65;;;\n101;;;\n2;;;\n"})
-    assert r.status_code == 200 and r.json()["created"] == 4
+    r = await client.post(f"/api/v1/assets/{b['id']}/parking/import", params={"dry_run": "false"}, json={"text": "41;;;P_29\n65;;;\n101;;;\n"})
+    assert r.status_code == 200 and r.json()["created"] == 3
     uncertain = (await client.get(f"/api/v1/imports/{job['id']}")).json()["uncertain"]
-    r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": uncertain, "company_id": co["id"], "asset_ids": [sp["id"]]})
+    r = await client.post(f"/api/v1/imports/{job['id']}/commit", json={"checked": uncertain, "company_id": co["id"], "asset_ids": [sp["id"]], "parking_numbers": ["065", "101"]})
     assert r.status_code == 200, r.text
-    spots = {s["number"]: s["status"] for s in (await client.get(f"/api/v1/assets/{b['id']}/parking")).json()}
-    assert spots == {"2": "vaba", "41": "vaba", "65": "üüritud", "101": "üüritud"}  # not the annex number, not the space's default
+    spots = {s["number"]: s for s in (await client.get(f"/api/v1/assets/{b['id']}/parking")).json()}
+    assert {n: s["status"] for n, s in spots.items()} == {"41": "vaba", "65": "üüritud", "101": "üüritud"}  # „065” = 65
+    assert spots["41"]["space_id"] == sp["id"] and spots["65"]["space_id"] is None  # the register's space assignment is untouched
