@@ -21,6 +21,8 @@ import { ChatCard, ClientCard, DealCard, LettersRoundsCard, RepsCard, SpecialCar
 import type { LeaseChange, LeaseDraft, LeaseNegotiation } from "@/types/api";
 
 export const LEASE_OPEN = new Set(["draft", "sent", "negotiating", "ready_to_sign"]);
+/** Signed (and after): the lease is a contract in force — key dates and indexation matter. */
+const LEASE_SIGNED = new Set(["signed", "active", "ended", "early_terminated"]);
 
 /** The operator can shape the deal while drafting, and during negotiation only on their own turn (one round = one letter). */
 export function operatorEditable(lease: LeaseDraft, neg: LeaseNegotiation | undefined): boolean {
@@ -129,7 +131,7 @@ function Detail({ lease, neg, refetch }: { lease: LeaseDraft; neg: LeaseNegotiat
         </div>
         <div className="grid gap-5 min-w-0">
           <GuideCard lease={lease} neg={neg} run={run} onSelect={select} />
-          {!isOpen && lease.status !== "cancelled" && <SignedCards id={lease.id} />}
+          {LEASE_SIGNED.has(lease.status) && <SignedCards id={lease.id} />}
           <LeasePane lease={lease} neg={neg} run={run} selected={selected} onSelect={select} editable={editable} onSpecialFor={(c) => { setSpecialFor(c); document.getElementById("lease-special")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
           <DealCard lease={lease} run={run} editable={editable} />
           <RepsCard lease={lease} run={run} editable={editable} />
