@@ -377,7 +377,7 @@ const et = {
       fileOne: "1 fail", fileMany: "{n} faili", sameContainer: "samas konteineris", ownFile: "eraldi fail",
       calendar: "Kalendrisse", calendarSub: "tekib kinnitamisel", clausesN: "{n} lepingupunkti", clausesSub: "originaali indeks · ülevaatus pole kohustuslik",
       parentWaits: "Kinnitub koos lepinguga — kinnita kõigepealt leping",
-      withContract: "kinnitub koos lepinguga", openParent: "Ava leping · {name}",
+      withContract: "kinnitub koos lepinguga", openParent: "Ava leping · {name}", parentOf: "Leping:",
       childWaitsNote: "Lisa on korras — see läheb registrisse koos lepinguga, kui kinnitad lepingu.",
       remove: "Eemalda", removed: "Eemaldatud — ei lähe registrisse", undo: "Võta tagasi",
       spotOne: "koht", spotMany: "kohta", parkPick: "Vali kohad",

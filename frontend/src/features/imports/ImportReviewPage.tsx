@@ -17,7 +17,7 @@ import { SourceViewer, fileLabel, type SourceFocus } from "./SourceViewer";
 import { CalendarCard, ClausesCard, FilesStep, Note, PaneHead, PartiesStep, RemovedNote, Signatures, SpaceStep, Step, ValuesStep, type ReviewCtl } from "./ReviewPane";
 import { initialPartyRows, partyRowsValid, syncPartyRows, useLinkDefaults, type LinkState } from "./LinkSection";
 import { fmtValue, kdLabel, monthlyOf, needlesFor, num, parkingCheck, spotsOf, termYears } from "./reviewModel";
-import type { DeskRow, DeskToimik, ImportJobDetail, ImportSourceFile, Proposal } from "@/types/api";
+import type { DeskToimik, ImportJobDetail, ImportSourceFile, Proposal } from "@/types/api";
 
 const SUPPORTING = ["maintenance", "management", "insurance", "security"];
 const EMPTY: Proposal = { contract: { title: "", category: "other", counterparty_name: "", summary: "" }, parties: [], parameters: [], key_dates: [], clauses: [] };
@@ -236,6 +236,10 @@ function Review({ job }: { job: ImportJobDetail }) {
   // a child confirms onto its contract: one already in the registry, or — while the contract still waits — together with it
   const parentRow = parent.startsWith("job:") ? toimikud.find((x) => x.row.id === parent.slice(4))?.row : undefined;
   const childWaits = isChild && !!parentRow && parentRow.state !== "kinnitatud";
+  // the way back to the contract this annex/document belongs to: its review while it is in this import, else its page
+  const parentHref = !parent ? null : parent.startsWith("job:") ? (parentRow?.state === "kinnitatud" && parentRow.committed_contract_id ? `/app/portfell/leping/${parentRow.committed_contract_id}` : `/app/portfell/import/${parent.slice(4)}`) : `/app/portfell/leping/${parent.slice(9)}`;
+  const parentName = parentRow ? [parentRow.counterparty || parentRow.title, parentRow.spaces.join(" + ")].filter(Boolean).join(" · ")
+    : deskRow?.parent && `${deskRow.parent.kind}:${deskRow.parent.id}` === parent ? [deskRow.parent.number, deskRow.parent.label].filter(Boolean).join(" · ") : "";
   const unresolved = spots.filter((s) => s.kind !== "space");
   const canCommit = unresolved.length === 0 && !!draft.contract.title && (isChild ? !!parent && !childWaits : partyRowsValid(link.parties) && !needSpace);
   const open = spots.length + (!isChild && !partyRowsValid(link.parties) ? 1 : 0) + (isChild && !parent ? 1 : 0);
@@ -322,6 +326,7 @@ function Review({ job }: { job: ImportJobDetail }) {
       </div>
       <aside className="ir-paan" aria-label={t("imports.review")}>
         <PaneHead overline={`${kindLabel} · ${open ? t("imports.ir.needsReview") : childWaits ? t("imports.ir.withContract") : t("imports.ir.readyToCommit")}`} title={who} sub={sub || undefined} mono={dates} />
+        {isChild && parentHref && <Link className="ir-ema" href={parentHref}><IconArrowLeft width={14} height={14} /><span>{t("imports.ir.parentOf")}</span><b>{parentName || t("imports.ir.tabContract")}</b></Link>}
         {job.duplicate_of_contract_id && <Note tone="amber"><b>{t("imports.duplicate")}</b><span><Link className="steplink" href={`/app/portfell/leping/${job.duplicate_of_contract_id}`}>{t("imports.duplicateOpen")}</Link></span></Note>}
         {job.source_document?.has_text_layer === false && <Note tone="amber"><b>{t("imports.noTextLayer")}</b></Note>}
         <Signatures job={job} />
@@ -332,7 +337,7 @@ function Review({ job }: { job: ImportJobDetail }) {
                 <button type="button" className="ir-q-v" onClick={() => show(1, needlesFor(draft.contract.title))}>{[mainLabel, draft.contract.title].filter(Boolean).join(" · ")}</button>
                 {draft.contract.summary && <div className="ir-q-s">{draft.contract.summary}</div>}
               </Step>
-              <ParentStep job={job} toimikud={toimikud} value={parent} onChange={pickParent} parentRow={childWaits ? parentRow : undefined} />
+              <ParentStep job={job} toimikud={toimikud} value={parent} onChange={pickParent} waits={childWaits} href={parentHref} />
               {(draft.parameters.length > 0 || draft.key_dates.length > 0) && <ValuesStep c={ctl} nr={3} spots={spots} spaceArea={null} />}
             </>
           ) : (
@@ -379,7 +384,7 @@ function Review({ job }: { job: ImportJobDetail }) {
 }
 
 /** Annex or supporting document: which contract it belongs to (demo „Millise lepingu juurde?”) — a contract of this import or one in the registry. */
-function ParentStep({ job, toimikud, value, onChange, parentRow }: { job: ImportJobDetail; toimikud: DeskToimik[]; value: string; onChange: (v: string) => void; parentRow?: DeskRow }) {
+function ParentStep({ job, toimikud, value, onChange, waits, href }: { job: ImportJobDetail; toimikud: DeskToimik[]; value: string; onChange: (v: string) => void; waits: boolean; href: string | null }) {
   const contracts = useContracts({});
   const imported = (contracts.data ?? []).filter((c) => c.origin === "imported"); // an external annex goes only onto an imported contract
   const inBatch = toimikud.map((x) => x.row).filter((r) => r.kind === "contract" && r.id !== job.id && r.state !== "ei" && r.state !== "viga");
@@ -391,7 +396,7 @@ function ParentStep({ job, toimikud, value, onChange, parentRow }: { job: Import
           {inBatch.length > 0 && <optgroup label={t("imports.desk.parentBatch")}>{inBatch.map((r) => <option key={r.id} value={`job:${r.id}`}>{[r.counterparty || r.title || r.filename, r.spaces.join(" + "), r.number].filter(Boolean).join(" · ")}</option>)}</optgroup>}
           {imported.length > 0 && <optgroup label={t("imports.desk.parentRegistry")}>{imported.map((c) => <option key={c.id} value={`contract:${c.id}`}>{[c.number, c.party?.name || c.title].filter(Boolean).join(" · ")}</option>)}</optgroup>}
         </select>
-        {parentRow && <div className="ir-q-s">{t("imports.ir.parentWaits")} · <Link className="steplink" href={`/app/portfell/import/${parentRow.id}`}>{t("imports.desk.openParent")}</Link></div>}
+        {href && <div className="ir-q-s">{waits ? `${t("imports.ir.parentWaits")} · ` : ""}<Link className="steplink" href={href}>{t("imports.desk.openParent")} →</Link></div>}
       </div>
     </Step>
   );
