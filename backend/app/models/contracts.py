@@ -190,7 +190,8 @@ class KeyDateKind(Base):
     default_notify_days: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     notify_client: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # what a passed date means: milestone (a fact — history), window (a deadline/option — lapses), task (someone has to
-    # do it — open until marked done or skipped; only an undone task is ever overdue)
+    # do it — open until marked done or skipped; only an undone task is ever overdue), opens (a right that becomes
+    # available on the date and stays so until the contract ends — first possible termination)
     behaviour: Mapped[str] = mapped_column(String(12), default="window", server_default="window")
 
 

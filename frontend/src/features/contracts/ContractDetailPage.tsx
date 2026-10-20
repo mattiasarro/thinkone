@@ -2,18 +2,17 @@
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tEnum } from "@/i18n";
-import { useAudit, useContract, useDeleteAllocation, useDeleteKeyDate, useReopenKeyDate, useResolveKeyDate, useUpdateContract } from "@/lib/queries/portfolio";
+import { useAudit, useContract, useDeleteAllocation, useUpdateContract } from "@/lib/queries/portfolio";
 import { api, errorMessage } from "@/lib/api";
 import { Card, CardHeader, CardBody, PageHead } from "@/components/ui/Card";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Pill, statusTone } from "@/components/ui/Pill";
-import { EmptyState, ErrorState, Loading } from "@/components/ui/State";
+import { ErrorState, Loading } from "@/components/ui/State";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
-import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownload, IconCheck, IconX, IconArrowLeft } from "@/components/ui/Icons";
-import { cx, fmtDate, fmtDateTime, valueToString } from "@/lib/format";
-import { KeyDateDialog } from "@/features/keydates/KeyDateDialog";
-import { KeyDateStatusText, isHistory, isOpen } from "@/features/keydates/KeyDateStatus";
+import { IconChevronLeft, IconEdit, IconExternal, IconPlus, IconTrash, IconDownload } from "@/components/ui/Icons";
+import { fmtDate, fmtDateTime, valueToString } from "@/lib/format";
+import { ContractKeyDatesCard } from "@/features/keydates/ContractKeyDatesCard";
 import { IndexationCard } from "./IndexationCard";
 import { ClauseTree } from "./ClauseTree";
 import { ProvenanceAnchor, SourceViewerContext } from "./ProvenanceAnchor";
@@ -23,7 +22,7 @@ import { AttachmentsList } from "./AttachmentsList";
 import { AllocationDialog } from "./AllocationDialog";
 import { PartiesCard } from "./PartiesCard";
 import { LeaseDraftPage } from "@/features/leases/LeaseDraftPage";
-import type { Allocation, ContractDetail, ContractFact, KeyDate, SourceDocument } from "@/types/api";
+import type { Allocation, ContractDetail, ContractFact, SourceDocument } from "@/types/api";
 
 export function ContractDetailPage({ id }: { id: string }) {
   const q = useContract(id);
@@ -36,23 +35,18 @@ export function ContractDetailPage({ id }: { id: string }) {
 
 function Detail({ c }: { c: ContractDetail }) {
   const imported = c.origin === "imported";
-  const [kdDialog, setKdDialog] = useState<{ open: boolean; item?: KeyDate | null }>({ open: false });
-  const [kdDel, setKdDel] = useState<KeyDate | null>(null);
   const [allocOpen, setAllocOpen] = useState(false);
   const [allocDel, setAllocDel] = useState<Allocation | null>(null);
   const [amend, setAmend] = useState(false);
   const [src, setSrc] = useState<{ docId: string; page: number } | null>(null);
   const openSource = useCallback((docId: string, page: number) => setSrc({ docId, page }), []);
   const [notesOpen, setNotesOpen] = useState(false);
-  const [pastOpen, setPastOpen] = useState(false);
   const [notes, setNotes] = useState(c.notes ?? "");
-  const delKd = useDeleteKeyDate();
   const delAlloc = useDeleteAllocation(c.id);
   const update = useUpdateContract(c.id);
   const audit = useAudit("contract", c.id);
   const toast = useToast();
 
-  const onDeleteKd = async () => { if (!kdDel) return; try { await delKd.mutateAsync(kdDel.id); toast.success(t("keyDates.deleted")); setKdDel(null); } catch (e) { toast.error(errorMessage(e)); } };
   const onDeleteAlloc = async () => { if (!allocDel) return; try { await delAlloc.mutateAsync(allocDel.id); toast.success(t("contract.allocationRemoved")); setAllocDel(null); } catch (e) { toast.error(errorMessage(e)); } };
   const saveNotes = async () => { try { await update.mutateAsync({ notes }); toast.success(t("contract.updated")); setNotesOpen(false); } catch (e) { toast.error(errorMessage(e)); } };
   const exportAudit = async () => {
@@ -81,10 +75,6 @@ function Detail({ c }: { c: ContractDetail }) {
       idx > 1 ? t("contract.indexCount", { n: idx }) : null,
     ].filter(Boolean).join(" · ");
   };
-  // key dates: open tasks first, then what is coming; history (happened, lapsed, resolved) folded away
-  const byDue = [...c.key_dates].sort((a, b) => a.due_date.localeCompare(b.due_date));
-  const kdMain = [...byDue.filter(isOpen), ...byDue.filter((k) => !isOpen(k) && !isHistory(k))];
-  const kdPast = byDue.filter(isHistory);
 
   return (
     <SourceViewerContext.Provider value={openSource}>
@@ -168,29 +158,7 @@ function Detail({ c }: { c: ContractDetail }) {
           <IndexationCard contractId={c.id} />
           <PartiesCard c={c} />
 
-          <Card>
-            <CardHeader title={t("contract.keyDates")} actions={<Button size="sm" onClick={() => setKdDialog({ open: true, item: null })}><IconPlus width={14} height={14} />{t("common.add")}</Button>} />
-            {c.key_dates.length === 0 ? <EmptyState title={t("contract.noKeyDates")} /> : (
-              <>
-                <ul className="divide-y" style={{ borderColor: "var(--line)" }}>
-                  {kdMain.map((k) => <KdRow key={k.id} k={k} c={c} onEdit={() => setKdDialog({ open: true, item: k })} onDelete={() => setKdDel(k)} />)}
-                </ul>
-                {kdPast.length > 0 && (
-                  <>
-                    <button type="button" className="w-full text-left text-xs font-semibold text-muted px-[var(--card-padding)] py-2.5 border-t hover:text-primary" style={{ borderColor: "var(--line)" }}
-                            aria-expanded={pastOpen} onClick={() => setPastOpen(!pastOpen)}>
-                      {pastOpen ? t("keyDates.hidePast") : t("keyDates.showPast", { n: kdPast.length })}
-                    </button>
-                    {pastOpen && (
-                      <ul className="divide-y border-t" style={{ borderColor: "var(--line)" }}>
-                        {kdPast.map((k) => <KdRow key={k.id} k={k} c={c} muted onEdit={() => setKdDialog({ open: true, item: k })} onDelete={() => setKdDel(k)} />)}
-                      </ul>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </Card>
+          <ContractKeyDatesCard c={c} />
 
           <Card>
             <CardHeader title={t("contract.allocations")} actions={<Button size="sm" onClick={() => setAllocOpen(true)}><IconPlus width={14} height={14} />{t("contract.addAllocation")}</Button>} />
@@ -235,8 +203,6 @@ function Detail({ c }: { c: ContractDetail }) {
         </div>
       </div>
 
-      <KeyDateDialog open={kdDialog.open} onClose={() => setKdDialog({ open: false })} initial={kdDialog.item} contractId={c.id} lockContract />
-      <ConfirmDialog open={!!kdDel} onClose={() => setKdDel(null)} onConfirm={onDeleteKd} busy={delKd.isPending} title={t("common.delete")} body={kdDel ? t("keyDates.deleteConfirm", { title: kdDel.title }) : null} />
       <AllocationDialog open={allocOpen} onClose={() => setAllocOpen(false)} c={c} />
       <ConfirmDialog open={!!allocDel} onClose={() => setAllocDel(null)} onConfirm={onDeleteAlloc} busy={delAlloc.isPending} title={t("common.remove")} body={allocDel ? t("contract.allocationRemoveConfirm", { name: allocDel.asset?.name ?? "" }) : null} />
       <AmendmentDialog open={amend} onClose={() => setAmend(false)} contractId={c.id} facts={allFacts} endDate={c.end_date} />
@@ -247,37 +213,6 @@ function Detail({ c }: { c: ContractDetail }) {
 }
 
 const RENT_KEYS = ["rent_monthly", "rent_per_m2", "fee_monthly"];
-
-/** One key date: what it means now (status), and — for a task — what happened (done / skipped, undo). An open indexation is
- *  answered on the indexation card, where the rent changes with it. */
-function KdRow({ k, c, muted, onEdit, onDelete }: { k: KeyDate; c: ContractDetail; muted?: boolean; onEdit: () => void; onDelete: () => void }) {
-  const resolve = useResolveKeyDate();
-  const reopen = useReopenKeyDate();
-  const toast = useToast();
-  const run = async (fn: () => Promise<unknown>, msg: string) => { try { await fn(); toast.success(msg); } catch (e) { toast.error(errorMessage(e)); } };
-  const open = isOpen(k);
-  return (
-    <li className={cx("flex items-center gap-2 px-[var(--card-padding)] py-2.5", muted && "opacity-75")}>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium truncate">{k.title}</span>
-        <span className="block text-xs text-muted">{tEnum("keyDates.kinds", k.kind_code)} · {fmtDate(k.due_date)} · <KeyDateStatusText k={k} />{open && k.kind_code === "indexation" ? ` · ${t("keyDates.confirmOnCard")}` : ""}</span>
-      </span>
-      {c.origin === "imported" && <ProvenanceAnchor prov={k.provenance} docs={c.source_documents} />}
-      {open && k.kind_code !== "indexation" && (
-        <>
-          <Button size="sm" busy={resolve.isPending} onClick={() => run(() => resolve.mutateAsync({ id: k.id, resolution: "done" }), t("keyDates.resolved"))}><IconCheck width={14} height={14} />{t("keyDates.markDone")}</Button>
-          <button type="button" className="icon-btn !w-8 !h-8" title={t("keyDates.markSkipped")} aria-label={t("keyDates.markSkipped")} onClick={() => run(() => resolve.mutateAsync({ id: k.id, resolution: "skipped" }), t("keyDates.resolved"))}><IconX width={14} height={14} /></button>
-        </>
-      )}
-      {k.resolution && (
-        <button type="button" className="icon-btn !w-8 !h-8" title={t("keyDates.reopen")} aria-label={t("keyDates.reopen")} disabled={reopen.isPending}
-                onClick={() => run(() => reopen.mutateAsync(k.id), t("keyDates.reopened"))}><IconArrowLeft width={14} height={14} /></button>
-      )}
-      <button type="button" className="icon-btn !w-8 !h-8" aria-label={t("common.edit")} onClick={onEdit}><IconEdit width={14} height={14} /></button>
-      <button type="button" className="icon-btn !w-8 !h-8 text-error" aria-label={t("common.delete")} onClick={onDelete}><IconTrash width={14} height={14} /></button>
-    </li>
-  );
-}
 
 function Fact({ label, value, sub, anchor }: { label: string; value: string; sub?: string; anchor?: ReactNode }) {
   return (

@@ -12,7 +12,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 Category = Literal["lease", "maintenance", "management", "insurance", "security", "employment", "other"]
-KeyDateKindCode = Literal["start", "end", "indexation", "payment", "notice", "probation", "salary_review", "other"]
+KeyDateKindCode = Literal["start", "end", "indexation", "payment", "notice", "termination_option", "probation", "salary_review", "other"]
 PartyRole = Literal["landlord", "tenant", "client", "supplier", "manager", "maintainer", "security", "insurer", "insured", "employer", "employee", "other"]
 
 

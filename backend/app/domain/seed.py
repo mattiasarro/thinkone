@@ -34,6 +34,7 @@ KEY_DATE_KINDS = [
     ("salary_review", "Palgaülevaatus", "employment", 30, False, "task"),
     ("payment", "Maksetähtaeg", None, 7, False, "task"),
     ("notice", "Etteteatamise tähtaeg", None, 30, False, "window"),
+    ("termination_option", "Ülesütlemisvõimalus", None, 30, False, "opens"),
     ("other", "Muu tähtaeg", None, 30, False, "window"),
 ]
 

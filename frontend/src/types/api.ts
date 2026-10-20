@@ -90,9 +90,9 @@ export type ContractOrigin = "platform" | "imported";
 export type ContractCategory = "lease" | "maintenance" | "management" | "insurance" | "security" | "other" | string;
 export interface ContractSummary { id: UUID; number: string | null; title: string; status: string; origin: ContractOrigin; type_code: string; category: ContractCategory | null; party: { id: UUID; name: string } | null; company_id: UUID | null; start_date: ISODate | null; end_date: ISODate | null; signed_at: ISODate | null; current_values: Record<string, unknown>; key_dates_next?: { kind_code: string; due_date: ISODate } | null }
 export interface ContractFact { id?: UUID; key: string; label?: string | null; value: string | number | null; unit?: string | null; text?: string | null; valid_from: ISODate | null; valid_to?: ISODate | null; reason: string | null; recorded_at?: ISODate; provenance?: Record<string, unknown> | null }
-/** What a passed date means (backend keydates.status_of): milestone → past · window → lapsed · task → overdue/unconfirmed until done/skipped. */
-export type KeyDateBehaviour = "milestone" | "window" | "task";
-export type KeyDateStatus = "upcoming" | "past" | "lapsed" | "overdue" | "unconfirmed" | "done" | "skipped";
+/** What a passed date means (backend keydates.status_of): milestone → past · window → lapsed · opens → open_since (until the contract ends) · task → overdue/unconfirmed until done/skipped. */
+export type KeyDateBehaviour = "milestone" | "window" | "task" | "opens";
+export type KeyDateStatus = "upcoming" | "past" | "lapsed" | "open_since" | "overdue" | "unconfirmed" | "done" | "skipped";
 export interface KeyDateRent { key: string; old: number; new: number; proposed?: number | null; pct?: number }
 export interface KeyDate {
   id: UUID; kind_code: string; title: string; due_date: ISODate; notify_days_before: number | null; fired_at: ISODate | null; provenance?: Record<string, unknown> | null;

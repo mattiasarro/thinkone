@@ -87,12 +87,12 @@ async def extend_recurrences(session: AsyncSession, actor: Actor, today: date | 
 
 # ---------------------------------------------------------------- what a date means once it has passed ---------------
 
-BEHAVIOURS = ("milestone", "window", "task")
+BEHAVIOURS = ("milestone", "window", "task", "opens")
 RESOLUTIONS = ("done", "skipped")
 
 
 async def behaviours(session: AsyncSession, account_id: uuid.UUID) -> dict[str, str]:
-    """kind code → milestone | window | task (an account's own kind overrides the global one)."""
+    """kind code → milestone | window | task | opens (an account's own kind overrides the global one)."""
     out: dict[str, str] = {}
     for k in sorted(await kinds(session, account_id), key=lambda k: k.account_id is not None):
         out[k.code] = k.behaviour or "window"
@@ -102,7 +102,8 @@ async def behaviours(session: AsyncSession, account_id: uuid.UUID) -> dict[str, 
 def status_of(kd: KeyDate, behaviour: str, contract: Contract | None, today: date | None = None) -> str:
     """The one status every view shows (server-side, so the contract page, calendar, space and home agree):
     done / skipped — a task's outcome; upcoming — not yet due; past — a milestone that happened; lapsed — a deadline or
-    option that went by (nothing left to do); overdue — a task nobody marked; unconfirmed — an indexation that fell before
+    option that went by (nothing left to do); open_since — a right that opened on the date and stays open (first
+    possible termination: "võimalik alates") until the contract ends; overdue — a task nobody marked; unconfirmed — an indexation that fell before
     the contract was imported (we don't know whether it was applied — the catch-up asks once). A task from before the import
     other than indexation is just history (past)."""
     today = today or date.today()
@@ -112,6 +113,9 @@ def status_of(kd: KeyDate, behaviour: str, contract: Contract | None, today: dat
         return "upcoming"
     if behaviour == "milestone":
         return "past"
+    if behaviour == "opens":
+        ended = contract is not None and (contract.status in TERMINAL_STATUSES or (contract.end_date is not None and contract.end_date < today))
+        return "lapsed" if ended else "open_since"
     if behaviour != "task":
         return "lapsed"
     imported_on = contract.created_at.date() if contract is not None and contract.origin == "imported" and contract.created_at else None

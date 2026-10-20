@@ -33,7 +33,7 @@ class KeyDateOut(BaseModel):
     fired_at: datetime | None
     contract: KeyDateContractOut | None
     behaviour: str = "window"
-    status: str = "upcoming"  # upcoming | past | lapsed | overdue | unconfirmed | done | skipped (keydates.status_of)
+    status: str = "upcoming"  # upcoming | past | lapsed | open_since | overdue | unconfirmed | done | skipped (keydates.status_of)
     resolution: str | None = None
     resolved_at: datetime | None = None
     resolution_data: dict[str, Any] | None = None

@@ -13,6 +13,9 @@ import { IconAi, IconChevronLeft, IconExternal, IconLink } from "@/components/ui
 import { cx, fmtDate, fmtDateTime, fmtEur, fmtNum, valueToString } from "@/lib/format";
 import { useRun, type Run } from "@/features/quotes/quoteRun";
 import { openAttachment } from "@/lib/queries/settings";
+import { useContract } from "@/lib/queries/portfolio";
+import { IndexationCard } from "@/features/contracts/IndexationCard";
+import { ContractKeyDatesCard } from "@/features/keydates/ContractKeyDatesCard";
 import { LeasePane, ThreadRow } from "./LeasePane";
 import { ChatCard, ClientCard, DealCard, LettersRoundsCard, RepsCard, SpecialCard } from "./LeaseCards";
 import type { LeaseChange, LeaseDraft, LeaseNegotiation } from "@/types/api";
@@ -126,6 +129,7 @@ function Detail({ lease, neg, refetch }: { lease: LeaseDraft; neg: LeaseNegotiat
         </div>
         <div className="grid gap-5 min-w-0">
           <GuideCard lease={lease} neg={neg} run={run} onSelect={select} />
+          {!isOpen && lease.status !== "cancelled" && <SignedCards id={lease.id} />}
           <LeasePane lease={lease} neg={neg} run={run} selected={selected} onSelect={select} editable={editable} onSpecialFor={(c) => { setSpecialFor(c); document.getElementById("lease-special")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
           <DealCard lease={lease} run={run} editable={editable} />
           <RepsCard lease={lease} run={run} editable={editable} />
@@ -160,6 +164,14 @@ function Detail({ lease, neg, refetch }: { lease: LeaseDraft; neg: LeaseNegotiat
       <ConfirmDialog open={cancelDlg} onClose={() => setCancelDlg(false)} onConfirm={onCancel} busy={cancel.isPending} title={t("lease.cancel")} body={t("lease.cancelConfirm", { number: lease.number })} />
     </div>
   );
+}
+
+/** Once signed, a platform lease is a contract like any other: its key dates (what each one means now) and the indexation
+ *  catch-up, where resolving an indexation writes the new rent version. */
+function SignedCards({ id }: { id: string }) {
+  const c = useContract(id);
+  if (!c.data) return null;
+  return <><IndexationCard contractId={id} /><ContractKeyDatesCard c={c.data} /></>;
 }
 
 /** Word-level-ish changes since V1 (demo „Muudatused · N”): wording as struck-through before + after; facts as before → after. */

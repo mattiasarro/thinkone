@@ -154,3 +154,39 @@ async def test_shared_and_from_scratch(client: AsyncClient, admin: dict):
     await other.post("/api/v1/auth/register", json={"account_name": "Teine OÜ", "email": "teine2@example.com", "name": "Teine", "password": "salasona123"})
     assert (await other.get(f"/api/v1/leases/{d['id']}")).status_code == 404
     await other.aclose()
+
+
+async def test_signed_platform_lease_indexes_numeric_rent(client: AsyncClient, admin: dict):
+    """A platform lease keeps rent as numbers; once signed, resolving its indexation writes numeric rent versions."""
+    import uuid
+    from datetime import timedelta
+
+    from sqlalchemy import select
+
+    from app.infra.db import tenant_session
+    from app.models.contracts import Contract, ContractFact, KeyDate
+
+    _, q = await _accepted_quote(client, ["Pind 12"])
+    d = (await client.post(f"/api/v1/leases/from-quote/{q['id']}", json={"mode": "separate"})).json()[0]
+    rate = d["deal"]["indexation"]["rate"]
+    today = date.today()
+    async with tenant_session(uuid.UUID(admin["account"]["id"])) as s:
+        c = await s.get(Contract, uuid.UUID(d["id"]))
+        assert c
+        c.status = "active"
+        for f in (await s.execute(select(ContractFact).where(ContractFact.contract_id == c.id))).scalars():
+            f.valid_from = today - timedelta(days=375)
+        first = (await s.execute(select(KeyDate).where(KeyDate.subject_id == c.id, KeyDate.kind_code == "indexation").order_by(KeyDate.due_date))).scalars().first()
+        assert first
+        first.due_date = today - timedelta(days=10)
+    p = (await client.get(f"/api/v1/contracts/{d['id']}/indexation")).json()
+    assert p["rule"] == {"method": "fixed_pct", "rate": rate, "text": p["rule"]["text"]} and p["rent"]["key"] == "rent_monthly"
+    old = p["rent"]["value"]
+    assert len(p["steps"]) == 1 and p["steps"][0]["proposed"] == round(old * (1 + rate / 100), 2)
+    r = await client.post(f"/api/v1/contracts/{d['id']}/indexation", json={"steps": [{"key_date_id": p["steps"][0]["key_date_id"], "applied": True}]})
+    assert r.status_code == 200, r.text
+    c = (await client.get(f"/api/v1/contracts/{d['id']}")).json()
+    rent = c["current_values"]["rent_monthly"]["value"]
+    assert isinstance(rent, float) and rent == round(old * (1 + rate / 100), 2)
+    assert isinstance(c["current_values"]["rent_per_m2"]["value"], float)
+    assert next(k for k in c["key_dates"] if k["due_date"] == (today - timedelta(days=10)).isoformat())["status"] == "done"

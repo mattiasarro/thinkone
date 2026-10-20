@@ -293,7 +293,7 @@ async def attention(session: AsyncSession, today: date | None = None) -> list[di
             if days <= 183:
                 row("key_date", "amber" if days > 30 else "red", f"{c.number} · {c.title}", f"Leping lõpeb {kd.due_date.strftime('%d.%m.%Y')} — otsusta pikendamine", f"/app/portfell/leping/{c.id}", kd.due_date, step="end")
             continue
-        if days <= 90 and kd.kind_code in ("notice", "probation", "salary_review", "payment", "other"):
+        if days <= 90 and kd.kind_code in ("notice", "termination_option", "probation", "salary_review", "payment", "other"):
             row("key_date", "amber" if days > 7 else "red", f"{c.number} · {c.title}", f"{kd.title} · {kd.due_date.strftime('%d.%m.%Y')}", f"/app/portfell/leping/{c.id}", kd.due_date, step=kd.kind_code)
     order = {"red": 0, "amber": 1, "green": 2}
     rows.sort(key=lambda r: (order[r["tone"]], r["due"] or date.max))

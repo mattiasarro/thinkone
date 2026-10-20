@@ -37,7 +37,8 @@ Rules:
    sentence, `source_number` the clause number it comes from. Confidence < 0.8 when the text is ambiguous
    or the value is derived rather than stated (say why in `note`).
 4. key_dates: start, end, indexation (first/next indexation date), payment (recurring due day → nearest
-   upcoming date is fine, note it), notice (deadline to give notice before end), probation, salary_review,
+   upcoming date is fine, note it), notice (deadline to give notice before end), termination_option (the date from which a party may first
+   terminate — „esimene ülesütlemise võimalus”), probation, salary_review,
    other. Only dates that can be pinned to a calendar day.
 5. Every element carries page and char_start/char_end anchors into the source text where you found it.
 6. asset_hint: the leased/covered asset (space name like "P_29", building address, area) if present.

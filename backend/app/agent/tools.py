@@ -264,7 +264,7 @@ async def load_contract(session: AsyncSession, actor: Actor, a: LoadIn) -> ToolR
 
 class KeyDatesIn(BaseModel):
     days_ahead: int = Field(default=365, ge=1, le=3650, description="Mitu päeva ette")
-    kind: str | None = Field(default=None, description="end | start | indexation | probation | salary_review | notice | payment | other")
+    kind: str | None = Field(default=None, description="end | start | indexation | probation | salary_review | notice | termination_option | payment | other")
     year: int | None = Field(default=None, description="Ainult selle aasta tähtajad")
 
 

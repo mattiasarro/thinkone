@@ -32,6 +32,18 @@ def test_rule_reads_the_contract():
     assert rule(c(None))["method"] is None
 
 
+def test_an_option_closes_with_the_contract():
+    from app.domain.keydates import status_of
+    from app.models.contracts import KeyDate
+
+    today = date.today()
+    kd = KeyDate(kind_code="termination_option", due_date=today - timedelta(days=10))
+    assert status_of(kd, "opens", Contract(status="active", end_date=today + timedelta(days=100)), today) == "open_since"
+    assert status_of(kd, "opens", Contract(status="active", end_date=today - timedelta(days=1)), today) == "lapsed"
+    assert status_of(kd, "opens", Contract(status="ended", end_date=None), today) == "lapsed"
+    assert status_of(KeyDate(kind_code="termination_option", due_date=today + timedelta(days=5)), "opens", None, today) == "upcoming"
+
+
 async def _lease(admin: dict, *, start: date, imported_days_ago: int = 0, rent: str = "1000,00", per_m2: str | None = "10,00",
                  indexation: dict | None = None, ix_dates: list[date] | None = None) -> uuid.UUID:
     from app.domain.contracts import create_contract
@@ -61,7 +73,7 @@ async def _lease(admin: dict, *, start: date, imported_days_ago: int = 0, rent: 
 
 
 async def test_a_passed_date_means_what_its_kind_says(client: AsyncClient, admin: dict):
-    """Start → past (history), notice → lapsed, an indexation before the import → unconfirmed, one after → overdue, a payment
+    """Start → past (history), notice → lapsed, a termination option → open since, an indexation before the import → unconfirmed, one after → overdue, a payment
     before the import → past; nothing but an undone task is ever red."""
     from app.domain.events import Actor
     from app.domain.keydates import add_key_date
@@ -75,6 +87,8 @@ async def test_a_passed_date_means_what_its_kind_says(client: AsyncClient, admin
     async with tenant_session(aid) as s:
         await add_key_date(s, actor, contract_id=cid, kind_code="start", due_date=today - timedelta(days=800))
         await add_key_date(s, actor, contract_id=cid, kind_code="notice", due_date=today - timedelta(days=435))
+        await add_key_date(s, actor, contract_id=cid, kind_code="termination_option", due_date=today - timedelta(days=200),
+                           title="Esimene korralise ülesütlemise võimalus")
         await add_key_date(s, actor, contract_id=cid, kind_code="payment", due_date=today - timedelta(days=90))
     detail = (await client.get(f"/api/v1/contracts/{cid}")).json()
     got = sorted((k["kind_code"], k["due_date"], k["status"], k["behaviour"]) for k in detail["key_dates"])
@@ -82,12 +96,13 @@ async def test_a_passed_date_means_what_its_kind_says(client: AsyncClient, admin
     iso = lambda n: (today + timedelta(days=n)).isoformat()  # noqa: E731
     assert by[("start", iso(-800))] == "past"
     assert by[("notice", iso(-435))] == "lapsed"
+    assert by[("termination_option", iso(-200))] == "open_since"  # a right that opened, not a deadline that went by
     assert by[("payment", iso(-90))] == "past"
     assert by[("indexation", iso(-435))] == "unconfirmed"
     assert by[("indexation", iso(-30))] == "overdue"
     assert by[("indexation", iso(335))] == "upcoming"
     cal = (await client.get("/api/v1/key-dates", params={"contract_id": str(cid)})).json()
-    assert {k["status"] for k in cal} == {"past", "lapsed", "unconfirmed", "overdue", "upcoming"}
+    assert {k["status"] for k in cal} == {"past", "lapsed", "open_since", "unconfirmed", "overdue", "upcoming"}
     # only a task can be resolved
     notice = next(k for k in cal if k["kind_code"] == "notice")
     assert (await client.post(f"/api/v1/key-dates/{notice['id']}/resolve", json={"resolution": "done"})).status_code >= 400
