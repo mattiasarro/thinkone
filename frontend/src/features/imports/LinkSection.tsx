@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t, tEnum } from "@/i18n";
 import { useAriregister, useCompanies } from "@/lib/queries/settings";
 import { useAssets, useParties } from "@/lib/queries/portfolio";
@@ -66,11 +66,29 @@ export function contractArea(draft: Proposal): number | null {
 }
 
 /** Same key as the plans matcher: „Pind 8” / „P_08” / „P 8” → „8”; „B1” / „Büroo 1” → „B1”. */
-function spaceKey(name: string): string | null {
+export function spaceKey(name: string): string | null {
   const m = (name ?? "").trim().replace(/[_\-.]+/g, " ").match(/^(pind|boks|büroo|buroo|ladu|p|unit|space)?\s*0*([A-Z]?\d{1,3}[A-Z]?)$/i);
   if (!m) return null;
   const v = m[2].toUpperCase().replace(/^0+(?=\d)/, "");
   return m[1] && /^(büroo|buroo|boks|b)$/i.test(m[1]) && /^\d/.test(v) ? `B${v}` : v;
+}
+
+/** Every space a hint names: „P26, P27” · „P26_P27” · „P26&27” · „Pind 26 ja 27” → [26, 27]; a bare number after a
+ *  „B…” space stays a Büroo. */
+export function spaceKeys(name: string | null | undefined): string[] {
+  const out: string[] = [];
+  let office = false;
+  for (const part of (name ?? "").split(/\s*(?:,|;|&|\+|\/|\bja\b|\band\b|_(?=[A-Za-zÜü]))\s*/i)) {
+    const tx = part.trim();
+    if (!tx) continue;
+    // a bare number („…&27”) continues the previous kind; a prefixed one („P27”, „Büroo 2”) says its own
+    const bare = /^\d{1,3}[A-Z]?$/i.test(tx) ? tx.toUpperCase().replace(/^0+(?=\d)/, "") : null;
+    const key: string | null = bare ? (office ? `B${bare}` : bare) : spaceKey(tx);
+    if (!key) continue;
+    office = key.startsWith("B");
+    if (!out.includes(key)) out.push(key);
+  }
+  return out;
 }
 
 /** „Kas see on Pind 13?” (demo 11b): one concrete, free space of the building with the same rentable area (±0.15 m²). */
@@ -106,17 +124,28 @@ export function useLinkDefaults(draft: Proposal, state: LinkState, onChange: (s:
       if (pick) onChange({ ...state, company_id: pick.id });
     }
   }, [companies.data, draft.contract.our_company_name, state, onChange]);
+  // the spaces the hint names („P_29” → Pind 29; „P26, P27” → Pind 26 + Pind 27) pick the building and the spaces —
+  // once per review, also when the building was already saved (the operator may clear the pick afterwards)
+  const autoPicked = useRef(false);
   useEffect(() => {
-    if (!state.asset_id && draft.asset_hint && properties.data?.length) {
+    if (!draft.asset_hint || !properties.data?.length || allSpaces.isLoading || autoPicked.current) return;
+    const keys = spaceKeys(draft.asset_hint.name);
+    if (!state.space_ids.length && keys.length) {
+      const cands = (allSpaces.data ?? []).filter((s) => s.parent_id && pickableSpace(s) && (!state.asset_id || s.parent_id === state.asset_id));
+      const hits = keys.map((k) => cands.filter((s) => spaceKey(s.name) === k));
+      if (hits.every((h) => h.length === 1) && new Set(hits.map((h) => h[0].parent_id)).size === 1) {
+        autoPicked.current = true;
+        onChange({ ...state, asset_id: hits[0][0].parent_id as string, space_ids: hits.map((h) => h[0].id), allocation_kind: "exclusive", parking_numbers: null });
+        return;
+      }
+    }
+    if (!state.asset_id) {
       const hint = `${draft.asset_hint.name ?? ""} ${draft.asset_hint.address ?? ""}`.toLowerCase();
-      // a space named like the hint („P_29” → Pind 29) picks both the building and the space
-      const key = draft.asset_hint.name ? spaceKey(draft.asset_hint.name) : null;
-      const byName = key ? (allSpaces.data ?? []).filter((s) => s.parent_id && s.status !== "jagatud" && s.status !== "mitteaktiivne" && spaceKey(s.name) === key) : [];
-      if (byName.length === 1 && byName[0].parent_id) { onChange({ ...state, asset_id: byName[0].parent_id, space_ids: [byName[0].id], allocation_kind: "exclusive", parking_numbers: null }); return; }
-      if (allSpaces.isLoading) return;
+      const byName = keys.length ? (allSpaces.data ?? []).filter((s) => s.parent_id && pickableSpace(s) && spaceKey(s.name) === keys[0]) : [];
       const m = properties.data.find((p) => (p.name && hint.includes(p.name.toLowerCase())) || ((p.attributes.address as string | undefined)?.toLowerCase() && hint.includes((p.attributes.address as string).toLowerCase())))
-        ?? (byName.length > 1 ? properties.data.find((p) => p.id === byName[0].parent_id) : undefined);
-      if (m) onChange({ ...state, asset_id: m.id });
+        ?? (byName.length ? properties.data.find((p) => p.id === byName[0].parent_id) : undefined)
+        ?? (properties.data.length === 1 ? properties.data[0] : undefined);
+      if (m) { autoPicked.current = true; onChange({ ...state, asset_id: m.id }); }
     }
   }, [draft.asset_hint, properties.data, allSpaces.data, allSpaces.isLoading, state, onChange]);
   return { companies: companies.data ?? [], properties: properties.data ?? [], loading: companies.isLoading || properties.isLoading };

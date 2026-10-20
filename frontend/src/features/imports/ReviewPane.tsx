@@ -7,7 +7,7 @@ import { useAssets, useParking, useParties } from "@/lib/queries/portfolio";
 import { SpotChip } from "@/features/assets/ParkingRegister";
 import { IconAlert, IconArrowRight, IconCal, IconCheck, IconEdit, IconInfo, IconShield, IconTrash, IconX } from "@/components/ui/Icons";
 import type { Asset, DeskRow, ImportJobDetail, ImportSourceFile, Proposal, SpaceAttributes } from "@/types/api";
-import { ExistingPicker, RegistryRow, contractArea, dropPartyRow, isOurs, pickableSpace, roleOptions, setPartyRow, spaceArea, suggestSpace, type LinkState, type PartyRow } from "./LinkSection";
+import { ExistingPicker, RegistryRow, contractArea, spaceKey, spaceKeys, dropPartyRow, isOurs, pickableSpace, roleOptions, setPartyRow, spaceArea, suggestSpace, type LinkState, type PartyRow } from "./LinkSection";
 import { HEAD_DATES, crossChecks, fmtValue, headDateLabel, headDateUnsure, kdLabel, needlesFor, toIso, sameSpots, type ParkingCheck, type Spot } from "./reviewModel";
 import { UNCERTAIN } from "./reviewState";
 
@@ -246,6 +246,8 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots, park:
   const parking = useParking(link.asset_id || undefined);
   const [picking, setPicking] = useState(false);
   const area = useMemo(() => contractArea(d), [d]);
+  const named = spaceKeys(d.asset_hint?.name);
+  const isNamed = (s: Asset) => named.includes(spaceKey(s.name) ?? "");
   const list = (spaces.data ?? []).filter(pickableSpace);
   const picked = link.space_ids.map((id) => (spaces.data ?? []).find((s) => s.id === id)).filter((s): s is Asset => !!s);
   const suggestion = link.asset_id && !picked.length ? suggestSpace(spaces.data ?? [], area) : null;
@@ -257,8 +259,16 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots, park:
   const ok = !missing && (!!picked.length || (link.allocation_kind === "coverage" && !!link.asset_id) || !properties.length);
   const showPicker = picking || (!picked.length && !suggestion);
   const same = (s: Asset) => area != null && Math.abs(spaceArea(s) - area) <= 0.15;
-  const sorted = [...list].sort((a, b) => Number(same(b)) - Number(same(a)) || Number(b.status === "vaba") - Number(a.status === "vaba") || a.name.localeCompare(b.name, "et", { numeric: true }));
-  const toggle = (id: string) => onLink({ ...link, space_ids: link.space_ids.includes(id) ? link.space_ids.filter((x) => x !== id) : lease && !picking ? [id] : [...link.space_ids, id], allocation_kind: "exclusive", parking_numbers: null });
+  // the spaces the contract names first, then the same area, then free ones; all of them, filterable
+  const [q, setQ] = useState("");
+  const sorted = [...list].sort((a, b) => Number(isNamed(b)) - Number(isNamed(a)) || Number(same(b)) - Number(same(a)) || Number(b.status === "vaba") - Number(a.status === "vaba") || a.name.localeCompare(b.name, "et", { numeric: true }))
+    .filter((s) => !q.trim() || `${s.name} ${(s.attributes as Partial<SpaceAttributes>).type ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
+  // one click picks one space and closes the list; when the contract names several, the list stays open to pick them all
+  const toggle = (id: string) => {
+    const multi = picking || named.length > 1;
+    if (multi && !picking) setPicking(true);
+    onLink({ ...link, space_ids: link.space_ids.includes(id) ? link.space_ids.filter((x) => x !== id) : lease && !multi ? [id] : [...link.space_ids, id], allocation_kind: "exclusive", parking_numbers: null });
+  };
   const spotsAll = parking.data ?? [];
   const spaceSpots = link.space_ids.length ? spotsAll.filter((s) => s.space_id && link.space_ids.includes(s.space_id)).map((s) => s.number) : [];
   const park = link.parking_numbers ?? spaceSpots;
@@ -304,12 +314,13 @@ export function SpaceStep({ c, link, onLink, properties, companies, spots, park:
           )}
           {link.asset_id && (lease || link.allocation_kind === "exclusive") && (
             <>
-              <div className="ir-pv-s">{area != null ? t("imports.ir.pickSpaceHintArea", { area: fmtFixed(area, 1) }) : t("imports.ir.pickSpaceHint")}</div>
+              <div className="ir-pv-s">{named.length > 1 ? t("imports.ir.pickSpacesHint", { n: named.length }) : area != null ? t("imports.ir.pickSpaceHintArea", { area: fmtFixed(area, 1) }) : t("imports.ir.pickSpaceHint")}</div>
+              {list.length > 12 && <input className="fld fld-sm" type="search" aria-label={t("imports.ir.findSpace")} placeholder={t("imports.ir.findSpace")} value={q} onChange={(e) => setQ(e.target.value)} />}
               <div className="ir-pv-l">
-                {sorted.slice(0, picking ? 40 : 12).map((s) => (
-                  <button key={s.id} type="button" className={cx("ir-pv-r", same(s) && "sobib", link.space_ids.includes(s.id) && "on")} aria-pressed={link.space_ids.includes(s.id)} onClick={() => toggle(s.id)}>
+                {sorted.map((s) => (
+                  <button key={s.id} type="button" className={cx("ir-pv-r", (same(s) || isNamed(s)) && "sobib", link.space_ids.includes(s.id) && "on")} aria-pressed={link.space_ids.includes(s.id)} onClick={() => toggle(s.id)}>
                     <b>{s.name}</b><span>{[(s.attributes as Partial<SpaceAttributes>).type, `${fmtFixed(spaceArea(s), 1)} m²`].filter(Boolean).join(" · ")}</span>
-                    <small>{same(s) ? t("imports.ir.sameArea") : tEnum("assets.status", s.status)}</small>
+                    <small>{isNamed(s) ? t("imports.ir.namedInContract") : same(s) ? t("imports.ir.sameArea") : tEnum("assets.status", s.status)}</small>
                   </button>
                 ))}
                 {!sorted.length && <div className="ir-pv-s">{spaces.isLoading ? t("common.loading") : t("imports.ir.noSpacesInBuilding")}</div>}
