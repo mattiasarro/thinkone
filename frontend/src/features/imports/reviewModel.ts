@@ -113,7 +113,17 @@ export function termYears(draft: Proposal): number | null {
 // ---------------------------------------------------------------- parking (demo `impKahtlused` „parkimine”) ----------
 
 const NOT_SPOT = /\b(?:lisa\w*|punkt\w*|p\.|lepingu|leping|akt\w*|arve\w*|registrikood\w*)\s*$/i;
-const SPOT_LIST = /(?:\bnr\.?|\bnumbri(?:te)?ga|\bnumbrid)\s*:?\s*((?:\d{1,4}[A-Za-z]?(?:\s*(?:,|;|&|\+|\bja\b)\s*|\s+))*\d{1,4}[A-Za-z]?)/gi;
+const SPOT = "\\d{1,4}[A-Za-z]?(?:\\s*(?:-|–|—|kuni)\\s*\\d{1,4}[A-Za-z]?)?"; // one spot or a range („92-99”, „92 kuni 99”)
+const SPOT_LIST = new RegExp(`(?:\\bnr\\.?|\\bnumbri(?:te)?ga|\\bnumbrid)\\s*:?\\s*((?:${SPOT}(?:\\s*(?:,|;|&|\\+|\\bja\\b)\\s*|\\s+))*${SPOT})`, "gi");
+const RANGE = /^(\d{1,4})\s*(?:-|–|—|kuni)\s*(\d{1,4})$/i;
+
+/** „92-99” → 92 … 99 (a range of at most 200 spots; anything else stays as written). */
+function expandSpots(item: string): string[] {
+  const m = item.match(RANGE);
+  if (!m) return [item];
+  const a = Number(m[1]), b = Number(m[2]);
+  return b >= a && b - a < 200 ? Array.from({ length: b - a + 1 }, (_, i) => String(a + i)) : [item];
+}
 /** Spot numbers compare without leading zeros and case („065” = „65”) — same rule as the backend's spot_key. */
 export const spotKey = (n: string) => n.trim().toUpperCase().replace(/^0+(?=.)/, "");
 
@@ -127,7 +137,9 @@ export function contractParking(d: Proposal): { idx: number; count: number | nul
   const numbers: string[] = [];
   for (const m of src.matchAll(SPOT_LIST)) {
     if (NOT_SPOT.test(src.slice(Math.max(0, (m.index ?? 0) - 16), m.index))) continue;
-    for (const n of m[1].split(/\s*(?:,|;|&|\+|\bja\b|\s)\s*/)) if (n && !numbers.some((x) => spotKey(x) === spotKey(n))) numbers.push(n);
+    // ranges first lose their inner spaces („92 - 99” → „92-99”), then the list splits on its separators
+    const items = m[1].replace(/(\d)\s*(-|–|—|kuni)\s*(\d)/gi, "$1-$3").split(/\s*(?:,|;|&|\+|\bja\b|\s)\s*/);
+    for (const n of items.flatMap(expandSpots)) if (n && !numbers.some((x) => spotKey(x) === spotKey(n))) numbers.push(n);
   }
   const c = src.match(/(\d{1,3})\s*(?:\(|parkimis|koh)/i);
   const count = c ? Number(c[1]) : /^\d+$/.test(String(p.value ?? "").trim()) ? Number(p.value) : null;
