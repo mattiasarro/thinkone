@@ -282,8 +282,8 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   .pill.teal { color: var(--teal); }
   .pill.primary { color: var(--accent-deep); }
   .pill.fill { background: var(--ink); color: var(--on-ink); padding: 4px 11px 4px 8px; }
-  .pill.spot-other { background: none; color: var(--faint); font-weight: 500; box-shadow: inset 0 0 0 1px var(--line); }
-  .pill.spot-other:hover { color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .pill.spot-other { background: var(--surface-soft); color: var(--faint); font-weight: 500; opacity: .45; }
+  .pill.spot-other:hover { opacity: .8; }
   .pill.fill::before { content: none; }
   .tag { font-size: 11px; font-weight: 500; color: var(--muted); background: var(--surface-soft); border: none; border-radius: 999px; padding: 3px 9px; }
   @media (max-width: 640px) { .pill { white-space: normal; } }
