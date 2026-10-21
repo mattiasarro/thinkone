@@ -27,6 +27,11 @@ export function keyDateLabel(k: KeyDate): { text: string; tone: Tone; hint?: str
 
 /** Open = someone still has to say what happened. */
 export const isOpen = (k: KeyDate) => k.status === "overdue" || k.status === "unconfirmed";
+/** The calendar's dot (demo `kalIse`): filled = someone has to decide or act — an open task, or a coming date that asks for
+ *  a decision (end → extend?, notice, termination option, indexation to confirm, payment…); hollow = nothing to do (it
+ *  happened, lapsed, was resolved, or is a start / probation end that just happens). */
+const JUST_HAPPENS = new Set(["start", "probation"]);
+export const decides = (k: KeyDate) => isOpen(k) || (k.status === "upcoming" && !JUST_HAPPENS.has(k.kind_code));
 
 export function KeyDatePill({ k, className }: { k: KeyDate; className?: string }) {
   const l = keyDateLabel(k);

@@ -37,6 +37,7 @@ class KeyDateOut(BaseModel):
     resolution: str | None = None
     resolved_at: datetime | None = None
     resolution_data: dict[str, Any] | None = None
+    projection: dict[str, Any] | None = None  # indexation: {old, new, pct, method, unit} (indexation.projections)
 
 
 class KeyDateKindOut(BaseModel):
@@ -73,7 +74,11 @@ async def list_key_dates(from_: date | None = Query(default=None, alias="from"),
     rows = await keydates_domain.calendar(session, start=from_, end=to, kind_code=kind, contract_id=contract_id)
     party_names = await _party_names(session, [c.id for _, c in rows if c])
     beh = await keydates_domain.behaviours(session, p.account_id)
-    return [_out(kd, c, party_names, beh) for kd, c in rows]
+    from app.domain.indexation import projections
+
+    with_ix = {c.id: c for kd, c in rows if c is not None and kd.kind_code == "indexation"}
+    proj = await projections(session, list(with_ix.values()))
+    return [_out(kd, c, party_names, beh).model_copy(update={"projection": proj.get(kd.id)}) for kd, c in rows]
 
 
 @router.get("/kinds", response_model=list[KeyDateKindOut])

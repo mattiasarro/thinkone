@@ -99,6 +99,8 @@ export interface KeyDate {
   contract?: { id: UUID; number: string | null; title: string; type_code: string; party_name: string | null } | null;
   behaviour?: KeyDateBehaviour; status?: KeyDateStatus; resolution?: "done" | "skipped" | null; resolved_at?: ISODate | null;
   resolution_data?: { fact_ids?: string[]; rent?: KeyDateRent; mode?: string } | null;
+  /** indexation: what it does to the rent (GET /key-dates) — open ones compound from the rent in force */
+  projection?: { old: number; new: number | null; pct: number | null; method: "fixed_pct" | "cpi" | null; unit: string | null } | null;
 }
 export interface KeyDateKind { code: string; name_et: string; default_notify_days: number; behaviour?: KeyDateBehaviour }
 /** GET /contracts/{id}/indexation — the catch-up card. */

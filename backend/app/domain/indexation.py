@@ -278,3 +278,45 @@ async def revert_facts(session: AsyncSession, actor: Actor, contract_id: uuid.UU
     contract.current_values = values
     emit(session, actor, "contract", contract_id, "contract.indexation_reverted", {"fact_ids": [str(i) for i in fact_ids]})
     await session.flush()
+
+
+async def projections(session: AsyncSession, contracts: list[Contract]) -> dict[uuid.UUID, dict[str, Any]]:
+    """What each indexation of these contracts does to the rent — the calendar's „1 409 € → 1 452 € (+3,0 %)”.
+    key date id → {"old", "new", "pct", "method", "unit"}: a confirmed one from what it wrote; an open one from the rent in
+    force compounding through the open ones before it (the catch-up card's chain). Skipped ones, ones before the rent's
+    current version and contracts without a rent amount get none; CPI has no "new" until someone gives the %."""
+    if not contracts:
+        return {}
+    ids = [c.id for c in contracts]
+    kds = (await session.execute(select(KeyDate).where(KeyDate.subject_id.in_(ids), KeyDate.kind_code == "indexation", KeyDate.deleted_at.is_(None))
+                                 .order_by(KeyDate.due_date))).scalars()
+    by_c: dict[uuid.UUID, list[KeyDate]] = {}
+    for kd in kds:
+        by_c.setdefault(kd.subject_id, []).append(kd)
+    out: dict[uuid.UUID, dict[str, Any]] = {}
+    for c in contracts:
+        lst = by_c.get(c.id)
+        if not lst:
+            continue
+        r = rule(c, [k.title for k in lst])
+        facts = await _current_rent_facts(session, c.id)
+        primary = facts[0] if facts else None
+        base = parse_amount((primary.value or {}).get("value")) if primary else None
+        since = primary.valid_from if primary else None
+        unit = (primary.value or {}).get("unit") if primary else None
+        for kd in lst:
+            rent = (kd.resolution_data or {}).get("rent")
+            if kd.resolution == "done" and rent and rent.get("new") is not None:
+                old, new = rent.get("old"), rent.get("new")
+                pct = rent.get("pct") if rent.get("pct") is not None else (_round((new / old - 1) * 100, 3) if old else None)
+                out[kd.id] = {"old": old, "new": new, "pct": pct, "method": r["method"], "unit": unit}
+                continue
+            if kd.resolution or base is None or (since and kd.due_date < since):
+                continue
+            if r["rate"] is None:
+                out[kd.id] = {"old": base, "new": None, "pct": None, "method": r["method"], "unit": unit}
+                continue
+            new = _round(base * (1 + r["rate"] / 100))
+            out[kd.id] = {"old": base, "new": new, "pct": r["rate"], "method": r["method"], "unit": unit}
+            base = new
+    return out

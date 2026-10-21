@@ -209,3 +209,22 @@ async def test_series_titles_drop_esimene(client: AsyncClient, admin: dict):
     assert series_title("Esimene üüri tõus 3%") == "Üüri tõus 3%"
     assert series_title("Indekseerimine") == "Indekseerimine"
     assert series_title("Esimene") == "Esimene"
+
+
+async def test_the_calendar_shows_what_each_indexation_does(client: AsyncClient, admin: dict):
+    """Open ones compound from the rent in force; a confirmed one shows what it wrote; a skipped one shows nothing."""
+    today = date.today()
+    d1, d2, d3 = today - timedelta(days=400), today - timedelta(days=35), today + timedelta(days=330)
+    cid = await _lease(admin, start=today - timedelta(days=765), ix_dates=[d1, d2, d3])
+    cal = (await client.get("/api/v1/key-dates", params={"contract_id": str(cid)})).json()
+    p = {k["due_date"]: k["projection"] for k in cal}
+    assert [p[d.isoformat()]["new"] for d in (d1, d2, d3)] == [1030.0, 1060.9, 1092.73]
+    assert p[d1.isoformat()]["old"] == 1000.0 and p[d1.isoformat()]["pct"] == 3.0 and p[d1.isoformat()]["method"] == "fixed_pct"
+    s1, s2 = (await client.get(f"/api/v1/contracts/{cid}/indexation")).json()["steps"]
+    await client.post(f"/api/v1/contracts/{cid}/indexation", json={"steps": [{"key_date_id": s1["key_date_id"], "applied": True, "amount": 1025},
+                                                                         {"key_date_id": s2["key_date_id"], "applied": False}]})
+    cal = (await client.get("/api/v1/key-dates", params={"contract_id": str(cid)})).json()
+    p = {k["due_date"]: k["projection"] for k in cal}
+    assert p[d1.isoformat()]["old"] == 1000.0 and p[d1.isoformat()]["new"] == 1025.0 and p[d1.isoformat()]["pct"] == 2.5
+    assert p[d2.isoformat()] is None
+    assert p[d3.isoformat()]["old"] == 1025.0 and p[d3.isoformat()]["new"] == 1055.75
