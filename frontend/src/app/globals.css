@@ -352,15 +352,15 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
 
   /* --- segmented switch (demo `pf-views`): transparent 13/500, active = soft fill + ink 600 --- */
   .tabbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .tabbar a, .tabbar button { border-radius: 8px; padding: 7px 11px; font-size: 13px; line-height: 16px; font-weight: 500; color: var(--muted);
+  .tabbar > a, .tabbar > button { border-radius: 8px; padding: 7px 11px; font-size: 13px; line-height: 16px; font-weight: 500; color: var(--muted);
     background: none; box-shadow: none; border: none; cursor: pointer; font-family: inherit; transition: .15s; min-height: 30px; display: inline-flex; align-items: center; gap: 6px; }
-  .tabbar a:hover, .tabbar button:hover { color: var(--ink); background: var(--surface-soft); }
-  .tabbar a.active, .tabbar button.active { background: var(--surface-soft); color: var(--ink); font-weight: 600; }
+  .tabbar > a:hover, .tabbar > button:hover { color: var(--ink); background: var(--surface-soft); }
+  .tabbar > a.active, .tabbar > button.active { background: var(--surface-soft); color: var(--ink); font-weight: 600; }
   /* --- page tabs (demo `pf-tabs`): underlined, 14/600, ink underline on the active one --- */
   .tabbar.line { gap: 4px 28px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
-  .tabbar.line a, .tabbar.line button { padding: 10px 0 12px; margin-bottom: -1px; border-radius: 0; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 600; color: var(--muted); background: none; min-height: 0; }
-  .tabbar.line a:hover, .tabbar.line button:hover { color: var(--ink); background: none; }
-  .tabbar.line a.active, .tabbar.line button.active { color: var(--ink); border-bottom-color: var(--ink); background: none; }
+  .tabbar.line > a, .tabbar.line > button { padding: 10px 0 12px; margin-bottom: -1px; border-radius: 0; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 600; color: var(--muted); background: none; min-height: 0; }
+  .tabbar.line > a:hover, .tabbar.line > button:hover { color: var(--ink); background: none; }
+  .tabbar.line > a.active, .tabbar.line > button.active { color: var(--ink); border-bottom-color: var(--ink); background: none; }
   /* --- chip (demo v636): soft fill, r 8, 12/500; selected = ink fill --- */
   .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-soft); border: none; border-radius: 8px; padding: 5px 10px; min-height: 28px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--ink-2); cursor: pointer; transition: .15s; }
   .chip:hover { background: color-mix(in oklab, var(--surface-soft), var(--ink) 8%); color: var(--ink); }
@@ -1037,7 +1037,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
   /* --- count mark (demo `arvMark` / .mk-arv): mono number in a soft box; ink on the active tab --- */
   .mk-arv { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 6px; font: 600 10.5px/1 var(--font-mono);
     background: var(--surface-soft); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .tabbar a.active .mk-arv, .tabbar button.active .mk-arv { background: var(--ink); color: var(--on-ink); }
+  .tabbar.line > a.active .mk-arv, .tabbar.line > button.active .mk-arv { background: var(--ink); color: var(--on-ink); }
   /* --- icon switch (demo `pf-mode`: Loend · Kuu) --- */
   .pf-mode { display: inline-flex; gap: 2px; }
   .pf-mode button { width: 32px; height: 32px; border: none; border-radius: 8px; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: .15s; }
@@ -1047,6 +1047,11 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
 
   /* --- KALENDER (demo v625 ajajoon → v735 ühes kaardis): kuupäev · selgroog · sündmus · aeg · nool. Täidetud merevaik = vajab
      otsust, tühi ring = midagi pole vaja teha; möödunud read tuhmuvad; „Täna” joon; üleval „Järgmised 30 päeva” --- */
+  /* type tabs + who acts · add · Loend/Kuu on one line (demo .kal-tabs); when they don't fit, the controls wrap ABOVE the tabs
+     (wrap-reverse) so the underlined tabs stay on the border */
+  .kal-tabs { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 6px 24px; border-bottom: 1px solid var(--line); }
+  .kal-tabs > .tabbar.line { border-bottom: 0; margin-bottom: -1px; }
+  .kal-tabs-r { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding-bottom: 8px; }
   .kal-leg { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 11.5px; color: var(--muted); }
   .kal-leg i { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
   .kal-leg i.ise { margin-left: 10px; background: none; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
@@ -1077,6 +1082,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 650; letter-spac
 
   .kal-aeg { position: relative; padding: 6px 12px 14px; }
   .kal-aeg::before { content: ""; position: absolute; left: 102px; top: 40px; bottom: 30px; width: 2px; border-radius: 2px; background: var(--line); }
+  .kal-aeg.tyhi::before { content: none; }
   .kal-kuu-h { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; padding: 20px 12px 10px 114px; }
   .kal-kuu-h h2 { font-size: 18px; letter-spacing: -.025em; margin: 0; }
   .kal-kuu-h .kal-a { font-family: var(--font-ui); font-size: 13px; font-weight: 500; color: var(--faint); letter-spacing: 0; margin-left: 8px; }

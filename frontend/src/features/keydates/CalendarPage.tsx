@@ -89,19 +89,19 @@ export function CalendarPage() {
   return (
     <div className="grid gap-4">
       <div className="page-head"><div className="min-w-0"><h1 className="page-h1">{t("keyDates.title")}</h1></div></div>
-      <Tabs variant="line" ariaLabel={t("keyDates.cal.byKind")} active={activeKind} onChange={(k) => { setKind(k); setOpenId(null); }}
-            tabs={[{ key: "", label: t("keyDates.cal.all"), count: all.length }, ...kinds.map(([k, n]) => ({ key: k, label: tEnum("keyDates.tabs", k), count: n }))]}
-            actions={
-              <span className="flex flex-wrap items-center gap-2.5 pb-1.5">
-                <Tabs ariaLabel={t("keyDates.cal.who")} active={whoF} onChange={(k) => { setWhoF(k as Who); setOpenId(null); }}
-                      tabs={[{ key: "", label: t("keyDates.cal.all") }, { key: "otsus", label: t("keyDates.cal.decide") }, { key: "ise", label: t("keyDates.cal.auto") }]} />
-                <Button size="sm" onClick={() => setDialog({ open: true, item: null })}><IconPlus width={14} height={14} />{t("keyDates.cal.add")}</Button>
-                <span className="pf-mode" role="group" aria-label={t("keyDates.cal.view")}>
-                  <button type="button" className={cx(view === "list" && "on")} aria-pressed={view === "list"} title={t("keyDates.cal.list")} aria-label={t("keyDates.cal.list")} onClick={() => setView("list")}><IconMenu /></button>
-                  <button type="button" className={cx(view === "month" && "on")} aria-pressed={view === "month"} title={t("keyDates.cal.month")} aria-label={t("keyDates.cal.month")} onClick={() => setView("month")}><IconCal /></button>
-                </span>
-              </span>
-            } />
+      <div className="kal-tabs">
+        <Tabs variant="line" ariaLabel={t("keyDates.cal.byKind")} active={activeKind} onChange={(k) => { setKind(k); setOpenId(null); }}
+              tabs={[{ key: "", label: t("keyDates.cal.all"), count: all.length }, ...kinds.map(([k, n]) => ({ key: k, label: tEnum("keyDates.tabs", k), count: n }))]} />
+        <span className="kal-tabs-r">
+          <Tabs ariaLabel={t("keyDates.cal.who")} active={whoF} onChange={(k) => { setWhoF(k as Who); setOpenId(null); }}
+                tabs={[{ key: "", label: t("keyDates.cal.all") }, { key: "otsus", label: t("keyDates.cal.decide") }, { key: "ise", label: t("keyDates.cal.auto") }]} />
+          <Button size="sm" onClick={() => setDialog({ open: true, item: null })}><IconPlus width={14} height={14} />{t("keyDates.cal.add")}</Button>
+          <span className="pf-mode" role="group" aria-label={t("keyDates.cal.view")}>
+            <button type="button" className={cx(view === "list" && "on")} aria-pressed={view === "list"} title={t("keyDates.cal.list")} aria-label={t("keyDates.cal.list")} onClick={() => setView("list")}><IconMenu /></button>
+            <button type="button" className={cx(view === "month" && "on")} aria-pressed={view === "month"} title={t("keyDates.cal.month")} aria-label={t("keyDates.cal.month")} onClick={() => setView("month")}><IconCal /></button>
+          </span>
+        </span>
+      </div>
       {contractId && (
         <div><button type="button" className="chip on" onClick={() => router.replace("/app/kalender")} title={t("keyDates.cal.allContracts")}>
           {t("keyDates.cal.onlyContract", { name: contractName || "…" })}<IconX />
@@ -171,7 +171,7 @@ function TodayLine() {
 
 /** The timeline: months as headings, „Täna” before the first date still to come, past rows fade (an open task does not). */
 function Timeline({ items, openId, onToggle, detail }: { items: KeyDate[]; openId: string | null; onToggle: (id: string) => void; detail: (k: KeyDate) => React.ReactNode }) {
-  if (items.length === 0) return <Card className="kal-aeg reveal"><p className="text-sm text-muted text-center py-6">{t("keyDates.cal.empty")}</p></Card>;
+  if (items.length === 0) return <Card className="kal-aeg tyhi reveal"><p className="text-sm text-muted text-center py-6">{t("keyDates.cal.empty")}</p></Card>;
   const todayIso = isoDay(new Date()), thisMonth = todayIso.slice(0, 7);
   const groups: { key: string; items: KeyDate[] }[] = [];
   for (const k of items) { const key = k.due_date.slice(0, 7); const g = groups.at(-1); if (g && g.key === key) g.items.push(k); else groups.push({ key, items: [k] }); }
@@ -212,6 +212,7 @@ function Row({ k, open, onToggle }: { k: KeyDate; open: boolean; onToggle: () =>
   const d = daysUntil(k.due_date), ise = !decides(k), past = d < 0 && !isOpen(k);
   const sub = projLine(k) ?? (k.title !== kindLabel(k) ? k.title : null);
   const showStatus = k.status && k.status !== "upcoming";
+  const doneWithRent = k.status === "done" && !!k.projection;   // the line already says what it did
   return (
     <div id={`kal-${k.id}`} role="button" tabIndex={0} aria-expanded={open} className={cx("kal-tl", ise && "ise", past && "moodas", !ise && d >= 0 && d <= 60 && "kiire", open && "open")}
          onClick={onToggle} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}>
@@ -219,7 +220,7 @@ function Row({ k, open, onToggle }: { k: KeyDate; open: boolean; onToggle: () =>
       <span className={cx("kal-dot", ise && "ise")} title={ise ? t("keyDates.cal.legendAuto") : t("keyDates.cal.legendDecide")} />
       <div className="kal-tl-sisu">
         <div className="kal-tl-t"><b>{kindLabel(k)}</b>{who(k) && <span className="kal-tl-kes">{who(k)}</span>}</div>
-        {(sub || showStatus) && <div className="kal-tl-s">{sub}{sub && showStatus ? " · " : ""}{showStatus && <KeyDateStatusText k={k} />}</div>}
+        {(sub || showStatus) && <div className="kal-tl-s">{sub}{sub && showStatus ? " · " : ""}{showStatus && (doneWithRent ? <span className="text-success">✓ {t("keyDates.status.done")}</span> : <KeyDateStatusText k={k} />)}</div>}
       </div>
       <div className="kal-tl-m"><span className="kal-tl-aeg">{rel(d)}</span>{k.contract?.number && <span className="mono">{k.contract.number}</span>}</div>
       {k.contract ? (

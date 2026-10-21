@@ -2,6 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "backend",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "backend",
+        "run",
+        "uvicorn",
+        "app.api.main:app",
+        "--port",
+        "8001"
+      ],
+      "port": 8001
+    },
+    {
       "name": "frontend",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
@@ -10,6 +24,20 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "frontend-local-api",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "API_INTERNAL_URL=http://localhost:8001",
+        "pnpm",
+        "--dir",
+        "frontend",
+        "dev",
+        "--port",
+        "3001"
+      ],
+      "port": 3001
     },
     {
       "name": "demo",
