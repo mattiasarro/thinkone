@@ -122,6 +122,29 @@ async def test_plan_upload_queues_derivation_and_draft(client: AsyncClient, admi
     assert (await client.get(f"/api/v1/assets/{bare['id']}/parking/plan/background")).status_code == 400
 
 
+async def test_schematic_upload_reads_into_unsaved_lot(client: AsyncClient, admin: dict):
+    """The Skeem view uploads a plan with derive=false (no worker job) and reads it straight into its own, maybe unsaved, lot."""
+    prop, s1, s2 = await _building(client)
+    r = await client.post(f"/api/v1/assets/{prop['id']}/plans", params={"dry_run": "false", "derive": "false"},
+                          files=[("files", ("hoov.png", _png(), "image/png"))], data={"mapping": '{"hoov.png": "parking"}'})
+    assert r.status_code == 200 and r.json()[0]["target"] == "parking" and r.json()[0]["attachment_id"], r.text
+    aid = r.json()[0]["attachment_id"]
+    from app.infra.db import sessionmaker
+
+    async with sessionmaker()() as s:
+        async with s.begin():
+            await s.execute(text("SELECT set_config('app.bypass_rls', 'on', true)"))
+            n = (await s.execute(text("SELECT count(*) FROM procrastinate_jobs WHERE task_name = 'app.worker.tasks.derive_parking_plan'"))).scalar()
+    assert n == 0
+    doc = (await client.get(f"/api/v1/assets/{prop['id']}/parking/plan")).json()
+    assert [a["id"] for a in doc["plan_attachments"]] == [aid] and doc["draft"] is None
+    r = await client.post(f"/api/v1/assets/{prop['id']}/parking/plan/derive", json={"attachment_id": aid, "lot_id": "lot-new1", "lot_name": "-1 korrus"})
+    assert r.status_code == 200, r.text
+    d = r.json()["draft"]
+    assert d["status"] == "ready" and d["lot"]["id"] == "lot-new1" and d["lot"]["name"] == "-1 korrus"
+    assert d["background"]["attachment_id"] == aid and all(s["geom"]["lot"] == "lot-new1" for s in d["spots"])
+
+
 def test_draft_from_model_matching_and_scale():
     import uuid
     from types import SimpleNamespace

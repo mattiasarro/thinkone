@@ -153,7 +153,7 @@ export function useSaveParkingPlan(propertyId: string) {
 }
 export function useDeriveParkingPlan(propertyId: string) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (b: { attachment_id?: string | null; lot_id?: string | null } = {}) => api.post<ParkingPlan>(`/assets/${propertyId}/parking/plan/derive`, b), onSuccess: () => invalidateAssets(qc) });
+  return useMutation({ mutationFn: (b: { attachment_id?: string | null; lot_id?: string | null; lot_name?: string | null } = {}) => api.post<ParkingPlan>(`/assets/${propertyId}/parking/plan/derive`, b), onSuccess: () => invalidateAssets(qc) });
 }
 export function useDiscardParkingDraft(propertyId: string) {
   const qc = useQueryClient();
@@ -164,8 +164,9 @@ export function useDiscardParkingDraft(propertyId: string) {
 export function useUploadPlans(propertyId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ files, mapping, dryRun }: { files: File[]; mapping?: Record<string, string>; dryRun: boolean }) =>
-      api.uploadMany<PlanRow[]>(`/assets/${propertyId}/plans`, files.map((file) => ({ field: "files", file })), { mapping: mapping ? JSON.stringify(mapping) : undefined }, { dry_run: dryRun }),
+    // derive: false = don't queue the worker's read of a parking plan (the schematic editor reads it into its own lot)
+    mutationFn: ({ files, mapping, dryRun, derive = true }: { files: File[]; mapping?: Record<string, string>; dryRun: boolean; derive?: boolean }) =>
+      api.uploadMany<PlanRow[]>(`/assets/${propertyId}/plans`, files.map((file) => ({ field: "files", file })), { mapping: mapping ? JSON.stringify(mapping) : undefined }, { dry_run: dryRun, derive }),
     onSuccess: (_r, v) => { if (!v.dryRun) { invalidateAssets(qc); qc.invalidateQueries({ queryKey: ["attachments"] }); } },
   });
 }

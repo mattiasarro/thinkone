@@ -252,6 +252,7 @@ class ParkingPlanOut(BaseModel):
 class ParkingDeriveIn(BaseModel):
     attachment_id: uuid.UUID | None = None
     lot_id: str | None = None
+    lot_name: str | None = Field(default=None, max_length=200)  # a lot the editor has not saved yet
 
 
 class PlanRowOut(BaseModel):
@@ -475,7 +476,8 @@ async def derive_parking_plan(property_id: uuid.UUID, body: ParkingDeriveIn | No
                               session: AsyncSession = Depends(db)) -> ParkingPlanOut:
     """Read a parking plan with the model now (the upload also queues this in the worker) → ``draft`` for one lot."""
     body = body or ParkingDeriveIn()
-    await parking_plan_domain.derive_draft(session, p.actor, property_id, attachment_id=body.attachment_id, lot_id=body.lot_id)
+    await parking_plan_domain.derive_draft(session, p.actor, property_id, attachment_id=body.attachment_id, lot_id=body.lot_id,
+                                           lot_name=body.lot_name)
     return ParkingPlanOut(**await parking_plan_domain.plan_document(session, property_id))
 
 
@@ -490,9 +492,11 @@ async def discard_parking_plan_draft(property_id: uuid.UUID, p: Principal = Depe
 
 @router.post("/assets/{property_id}/plans", response_model=list[PlanRowOut])
 async def upload_plans(property_id: uuid.UUID, files: list[UploadFile] = File(...), mapping: str | None = Form(default=None),
-                       dry_run: bool = Query(default=True), p: Principal = Depends(current_principal), session: AsyncSession = Depends(db)) -> list[PlanRowOut]:
+                       dry_run: bool = Query(default=True), derive: bool = Query(default=True), p: Principal = Depends(current_principal),
+                       session: AsyncSession = Depends(db)) -> list[PlanRowOut]:
     """Many plan files (PDF · PNG · JPG · SVG · ZIP) → matched to spaces by filename. ``mapping`` is a JSON object
-    {filename: space_id | "property" | "skip"} with the operator's corrections; dry_run returns the proposal only."""
+    {filename: space_id | "property" | "skip"} with the operator's corrections; dry_run returns the proposal only.
+    ``derive=false`` skips the worker's read of a parking plan (the schematic editor reads it itself)."""
     payload = [plans_domain.PlanFile(f.filename or "fail", f.content_type or "", await f.read()) for f in files]
     try:
         m = json.loads(mapping) if mapping else None
@@ -500,7 +504,7 @@ async def upload_plans(property_id: uuid.UUID, files: list[UploadFile] = File(..
         raise DomainError("mapping peab olema JSON-objekt") from e
     if m is not None and not isinstance(m, dict):
         raise DomainError("mapping peab olema JSON-objekt")
-    rows = await (plans_domain.propose(session, property_id, payload, m) if dry_run else plans_domain.commit(session, p.actor, property_id, payload, m))
+    rows = await (plans_domain.propose(session, property_id, payload, m) if dry_run else plans_domain.commit(session, p.actor, property_id, payload, m, derive=derive))
     return [PlanRowOut(**r) for r in plans_domain.rows_out(rows)]
 
 

@@ -7,7 +7,8 @@ import { ErrorState, Loading } from "@/components/ui/State";
 import { useToast } from "@/components/ui/Toast";
 import { API_BASE, errorMessage } from "@/lib/api";
 import { cx } from "@/lib/format";
-import { useDeriveParkingPlan, useDiscardParkingDraft, useParkingPlan, useSaveParkingPlan } from "@/lib/queries/portfolio";
+import { useDeriveParkingPlan, useDiscardParkingDraft, useParkingPlan, useSaveParkingPlan, useUploadPlans } from "@/lib/queries/portfolio";
+import { IconUpload } from "@/components/ui/Icons";
 import type { AssetDetail, ParkingLot, ParkingPlan, ParkingPlanDraft, ParkingPlanSave, SpotGeom, SpotType } from "@/types/api";
 import { ParkingPlanView, type ViewHandle, type ViewSpot } from "./ParkingPlanView";
 import { DEFAULT_FRAME, DEFAULT_M_PER_PX, GRID, MIN_SIZE, NEUTRAL, STANDARD, corners, fromPlanSpot, newLotId, nextNumber, normRot, resizeFromCorner, rotateTowards, round2, rowAfter, snap, spaceColor, type EditorSpot, type EditorState } from "./model";
@@ -40,8 +41,11 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
   const save = useSaveParkingPlan(property.id);
   const derive = useDeriveParkingPlan(property.id);
   const discard = useDiscardParkingDraft(property.id);
+  const upload = useUploadPlans(property.id);
   const toast = useToast();
   const view = useRef<ViewHandle>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const uploadFor = useRef<string | null>(null); // the lot a picked plan is for; null = a new lot named after the file
   const spaces = useMemo(() => property.children.filter((c) => c.type_code === "space" && c.status !== "jagatud" && c.status !== "mitteaktiivne"), [property.children]);
   const spaceIndex = useMemo(() => new Map(spaces.map((s, i) => [s.id, i])), [spaces]);
 
@@ -221,6 +225,20 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
     try { await derive.mutateAsync({ attachment_id: aid, lot_id: target?.id ?? null }); toast.success(t("assets.parkingScheme.derived")); }
     catch (e) { toast.error(errorMessage(e)); }
   };
+  /** Upload a parking plan here instead of in „Plaanid”: stored the same way, then read by the model straight into the
+   *  lot it was picked for (becoming its background) or, with no lot, into a new lot named after the file. */
+  const pickPlan = (lotId: string | null) => { uploadFor.current = lotId; fileInput.current?.click(); };
+  const uploadPlan = async (file: File) => {
+    const target = uploadFor.current ? state.lots.find((l) => l.id === uploadFor.current) : undefined;
+    try {
+      const rows = await upload.mutateAsync({ files: [file], mapping: { [file.name]: "parking" }, dryRun: false, derive: false });
+      const aid = rows.find((r) => r.target === "parking")?.attachment_id;
+      if (!aid) { toast.error(rows[0]?.note ?? t("common.error")); return; }
+      if (target) setBackground(target.id, aid);
+      await derive.mutateAsync({ attachment_id: aid, lot_id: target?.id ?? null, lot_name: target?.name ?? null });
+      toast.success(t("assets.parkingScheme.derived"));
+    } catch (e) { toast.error(errorMessage(e)); }
+  };
   const doDiscard = async () => { try { await discard.mutateAsync(); setClearDraft(false); } catch (e) { toast.error(errorMessage(e)); } };
 
   // ---- pointer interactions (coordinates in metres via the view) ----
@@ -319,6 +337,9 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
 
   return (
     <div className="grid gap-3" onKeyDown={onKey} tabIndex={0} style={{ outline: "none" }}>
+      <input ref={fileInput} type="file" className="sr-only" tabIndex={-1} aria-label={t("assets.parkingScheme.upload")} accept=".pdf,.png,.jpg,.jpeg,.svg,application/pdf,image/png,image/jpeg,image/svg+xml"
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadPlan(f); }} />
+      {(upload.isPending || derive.isPending) && <div className="note info">{t("assets.parkingScheme.uploading")}</div>}
       {draft && draft.status === "ready" && !clearDraft && (
         <div className="note primary flex-wrap items-center gap-2">
           <span className="font-semibold">{t("assets.parkingScheme.draftReady", { n: draft.spots.length, m: draft.matched ?? 0, lot: draftLotName })}</span>
@@ -359,7 +380,8 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
               <button type="button" role="tab" className={cx(mode === "space" && "active")} aria-selected={mode === "space"} onClick={() => setMode("space")}>{t("assets.parkingScheme.bySpace")}</button>
               <button type="button" role="tab" className={cx(mode === "status" && "active")} aria-selected={mode === "status"} onClick={() => setMode("status")}>{t("assets.parkingScheme.byStatus")}</button>
             </div>
-            {lot.background && <Button size="sm" className="ml-auto" busy={derive.isPending} onClick={() => doDerive()}>{t("assets.parkingScheme.derive")}</Button>}
+            {lot.background ? <Button size="sm" className="ml-auto" busy={derive.isPending} onClick={() => doDerive()}>{t("assets.parkingScheme.derive")}</Button>
+              : <Button size="sm" className="ml-auto" busy={upload.isPending || derive.isPending} onClick={() => pickPlan(lot.id)}><IconUpload width={14} height={14} />{t("assets.parkingScheme.upload")}</Button>}
           </div>
           <div className="grid gap-3 lg:grid-cols-[1fr_300px]">
             <div className="card overflow-hidden" style={{ height: "min(70vh, 720px)" }}>
@@ -463,6 +485,7 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
                     <option value="">{t("assets.parkingScheme.noBackgroundOpt")}</option>{plan.plan_attachments.map((a) => <option key={a.id} value={a.id}>{a.filename}</option>)}
                   </select>
                   {plan.plan_attachments.length === 0 && <p className="text-xs text-muted mt-1">{t("assets.parkingScheme.noBackground")}</p>}
+                  <Button size="sm" variant="text" className="w-fit -ml-2 mt-1" busy={upload.isPending || derive.isPending} onClick={() => pickPlan(lot.id)}><IconUpload width={14} height={14} />{plan.plan_attachments.length ? t("assets.parkingScheme.uploadNew") : t("assets.parkingScheme.upload")}</Button>
                 </div>
                 {bg && (
                   <>
@@ -480,6 +503,7 @@ function Editor({ property, plan }: { property: AssetDetail; plan: ParkingPlan }
           <p>{t("assets.parkingScheme.noLots")}</p>
           <div className="flex gap-2 flex-wrap">
             <Button variant="primary" onClick={() => setNewLotName("")}>+ {t("assets.parkingScheme.lotAdd")}</Button>
+            <Button busy={upload.isPending || derive.isPending} onClick={() => pickPlan(null)}><IconUpload width={16} height={16} />{t("assets.parkingScheme.upload")}</Button>
             {plan.plan_attachments.map((a) => <Button key={a.id} busy={derive.isPending} onClick={() => doDerive(a.id)}>{t("assets.parkingScheme.deriveFrom", { file: a.filename })}</Button>)}
           </div>
         </div>

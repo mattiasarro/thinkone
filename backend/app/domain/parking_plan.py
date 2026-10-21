@@ -280,19 +280,22 @@ def draft_from_model(data: dict[str, Any], img_w: int, img_h: int, spots: list[A
 
 
 async def derive_draft(session: AsyncSession, actor: Actor, property_id: uuid.UUID, *, attachment_id: uuid.UUID | None = None,
-                       lot_id: str | None = None) -> dict[str, Any]:
+                       lot_id: str | None = None, lot_name: str | None = None) -> dict[str, Any]:
     """Read a parking plan with the model and store the proposal as ``parking_plan_draft`` for one lot: the lot given
-    (its background when no attachment is named), else the lot already using that plan, else a new lot named after the file."""
+    (its background when no attachment is named), else the lot already using that plan, else a new lot named after the file.
+    ``lot_name`` names a lot the editor has not saved yet, so an unknown ``lot_id`` with a name becomes that lot."""
     prop = await assets_domain.get_asset(session, property_id)
     lots = lots_of(prop.attributes or {})
     lot = next((x for x in lots if x["id"] == lot_id), None) if lot_id else None
     if lot_id and not lot:
-        raise DomainError("Sellist parklat pole")
+        if not (lot_name or "").strip():
+            raise DomainError("Sellist parklat pole")
+        lot = {"id": lot_id, "name": lot_name.strip()}
     if attachment_id is None and lot and lot.get("background"):
         attachment_id = uuid.UUID(lot["background"]["attachment_id"])
     att = await attachments_domain.get_attachment(session, attachment_id) if attachment_id else await plan_attachment(session, prop.id)
     if not att or att.subject_id != prop.id or att.role != "parking_plan":
-        raise DomainError("Hoonel pole parkimisplaani — laadi see üles sammus „Plaanid”")
+        raise DomainError("Hoonel pole parkimisplaani — laadi see üles skeemil või sammus „Plaanid”")
     if lot is None:
         lot = next((x for x in lots if (x.get("background") or {}).get("attachment_id") == str(att.id)), None)
     if lot is None:

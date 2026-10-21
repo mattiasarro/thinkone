@@ -201,7 +201,10 @@ async def propose(session: AsyncSession, property_id: uuid.UUID, files: list[Pla
     return rows
 
 
-async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, files: list[PlanFile], mapping: dict[str, str] | None = None) -> list[PlanRow]:
+async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, files: list[PlanFile], mapping: dict[str, str] | None = None,
+                 derive: bool = True) -> list[PlanRow]:
+    """Store the bound files. A parking plan is read by the model in the worker unless ``derive`` is off (the schematic
+    editor uploads with it off and reads the plan into the lot it was uploaded for)."""
     rows = await propose(session, property_id, files, mapping)
     prop = await assets_domain.get_asset(session, property_id)
     expanded = {f.filename: f for f in expand_files(files)}
@@ -221,7 +224,7 @@ async def commit(session: AsyncSession, actor: Actor, property_id: uuid.UUID, fi
               "before": previous[0].filename if previous else None, "after": f.filename, "attachment_id": att.id})
         if previous:
             r.note = f"asendab „{previous[0].filename}”"
-        if role == "parking_plan":
+        if role == "parking_plan" and derive:
             from app.worker.tasks import (
                 enqueue_parking_plan_derivation,  # the VLM reads the plan in the worker → editor draft
             )
