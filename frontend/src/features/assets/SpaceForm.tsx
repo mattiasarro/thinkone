@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api";
 import { useAssignParking, useCreateAsset, useParking, useUpdateAsset } from "@/lib/queries/portfolio";
-import { cx } from "@/lib/format";
-import { type Asset, type ParkingSpot, type SpaceAttributes } from "@/types/api";
+import { cx, fmtNum } from "@/lib/format";
+import { SPACE_PART_KEYS, type Asset, type ParkingSpot, type SpaceAttributes } from "@/types/api";
 
 const num = z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : Number(String(v).replace(",", "."))), z.number().nonnegative().optional());
 const schema = z.object({
@@ -19,7 +19,15 @@ const schema = z.object({
   type: z.string().min(1, t("common.required")),
   rentable_area_m2: z.preprocess((v) => (v === "" ? undefined : Number(String(v).replace(",", "."))), z.number({ message: t("common.required") }).positive(t("common.required"))),
   price_per_m2: num, electrical_capacity_a: num, parking_spots: num, floor: z.string().optional(),
+  parts: z.object(Object.fromEntries(SPACE_PART_KEYS.map((k) => [k, num])) as Record<(typeof SPACE_PART_KEYS)[number], typeof num>),
+}).superRefine((v, ctx) => {
+  // Same rule as the backend (SpaceAttributes._parts_sum): a breakdown, when given, sums to the rentable area.
+  const total = partsTotal(v.parts);
+  if (total > 0 && Math.abs(total - v.rentable_area_m2) > 0.05) ctx.addIssue({ code: "custom", path: ["parts"], message: t("assets.partsMismatch", { sum: fmtNum(total), area: fmtNum(v.rentable_area_m2) }) });
 });
+function partsTotal(parts: Partial<Record<string, unknown>> | undefined): number {
+  return Math.round(Object.values(parts ?? {}).reduce<number>((s, x) => s + (Number(String(x ?? "").replace(",", ".")) || 0), 0) * 100) / 100;
+}
 type FormIn = z.input<typeof schema>;
 type Form = z.output<typeof schema>;
 /** Values match the backend CSV vocabulary (real_estate vertical): büroo | ladu | tootmine | … */
@@ -37,18 +45,22 @@ export function SpaceForm({ propertyId, companyId, space, onDone, onCancel, stan
   const mine = useMemo(() => register_.filter((s) => space && s.space_id === space.id).map((s) => s.number), [register_, space]);
   const [numbers, setNumbers] = useState<string[] | null>(null); // null = untouched
   const picked = numbers ?? mine;
-  const { register, handleSubmit, formState: { errors } } = useForm<FormIn, unknown, Form>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormIn, unknown, Form>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: space?.name ?? "", type: a.type ?? "büroo", rentable_area_m2: a.rentable_area_m2, price_per_m2: a.price_per_m2 ?? undefined,
       electrical_capacity_a: a.electrical_capacity_a ?? undefined, parking_spots: a.parking_spots ?? undefined, floor: a.floor ?? "",
+      parts: Object.fromEntries(SPACE_PART_KEYS.map((k) => [k, a.parts?.[k] ?? ""])),
     },
   });
   const locked = !!space && space.status !== "vaba" && space.status !== "jagatud" && space.status !== "mitteaktiivne" && space.status !== null;
 
+  const partsSum = partsTotal(watch("parts"));
+  const rentable = Number(String(watch("rentable_area_m2") ?? "").replace(",", ".")) || 0;
+
   const onSubmit = handleSubmit(async (v) => {
-    // Area parts (ladu/kontor/…) are not edited here; they come from the spaces import and are kept as-is via `...a`.
-    const attributes: Record<string, unknown> = { ...a, type: v.type, rentable_area_m2: v.rentable_area_m2, price_per_m2: v.price_per_m2 ?? null,
+    const parts = Object.fromEntries(SPACE_PART_KEYS.filter((k) => v.parts[k]).map((k) => [k, v.parts[k]]));
+    const attributes: Record<string, unknown> = { ...a, type: v.type, rentable_area_m2: v.rentable_area_m2, parts: Object.keys(parts).length ? parts : null, price_per_m2: v.price_per_m2 ?? null,
       electrical_capacity_a: v.electrical_capacity_a ?? null, floor: v.floor || null, parking_spots: hasRegister ? picked.length : v.parking_spots ?? null };
     try {
       let id = space?.id;
@@ -75,6 +87,21 @@ export function SpaceForm({ propertyId, companyId, space, onDone, onCancel, stan
         <Input label={t("assets.price")} type="number" step="0.01" inputMode="decimal" {...register("price_per_m2")} />
         <Input label={t("assets.electrical")} type="number" step="1" inputMode="decimal" {...register("electrical_capacity_a")} />
       </FormRow>
+      <fieldset className="field">
+        <legend className="field-label">
+          {t("assets.partsTitle")}{" "}
+          <span className={cx("text-xs font-normal", errors.parts ? "text-error" : "text-muted")}>· {partsSum > 0 ? t("assets.partsSum", { sum: fmtNum(partsSum), area: fmtNum(rentable) }) : t("assets.partsOptional")}</span>
+        </legend>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-3">
+          {SPACE_PART_KEYS.map((k) => <Input key={k} label={tEnum("assets.partNames", k)} type="number" step="0.01" min="0" inputMode="decimal" placeholder="m²" {...register(`parts.${k}`)} />)}
+        </div>
+        {errors.parts?.message ? (
+          <span className="field-err" role="alert">
+            {errors.parts.message}
+            {!locked && partsSum > 0 && <> <button type="button" className="text-primary font-semibold" onClick={() => setValue("rentable_area_m2", partsSum, { shouldValidate: true })}>{t("assets.partsUseSum")}</button></>}
+          </span>
+        ) : <span className="field-hint">{t("assets.partsHint")}</span>}
+      </fieldset>
       <FormRow>
         <Input label={t("assets.floor")} {...register("floor")} />
         {!hasRegister && <Input label={t("assets.parking")} type="number" inputMode="numeric" hint={parking.isLoading ? undefined : t("assets.parkingNoRegister")} {...register("parking_spots")} />}
