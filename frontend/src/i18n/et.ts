@@ -198,7 +198,7 @@ const et = {
     statusHint: { past: "Toimunud — ajalugu, midagi pole vaja teha.", lapsed: "Tähtaeg möödus — sellega pole enam midagi teha.", openSince: "Võimalus avanes sel kuupäeval ja kehtib lepingu lõpuni.", overdue: "Tegevus on tegemata — märgi tehtuks või vahele jäetuks.",
       unconfirmed: "Enne importi — pole teada, kas üüri tõsteti. Kinnita indekseerimise kaardil.", skipped: "Märgiti vahele jäetuks." },
     doneRent: "üür {amount}", markDone: "Tehtud", markSkipped: "Vahele", reopen: "Ava uuesti", reopened: "Tähtaeg avatud uuesti", resolved: "Märgitud",
-    showPast: "Näita möödunud ({n})", hidePast: "Peida möödunud", confirmOnCard: "kinnita kaardil",
+    confirmOnCard: "kinnita kaardil",
     kinds: { end: "Lepingu lõpp", start: "Lepingu algus", indexation: "Indekseerimine", probation: "Katseaeg", salary_review: "Palgaülevaatus", quote_expiry: "Pakkumuse aegumine", renewal: "Pikendamine", notice: "Ülesütlemistähtaeg", termination_option: "Ülesütlemisvõimalus", payment: "Makse", other: "Muu" },
   },
   // indexation catch-up: resolving an indexation is what changes the rent (backend domain/indexation.py)

@@ -27,8 +27,6 @@ export function keyDateLabel(k: KeyDate): { text: string; tone: Tone; hint?: str
 
 /** Open = someone still has to say what happened. */
 export const isOpen = (k: KeyDate) => k.status === "overdue" || k.status === "unconfirmed";
-/** History = folded away on the contract page (an option that is still open is not history). */
-export const isHistory = (k: KeyDate) => !isOpen(k) && k.status !== "open_since" && daysUntil(k.due_date) < 0;
 
 export function KeyDatePill({ k, className }: { k: KeyDate; className?: string }) {
   const l = keyDateLabel(k);
